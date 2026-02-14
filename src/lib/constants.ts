@@ -20,6 +20,7 @@ export const MESSAGE_TYPES = {
   REQUEST_PAGE_LINKS: 'REQUEST_PAGE_LINKS',
   HEARTBEAT: 'HEARTBEAT',
   REQUEST_CSS_VARIABLES: 'REQUEST_CSS_VARIABLES',
+  SET_SELECTION_MODE: 'SET_SELECTION_MODE',
 } as const;
 
 export const BREAKPOINTS: Record<Breakpoint, { label: string; width: number }> = {

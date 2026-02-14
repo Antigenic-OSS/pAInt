@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useCallback, useRef } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { useEditorStore } from '@/store';
 import type { InspectorToEditorMessage, EditorToInspectorMessage } from '@/types/messages';
 
@@ -9,104 +9,98 @@ import type { InspectorToEditorMessage, EditorToInspectorMessage } from '@/types
 // components (DragModeToggle, etc.) can send messages through it.
 const sharedIframeRef: React.MutableRefObject<HTMLIFrameElement | null> = { current: null };
 
+// Singleton message listener — registered once to prevent duplicate handlers
+// when multiple components call usePostMessage(). Uses useEditorStore.getState()
+// so it always reads fresh state without stale closures.
+let listenerRegistered = false;
+let heartbeatResolve: (() => void) | null = null;
+
+function sendViaIframe(message: EditorToInspectorMessage) {
+  const iframe = sharedIframeRef.current;
+  if (!iframe?.contentWindow) return;
+  iframe.contentWindow.postMessage(message, '*');
+}
+
+function handleMessage(event: MessageEvent) {
+  if (event.origin !== window.location.origin) return;
+  const msg = event.data as InspectorToEditorMessage;
+  if (!msg || !msg.type) return;
+
+  const store = useEditorStore.getState();
+
+  switch (msg.type) {
+    case 'INSPECTOR_READY':
+      store.setConnectionStatus('connected');
+      sendViaIframe({ type: 'REQUEST_DOM_TREE' });
+      sendViaIframe({ type: 'REQUEST_PAGE_LINKS' });
+      sendViaIframe({ type: 'REQUEST_CSS_VARIABLES' });
+      break;
+
+    case 'ELEMENT_SELECTED':
+      store.selectElement(msg.payload);
+      store.setCSSVariableUsages(msg.payload.cssVariableUsages || {});
+      break;
+
+    case 'CSS_VARIABLES':
+      store.setCSSVariableDefinitions(msg.payload.definitions);
+      break;
+
+    case 'ELEMENT_HOVERED':
+      store.setHighlightedNodeId(msg.payload.selectorPath);
+      break;
+
+    case 'DOM_TREE':
+      store.setRootNode(msg.payload.tree);
+      break;
+
+    case 'DOM_UPDATED':
+      store.setRootNode(msg.payload.tree);
+      if (msg.payload.removedSelectors.length > 0) {
+        const currentSelector = store.selectorPath;
+        if (currentSelector && msg.payload.removedSelectors.includes(currentSelector)) {
+          store.clearSelection();
+        }
+      }
+      break;
+
+    case 'HEARTBEAT_RESPONSE':
+      if (heartbeatResolve) {
+        heartbeatResolve();
+        heartbeatResolve = null;
+      }
+      break;
+
+    case 'PAGE_LINKS':
+      store.setPageLinks(msg.payload.links);
+      break;
+  }
+}
+
+function ensureListener() {
+  if (listenerRegistered) return;
+  listenerRegistered = true;
+  window.addEventListener('message', handleMessage);
+}
+
 export function usePostMessage() {
   const iframeRef = sharedIframeRef;
 
-  const setConnectionStatus = useEditorStore((s) => s.setConnectionStatus);
-  const selectElement = useEditorStore((s) => s.selectElement);
-  const clearSelection = useEditorStore((s) => s.clearSelection);
-  const setRootNode = useEditorStore((s) => s.setRootNode);
-  const setHighlightedNodeId = useEditorStore((s) => s.setHighlightedNodeId);
-  const setPageLinks = useEditorStore((s) => s.setPageLinks);
-  const setCSSVariableDefinitions = useEditorStore((s) => s.setCSSVariableDefinitions);
-  const setCSSVariableUsages = useEditorStore((s) => s.setCSSVariableUsages);
-
-  const heartbeatResolveRef = useRef<(() => void) | null>(null);
-
-  const sendToInspector = useCallback((message: EditorToInspectorMessage) => {
-    const iframe = iframeRef.current;
-    if (!iframe?.contentWindow) return;
-    iframe.contentWindow.postMessage(message, '*');
+  // Register the singleton listener on first client-side mount
+  useEffect(() => {
+    ensureListener();
   }, []);
 
-  useEffect(() => {
-    const handler = (event: MessageEvent) => {
-      // Only accept messages from our own origin
-      if (event.origin !== window.location.origin) return;
-      const msg = event.data as InspectorToEditorMessage;
-      if (!msg || !msg.type) return;
-
-      switch (msg.type) {
-        case 'INSPECTOR_READY':
-          setConnectionStatus('connected');
-          sendToInspector({ type: 'REQUEST_DOM_TREE' });
-          sendToInspector({ type: 'REQUEST_PAGE_LINKS' });
-          sendToInspector({ type: 'REQUEST_CSS_VARIABLES' });
-          break;
-
-        case 'ELEMENT_SELECTED':
-          selectElement(msg.payload);
-          console.log('[DevEditor] cssVariableUsages received:', msg.payload.cssVariableUsages);
-          setCSSVariableUsages(msg.payload.cssVariableUsages || {});
-          break;
-
-        case 'CSS_VARIABLES':
-          console.log('[DevEditor] CSS variable definitions received:', Object.keys(msg.payload.definitions).length);
-          setCSSVariableDefinitions(msg.payload.definitions);
-          break;
-
-        case 'ELEMENT_HOVERED':
-          setHighlightedNodeId(msg.payload.selectorPath);
-          break;
-
-        case 'DOM_TREE':
-          setRootNode(msg.payload.tree);
-          break;
-
-        case 'DOM_UPDATED':
-          setRootNode(msg.payload.tree);
-          if (msg.payload.removedSelectors.length > 0) {
-            const currentSelector = useEditorStore.getState().selectorPath;
-            if (currentSelector && msg.payload.removedSelectors.includes(currentSelector)) {
-              clearSelection();
-            }
-          }
-          break;
-
-        case 'HEARTBEAT_RESPONSE':
-          if (heartbeatResolveRef.current) {
-            heartbeatResolveRef.current();
-            heartbeatResolveRef.current = null;
-          }
-          break;
-
-        case 'PAGE_LINKS':
-          setPageLinks(msg.payload.links);
-          break;
-      }
-    };
-
-    window.addEventListener('message', handler);
-    return () => window.removeEventListener('message', handler);
-  }, [
-    setConnectionStatus,
-    selectElement,
-    clearSelection,
-    setRootNode,
-    setHighlightedNodeId,
-    setPageLinks,
-    setCSSVariableDefinitions,
-    setCSSVariableUsages,
-    sendToInspector,
-  ]);
+  const sendToInspector = useCallback((message: EditorToInspectorMessage) => {
+    sendViaIframe(message);
+  }, []);
 
   const sendHeartbeat = useCallback((): Promise<boolean> => {
     return new Promise((resolve) => {
-      heartbeatResolveRef.current = () => resolve(true);
+      heartbeatResolve = () => resolve(true);
       sendToInspector({ type: 'HEARTBEAT' });
       setTimeout(() => {
-        if (heartbeatResolveRef.current) {
-          heartbeatResolveRef.current = null;
+        if (heartbeatResolve) {
+          heartbeatResolve = null;
           resolve(false);
         }
       }, 3000);

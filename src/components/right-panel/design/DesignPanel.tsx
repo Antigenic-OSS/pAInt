@@ -4,11 +4,7 @@ import { useCallback } from 'react';
 import { useEditorStore } from '@/store';
 import { ElementBreadcrumb } from './ElementBreadcrumb';
 import { ElementLogBox } from '../ElementLogBox';
-import { SizeSection } from './SizeSection';
-import { SpacingSection } from './SpacingSection';
-import { TypographySection } from './TypographySection';
 import { BorderSection } from './BorderSection';
-import { ColorSection } from './ColorSection';
 import { LayoutSection } from './LayoutSection';
 import { PositionSection } from './PositionSection';
 
@@ -77,10 +73,6 @@ export function DesignPanel() {
       <ChangeScopeToggle />
       <ElementLogBox />
       <LayoutSection />
-      <SizeSection />
-      <SpacingSection />
-      <TypographySection />
-      <ColorSection />
       <BorderSection />
       <PositionSection />
     </div>

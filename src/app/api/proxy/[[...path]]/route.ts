@@ -167,9 +167,12 @@ function getInspectorCode(): string {
       document.body.appendChild(selectionOverlay);
 
       var selectedElement = null;
+      var selectionModeEnabled = true;
 
-      // Click selection — prevent default to stop page navigation
+      // Click selection — when selection mode is on, intercept clicks to select elements.
+      // When off, let clicks through so links and buttons work normally.
       document.addEventListener('click', function(e) {
+        if (!selectionModeEnabled) return;
         e.preventDefault();
         e.stopPropagation();
         var el = document.elementFromPoint(e.clientX, e.clientY);
@@ -286,6 +289,13 @@ function getInspectorCode(): string {
             allElements.forEach(function(el) { el.removeAttribute('style'); });
             break;
           }
+          case 'SET_SELECTION_MODE': {
+            selectionModeEnabled = !!msg.payload.enabled;
+            if (!selectionModeEnabled) {
+              selectionOverlay.style.display = 'none';
+            }
+            break;
+          }
           case 'SET_BREAKPOINT': {
             // Viewport controller handled externally
             break;
@@ -384,6 +394,34 @@ async function handleProxy(
   }
 
   const path = (params.path || []).join('/');
+
+  // Short-circuit HMR requests — return empty responses so webpack's
+  // hot-update polling and HMR connections stop at the proxy instead of
+  // hitting the target server (which returns 404s and triggers error loops).
+  if (
+    path.includes('.hot-update.') ||
+    path.includes('webpack-hmr') ||
+    path.includes('__turbopack_hmr') ||
+    path.includes('turbopack-hmr')
+  ) {
+    // For JSON manifests, return empty object (no updates available)
+    if (path.endsWith('.json')) {
+      return new NextResponse('{}', {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
+    // For JS hot-update chunks, return empty script
+    if (path.endsWith('.js')) {
+      return new NextResponse('', {
+        status: 200,
+        headers: { 'content-type': 'application/javascript' },
+      });
+    }
+    // Anything else HMR-related: empty 204
+    return new NextResponse(null, { status: 204 });
+  }
+
   const url = new URL(path || '/', targetUrl);
 
   // Forward query string (excluding the proxy header param)
@@ -432,54 +470,85 @@ async function handleProxy(
 
       // Rewrite asset URLs to go through proxy, preserving target param
       const encodedTarget = encodeURIComponent(targetUrl);
+
+      // Helper to rewrite a single absolute path
+      function proxyPath(originalPath: string): string {
+        const separator = originalPath.includes('?') ? '&' : '?';
+        return `/api/proxy${originalPath}${separator}${PROXY_HEADER}=${encodedTarget}`;
+      }
+
+      // Rewrite src, href, action attributes (absolute paths)
       html = html.replace(
         /(href|src|action)=(["'])(\/[^"']*)/g,
         (_match: string, attr: string, quote: string, originalPath: string) => {
-          const separator = originalPath.includes('?') ? '&' : '?';
-          return `${attr}=${quote}/api/proxy${originalPath}${separator}${PROXY_HEADER}=${encodedTarget}`;
+          return `${attr}=${quote}${proxyPath(originalPath)}`;
         }
       );
 
-      // Build interceptor script — sets a cookie for dynamic resource loading,
-      // blocks HMR WebSocket (which causes infinite reload), and suppresses errors.
-      // Must run BEFORE any other scripts.
+      // Rewrite srcset attributes — each entry is "url descriptor, ..."
+      html = html.replace(
+        /srcset=(["'])([^"']+)/g,
+        (_match: string, quote: string, srcsetValue: string) => {
+          const rewritten = srcsetValue.replace(
+            /(\/[^\s,]+)/g,
+            (urlPart: string) => proxyPath(urlPart)
+          );
+          return `srcset=${quote}${rewritten}`;
+        }
+      );
+
+      // Rewrite data-src and data-srcset (common lazy-loading patterns)
+      html = html.replace(
+        /data-src=(["'])(\/[^"']*)/g,
+        (_match: string, quote: string, originalPath: string) => {
+          return `data-src=${quote}${proxyPath(originalPath)}`;
+        }
+      );
+      html = html.replace(
+        /data-srcset=(["'])([^"']+)/g,
+        (_match: string, quote: string, srcsetValue: string) => {
+          const rewritten = srcsetValue.replace(
+            /(\/[^\s,]+)/g,
+            (urlPart: string) => proxyPath(urlPart)
+          );
+          return `data-srcset=${quote}${rewritten}`;
+        }
+      );
+
+      // Rewrite CSS url() references in inline styles (background-image, etc.)
+      html = html.replace(
+        /url\((["']?)(\/[^)"']+)\1\)/g,
+        (_match: string, quote: string, originalPath: string) => {
+          return `url(${quote}${proxyPath(originalPath)}${quote})`;
+        }
+      );
+
+      // --- Strip ALL <script> tags from the proxied page ---
+      // The proxied page's client-side JS (React hydration, Next.js router,
+      // HMR, etc.) causes infinite reload loops because:
+      //   1. The Next.js router sees /api/proxy/ as the URL, doesn't
+      //      recognize the route, and triggers hard navigation
+      //   2. window.location.href can't be reliably intercepted
+      //   3. HMR/webpack polling causes continuous 404 errors
+      //
+      // Stripping scripts is safe for a visual editor: the SSR HTML + CSS
+      // renders the page correctly, and our inspector script (injected
+      // separately below) handles element selection and style editing.
+      //
+      // We preserve: <script type="application/ld+json"> (structured data)
+      // and <noscript> tags (fallback images, etc.)
+      html = html.replace(
+        /<script(?![^>]*type\s*=\s*["']application\/ld\+json["'])[^>]*>[\s\S]*?<\/script\s*>/gi,
+        ''
+      );
+      // Also remove self-closing script tags and preload/modulepreload links for JS
+      html = html.replace(/<script[^>]*\/>/gi, '');
+      html = html.replace(/<link[^>]*rel\s*=\s*["'](?:preload|modulepreload)["'][^>]*as\s*=\s*["']script["'][^>]*\/?>/gi, '');
+
+      // Minimal interceptor — just sets the cookie for resource loading
       const urlInterceptorScript = `<script data-dev-editor-interceptor>
 (function(){
   document.cookie='${PROXY_HEADER}='+encodeURIComponent('${targetUrl}')+';path=/;SameSite=Strict;max-age=86400';
-  // Block HMR WebSocket — the editor's dev server sends "refresh" to the iframe
-  // causing an infinite reload loop. We intercept WebSocket and EventSource to
-  // prevent any HMR connections from the proxied page.
-  var OWS=window.WebSocket;
-  window.WebSocket=function(url,protocols){
-    if(typeof url==='string'&&(url.indexOf('webpack-hmr')>=0||url.indexOf('_next/webpack')>=0||url.indexOf('turbopack')>=0)){
-      var dummy={readyState:3,CONNECTING:0,OPEN:1,CLOSING:2,CLOSED:3,bufferedAmount:0,extensions:'',protocol:'',url:url,binaryType:'blob',onopen:null,onclose:null,onmessage:null,onerror:null};
-      dummy.close=function(){};dummy.send=function(){};
-      dummy.addEventListener=function(){};dummy.removeEventListener=function(){};dummy.dispatchEvent=function(){return true};
-      return dummy;
-    }
-    return protocols?new OWS(url,protocols):new OWS(url);
-  };
-  window.WebSocket.CONNECTING=0;window.WebSocket.OPEN=1;window.WebSocket.CLOSING=2;window.WebSocket.CLOSED=3;
-  window.WebSocket.prototype=OWS.prototype;
-  var OES=window.EventSource;
-  if(OES){
-    window.EventSource=function(url,opts){
-      if(typeof url==='string'&&(url.indexOf('webpack-hmr')>=0||url.indexOf('_next')>=0||url.indexOf('turbopack')>=0)){
-        var d={readyState:2,url:url,withCredentials:false,CONNECTING:0,OPEN:1,CLOSED:2,onopen:null,onmessage:null,onerror:null};
-        d.close=function(){};d.addEventListener=function(){};d.removeEventListener=function(){};d.dispatchEvent=function(){return true};
-        return d;
-      }
-      return opts?new OES(url,opts):new OES(url);
-    };
-    window.EventSource.CONNECTING=0;window.EventSource.OPEN=1;window.EventSource.CLOSED=2;
-    window.EventSource.prototype=OES.prototype;
-  }
-  // Suppress chunk load errors and block error-triggered reloads
-  window.addEventListener('error',function(e){if(e.message&&(e.message.indexOf('ChunkLoadError')>=0||e.message.indexOf('Loading chunk')>=0)){e.preventDefault();e.stopPropagation();return false}},true);
-  window.addEventListener('unhandledrejection',function(e){if(e.reason&&String(e.reason).indexOf('ChunkLoadError')>=0){e.preventDefault()}});
-  // Block location.reload() triggered by error recovery
-  var origReload=location.reload;
-  Object.defineProperty(location,'reload',{value:function(){},configurable:true});
 })();
 </script>`;
 
@@ -511,7 +580,26 @@ async function handleProxy(
       });
     }
 
-    // Passthrough non-HTML responses
+    // Rewrite url() references in CSS responses
+    if (contentType.includes('text/css')) {
+      let css = await response.text();
+      const encodedTarget = encodeURIComponent(targetUrl);
+      css = css.replace(
+        /url\(\s*(["']?)(\/[^)"'\s]+)\1\s*\)/g,
+        (_match: string, quote: string, originalPath: string) => {
+          const separator = originalPath.includes('?') ? '&' : '?';
+          return `url(${quote}/api/proxy${originalPath}${separator}${PROXY_HEADER}=${encodedTarget}${quote})`;
+        }
+      );
+      responseHeaders.set('content-type', 'text/css; charset=utf-8');
+      responseHeaders.delete('content-length');
+      return new NextResponse(css, {
+        status: response.status,
+        headers: responseHeaders,
+      });
+    }
+
+    // Passthrough other responses
     return new NextResponse(response.body, {
       status: response.status,
       headers: responseHeaders,

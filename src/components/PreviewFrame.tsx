@@ -11,8 +11,12 @@ export function PreviewFrame() {
   const activeBreakpoint = useEditorStore((s) => s.activeBreakpoint);
   const currentPagePath = useEditorStore((s) => s.currentPagePath);
   const setConnectionStatus = useEditorStore((s) => s.setConnectionStatus);
-  const { iframeRef, sendToInspector } = usePostMessage();
+  const { iframeRef } = usePostMessage();
   const containerRef = useRef<HTMLDivElement>(null);
+  // Track last iframe src to prevent double-loads (React Strict Mode runs
+  // effects twice — mount, cleanup, remount). The ref persists across the
+  // Strict Mode cycle so the second mount skips the redundant src assignment.
+  const lastSrcRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!targetUrl || connectionStatus !== 'connecting') return;
@@ -20,25 +24,23 @@ export function PreviewFrame() {
     const iframe = iframeRef.current;
     if (!iframe) return;
 
-    // Set custom header via a hidden form approach won't work with iframes.
-    // Instead, we'll load the proxy URL directly — the proxy reads the target
-    // from a query parameter as a fallback.
     const pagePath = currentPagePath === '/' ? '/' : currentPagePath;
-    iframe.src = `/api/proxy${pagePath}?${PROXY_HEADER}=${encodeURIComponent(targetUrl)}`;
+    const newSrc = `/api/proxy${pagePath}?${PROXY_HEADER}=${encodeURIComponent(targetUrl)}`;
 
-    const handleLoad = () => {
-      // The inspector script will send INSPECTOR_READY via postMessage
-    };
+    // Only set src if it actually changed — prevents the iframe from
+    // reloading on React Strict Mode remount or redundant effect runs.
+    if (lastSrcRef.current !== newSrc) {
+      lastSrcRef.current = newSrc;
+      iframe.src = newSrc;
+    }
 
     const handleError = () => {
       setConnectionStatus('disconnected');
     };
 
-    iframe.addEventListener('load', handleLoad);
     iframe.addEventListener('error', handleError);
 
     return () => {
-      iframe.removeEventListener('load', handleLoad);
       iframe.removeEventListener('error', handleError);
     };
   }, [targetUrl, connectionStatus, currentPagePath, iframeRef, setConnectionStatus]);

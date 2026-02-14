@@ -11,6 +11,17 @@ export default function Home() {
   useEffect(() => {
     loadPersistedUI();
     loadPersistedClaude();
+
+    // Suppress HMR errors caused by proxied routes leaking into the
+    // editor's route tree (e.g. "unrecognized HMR message").
+    const suppressHmrErrors = (e: PromiseRejectionEvent) => {
+      const msg = e.reason?.message || String(e.reason || '');
+      if (msg.includes('unrecognized HMR message') || msg.includes('HMR')) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('unhandledrejection', suppressHmrErrors);
+    return () => window.removeEventListener('unhandledrejection', suppressHmrErrors);
   }, [loadPersistedUI, loadPersistedClaude]);
 
   return <Editor />;

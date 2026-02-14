@@ -15,6 +15,8 @@ export interface UISlice {
   changeScope: 'all' | 'breakpoint-only';
   pageLinks: Array<{ href: string; text: string }>;
   currentPagePath: string;
+  selectionMode: boolean;
+  viewMode: boolean;
 
   setTargetUrl: (url: string | null) => void;
   setConnectionStatus: (status: 'disconnected' | 'connecting' | 'connected') => void;
@@ -28,6 +30,9 @@ export interface UISlice {
   setChangeScope: (scope: 'all' | 'breakpoint-only') => void;
   setPageLinks: (links: Array<{ href: string; text: string }>) => void;
   setCurrentPagePath: (path: string) => void;
+  setSelectionMode: (enabled: boolean) => void;
+  toggleSelectionMode: () => void;
+  toggleViewMode: () => void;
   loadPersistedUI: () => void;
 }
 
@@ -44,6 +49,8 @@ export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (set, get) 
   changeScope: 'all',
   pageLinks: [],
   currentPagePath: '/',
+  selectionMode: true,
+  viewMode: false,
 
   setTargetUrl: (url) => {
     set({ targetUrl: url });
@@ -111,6 +118,17 @@ export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (set, get) 
 
   setPageLinks: (links) => set({ pageLinks: links }),
   setCurrentPagePath: (path) => set({ currentPagePath: path }),
+  setSelectionMode: (enabled) => set({ selectionMode: enabled }),
+  toggleSelectionMode: () => set({ selectionMode: !get().selectionMode }),
+
+  toggleViewMode: () => {
+    const { viewMode } = get();
+    if (viewMode) {
+      set({ viewMode: false, leftPanelOpen: true, rightPanelOpen: true });
+    } else {
+      set({ viewMode: true, leftPanelOpen: false, rightPanelOpen: false });
+    }
+  },
 
   loadPersistedUI: () => {
     try {

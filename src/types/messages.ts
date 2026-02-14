@@ -124,6 +124,13 @@ export interface RequestCSSVariablesMessage {
   type: 'REQUEST_CSS_VARIABLES';
 }
 
+export interface SetSelectionModeMessage {
+  type: 'SET_SELECTION_MODE';
+  payload: {
+    enabled: boolean;
+  };
+}
+
 // Union types
 export type InspectorToEditorMessage =
   | InspectorReadyMessage
@@ -144,7 +151,8 @@ export type EditorToInspectorMessage =
   | RequestDOMTreeMessage
   | RequestPageLinksMessage
   | HeartbeatMessage
-  | RequestCSSVariablesMessage;
+  | RequestCSSVariablesMessage
+  | SetSelectionModeMessage;
 
 export type PostMessageType =
   | InspectorToEditorMessage['type']

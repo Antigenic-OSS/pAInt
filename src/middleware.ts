@@ -3,14 +3,15 @@ import { NextRequest, NextResponse } from 'next/server';
 const PROXY_HEADER = 'x-dev-editor-target';
 
 /**
- * Middleware that catches requests for target app resources (/_next/*, /assets/*, etc.)
- * that come from the proxied iframe. These requests bypass our HTML attribute rewriting
- * because they're created dynamically by JavaScript (webpack chunk loading, etc.).
+ * Middleware that intercepts /_next/static/* and /_next/image requests
+ * originating from the proxied iframe and rewrites them to go through
+ * the proxy API route.
  *
- * Detection: If the cookie `x-dev-editor-target` is set (by the proxy when serving HTML),
- * the request is from the proxied iframe and should be forwarded to the target server.
- *
- * We rewrite these to go through the proxy route: /api/proxy/[path]?x-dev-editor-target=[target]
+ * IMPORTANT: We intentionally do NOT match page-level paths (e.g. /works,
+ * /about). Those are handled by the proxy's HTML URL rewriting which
+ * rewrites <a href="/works"> to <a href="/api/proxy/works?...">. Matching
+ * page paths here caused Next.js to track them in its HMR route tree,
+ * generating "unrecognized HMR message" errors and infinite reload loops.
  */
 export function middleware(request: NextRequest) {
   const targetUrl = request.cookies.get(PROXY_HEADER)?.value;
@@ -18,29 +19,21 @@ export function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // Only intercept paths that look like target app resources, not our own editor routes
-  const shouldProxy =
-    pathname.startsWith('/_next/') ||
-    pathname.startsWith('/assets/') ||
-    pathname.startsWith('/images/') ||
-    pathname.startsWith('/fonts/') ||
-    pathname.startsWith('/static/');
+  // Never intercept our own editor API routes
+  if (pathname.startsWith('/api/')) return NextResponse.next();
 
-  if (!shouldProxy) return NextResponse.next();
-
-  // Check if this is actually OUR editor's own /_next/ resource by looking at the Referer.
-  // If the referer is our editor page (not the proxy), skip rewriting.
+  // Check if this request originates from the proxied iframe
   const referer = request.headers.get('referer') || '';
   const isFromProxy = referer.includes('/api/proxy');
+  const fetchDest = request.headers.get('sec-fetch-dest') || '';
 
-  // For /_next/ paths, we need to distinguish between editor's chunks and target's chunks.
-  // If the referer comes from a proxy page, it's a target resource.
-  // If there's no referer or it's from the editor, let it through normally.
-  if (pathname.startsWith('/_next/') && !isFromProxy) {
+  if (!isFromProxy && fetchDest !== 'iframe') {
     return NextResponse.next();
   }
 
-  // Rewrite to proxy route
+  // Rewrite to proxy route (rewrite is transparent — doesn't change the
+  // client-visible URL and doesn't confuse HMR since these are asset paths,
+  // not page routes).
   const proxyUrl = new URL(`/api/proxy${pathname}`, request.url);
   proxyUrl.searchParams.set(PROXY_HEADER, targetUrl);
 
@@ -56,10 +49,9 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    // Only intercept /_next/ asset paths from the proxied iframe.
+    // Do NOT match page-level paths — those are already rewritten in HTML.
     '/_next/static/:path*',
-    '/assets/:path*',
-    '/images/:path*',
-    '/fonts/:path*',
-    '/static/:path*',
+    '/_next/image',
   ],
 };
