@@ -171,6 +171,6 @@ The SSR-rendered HTML + CSS is complete for visual editing. The inspector script
 - React Strict Mode double-mounted PreviewFrame, setting `iframe.src` twice (`lastSrcRef` guard)
 
 ## Recent Changes
+- 002-design-tab-redesign: Added TypeScript 5.x (strict mode) + Next.js 15 (App Router), React 19, Zustand 5, Tailwind CSS 4
 - 001-visual-dev-editor: Added TypeScript 5.x (strict mode) + Next.js 15 (App Router), React 19, Zustand 5, Tailwind CSS 4
 - 001-visual-dev-editor: Fixed infinite iframe reload — proxy now strips all script tags from proxied HTML
-- 001-visual-dev-editor: Singleton usePostMessage listener, reduced middleware matcher scope, HMR isolation

@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { ResizablePanel } from '@/components/common/ResizablePanel';
 import { useEditorStore } from '@/store';
 import { LayersPanel } from './LayersPanel';
@@ -16,7 +15,8 @@ interface LeftPanelProps {
 export function LeftPanel({ width }: LeftPanelProps) {
   const setLeftPanelWidth = useEditorStore((s) => s.setLeftPanelWidth);
   const connectionStatus = useEditorStore((s) => s.connectionStatus);
-  const [activeTab, setActiveTab] = useState<LeftTab>('layers');
+  const activeTab = useEditorStore((s) => s.activeLeftTab);
+  const setActiveTab = useEditorStore((s) => s.setActiveLeftTab);
 
   const tabs: { id: LeftTab; label: string }[] = [
     { id: 'layers', label: 'Layers' },

@@ -17,6 +17,7 @@ export interface UISlice {
   currentPagePath: string;
   selectionMode: boolean;
   viewMode: boolean;
+  activeLeftTab: 'layers' | 'pages';
 
   setTargetUrl: (url: string | null) => void;
   setConnectionStatus: (status: 'disconnected' | 'connecting' | 'connected') => void;
@@ -33,6 +34,7 @@ export interface UISlice {
   setSelectionMode: (enabled: boolean) => void;
   toggleSelectionMode: () => void;
   toggleViewMode: () => void;
+  setActiveLeftTab: (tab: 'layers' | 'pages') => void;
   loadPersistedUI: () => void;
 }
 
@@ -51,6 +53,7 @@ export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (set, get) 
   currentPagePath: '/',
   selectionMode: true,
   viewMode: false,
+  activeLeftTab: 'layers',
 
   setTargetUrl: (url) => {
     set({ targetUrl: url });
@@ -124,11 +127,15 @@ export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (set, get) 
   toggleViewMode: () => {
     const { viewMode } = get();
     if (viewMode) {
-      set({ viewMode: false, leftPanelOpen: true, rightPanelOpen: true });
+      // Exit preview — restore panels
+      set({ viewMode: false, leftPanelOpen: true, rightPanelOpen: true, activeLeftTab: 'layers' });
     } else {
-      set({ viewMode: true, leftPanelOpen: false, rightPanelOpen: false });
+      // Enter preview — show left panel with pages tab, hide right panel
+      set({ viewMode: true, leftPanelOpen: true, rightPanelOpen: false, activeLeftTab: 'pages' });
     }
   },
+
+  setActiveLeftTab: (tab) => set({ activeLeftTab: tab }),
 
   loadPersistedUI: () => {
     try {

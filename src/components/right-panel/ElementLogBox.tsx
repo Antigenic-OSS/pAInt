@@ -145,7 +145,7 @@ export function ElementLogBox() {
   if (!tagName) return null;
 
   return (
-    <div style={{ borderBottom: '1px solid var(--border)' }}>
+    <div>
       <div className="flex items-center justify-between px-3 py-1.5">
         <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
           Element Info
@@ -163,7 +163,7 @@ export function ElementLogBox() {
           {copied ? 'Copied' : 'Copy'}
         </button>
       </div>
-      <div className="px-3 pb-3 overflow-y-auto" style={{ maxHeight: '240px' }}>
+      <div className="px-3 pb-3">
         <pre
           className="text-[11px] font-mono whitespace-pre-wrap break-words leading-relaxed"
           style={{ color: 'var(--text-muted)' }}

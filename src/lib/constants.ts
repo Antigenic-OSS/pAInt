@@ -30,7 +30,7 @@ export const BREAKPOINTS: Record<Breakpoint, { label: string; width: number }> =
 };
 
 export const CSS_PROPERTIES = {
-  size: ['width', 'height', 'min-width', 'min-height', 'max-width', 'max-height', 'overflow'],
+  size: ['width', 'height', 'min-width', 'min-height', 'max-width', 'max-height', 'overflow', 'box-sizing'],
   spacing: [
     'margin-top', 'margin-right', 'margin-bottom', 'margin-left',
     'padding-top', 'padding-right', 'padding-bottom', 'padding-left',
@@ -41,15 +41,22 @@ export const CSS_PROPERTIES = {
   ],
   border: [
     'border-width', 'border-style', 'border-color', 'border-radius',
+    'border-top-width', 'border-right-width', 'border-bottom-width', 'border-left-width',
     'border-top-left-radius', 'border-top-right-radius',
     'border-bottom-right-radius', 'border-bottom-left-radius',
   ],
-  background: ['background-color', 'background-image', 'opacity'],
+  background: ['background-color', 'background-image'],
   layout: [
     'display', 'flex-direction', 'justify-content', 'align-items',
-    'flex-wrap', 'gap', 'grid-template-columns', 'grid-template-rows',
+    'align-content', 'flex-wrap', 'gap', 'row-gap', 'column-gap',
+    'grid-template-columns', 'grid-template-rows',
   ],
   position: ['position', 'top', 'right', 'bottom', 'left', 'z-index'],
+  appearance: ['opacity'],
+  shadow: ['box-shadow'],
+  'flex-item': ['flex-grow', 'flex-shrink', 'flex-basis', 'align-self', 'order'],
+  transform: ['transform'],
+  filter: ['filter'],
 } as const;
 
 export const ALL_EDITABLE_PROPERTIES = Object.values(CSS_PROPERTIES).flat();

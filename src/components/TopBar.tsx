@@ -85,17 +85,21 @@ export function TopBar() {
           <div className="w-px h-5" style={{ background: 'var(--border)' }} />
           <button
             onClick={() => {
+              if (viewMode) return;
               const next = !selectionMode;
               toggleSelectionMode();
               sendToInspector({ type: 'SET_SELECTION_MODE', payload: { enabled: next } });
             }}
+            disabled={viewMode}
             className="flex items-center gap-1.5 px-2 py-1 text-xs rounded transition-colors"
             style={{
-              background: selectionMode ? 'var(--accent)' : 'var(--bg-tertiary)',
-              color: selectionMode ? '#fff' : 'var(--text-secondary)',
-              border: selectionMode ? 'none' : '1px solid var(--border)',
+              background: selectionMode && !viewMode ? 'var(--accent)' : 'var(--bg-tertiary)',
+              color: selectionMode && !viewMode ? '#fff' : 'var(--text-secondary)',
+              border: selectionMode && !viewMode ? 'none' : '1px solid var(--border)',
+              opacity: viewMode ? 0.5 : 1,
+              cursor: viewMode ? 'not-allowed' : 'pointer',
             }}
-            title={selectionMode ? 'Selection mode ON — click selects elements' : 'Selection mode OFF — links & buttons work normally'}
+            title={viewMode ? 'Selection disabled in preview mode' : selectionMode ? 'Selection mode ON — click selects elements' : 'Selection mode OFF — links & buttons work normally'}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z" />
@@ -106,25 +110,29 @@ export function TopBar() {
         </>
       )}
 
-      {/* View mode toggle */}
+      {/* Preview mode toggle */}
       {connectionStatus === 'connected' && (
         <>
           <div className="w-px h-5" style={{ background: 'var(--border)' }} />
           <button
-            onClick={toggleViewMode}
+            onClick={() => {
+              const entering = !viewMode;
+              toggleViewMode();
+              sendToInspector({ type: 'SET_SELECTION_MODE', payload: { enabled: !entering } });
+            }}
             className="flex items-center gap-1.5 px-2 py-1 text-xs rounded transition-colors"
             style={{
               background: viewMode ? 'var(--accent)' : 'var(--bg-tertiary)',
               color: viewMode ? '#fff' : 'var(--text-secondary)',
               border: viewMode ? 'none' : '1px solid var(--border)',
             }}
-            title={viewMode ? 'Exit view mode — show panels' : 'View mode — hide all panels'}
+            title={viewMode ? 'Exit preview — show panels' : 'Preview — navigate & test the site'}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
               <circle cx="12" cy="12" r="3" />
             </svg>
-            View
+            Preview
           </button>
         </>
       )}
