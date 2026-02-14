@@ -22,8 +22,10 @@ export function LayersPanel() {
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
       <LayerSearch />
-      <div className="flex-1 overflow-y-auto py-1">
-        <LayerNode node={rootNode} depth={0} searchQuery={searchQuery} />
+      <div className="flex-1 overflow-auto py-1">
+        <div style={{ minWidth: 'max-content' }}>
+          <LayerNode node={rootNode} depth={0} searchQuery={searchQuery} />
+        </div>
       </div>
     </div>
   );

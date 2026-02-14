@@ -1,6 +1,6 @@
 import type { StateCreator } from 'zustand';
 import type { Breakpoint } from '@/types/changelog';
-import { PANEL_DEFAULTS, LOCAL_STORAGE_KEYS } from '@/lib/constants';
+import { PANEL_DEFAULTS, LOCAL_STORAGE_KEYS, PREVIEW_WIDTH_MIN, PREVIEW_WIDTH_MAX, BREAKPOINTS } from '@/lib/constants';
 
 export interface UISlice {
   targetUrl: string | null;
@@ -18,6 +18,7 @@ export interface UISlice {
   selectionMode: boolean;
   viewMode: boolean;
   activeLeftTab: 'layers' | 'pages' | 'components';
+  previewWidth: number;
 
   setTargetUrl: (url: string | null) => void;
   setConnectionStatus: (status: 'disconnected' | 'connecting' | 'connected') => void;
@@ -35,6 +36,7 @@ export interface UISlice {
   toggleSelectionMode: () => void;
   toggleViewMode: () => void;
   setActiveLeftTab: (tab: 'layers' | 'pages' | 'components') => void;
+  setPreviewWidth: (width: number) => void;
   loadPersistedUI: () => void;
 }
 
@@ -54,6 +56,7 @@ export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (set, get) 
   selectionMode: true,
   viewMode: false,
   activeLeftTab: 'layers',
+  previewWidth: 1280,
 
   setTargetUrl: (url) => {
     set({ targetUrl: url });
@@ -136,6 +139,17 @@ export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (set, get) 
   },
 
   setActiveLeftTab: (tab) => set({ activeLeftTab: tab }),
+
+  setPreviewWidth: (width) => {
+    const clamped = Math.min(Math.max(width, PREVIEW_WIDTH_MIN), PREVIEW_WIDTH_MAX);
+    // Auto-detect matching breakpoint
+    const match = (Object.entries(BREAKPOINTS) as [Breakpoint, { label: string; width: number }][])
+      .find(([, bp]) => bp.width === clamped);
+    set({
+      previewWidth: clamped,
+      ...(match ? { activeBreakpoint: match[0] } : {}),
+    });
+  },
 
   loadPersistedUI: () => {
     try {

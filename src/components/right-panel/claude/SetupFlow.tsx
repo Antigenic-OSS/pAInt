@@ -52,6 +52,23 @@ export function SetupFlow({ onComplete }: SetupFlowProps) {
         Connect your editor to Claude Code CLI to analyze changes and apply diffs directly to your project files.
       </p>
 
+      {/* How it works */}
+      <div
+        className="flex flex-col gap-2 px-3 py-2.5 rounded"
+        style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border)' }}
+      >
+        <div className="text-[11px] font-medium" style={{ color: 'var(--text-primary)' }}>
+          How it works
+        </div>
+        <ol className="flex flex-col gap-1.5 text-[11px] list-none m-0 p-0" style={{ color: 'var(--text-secondary)' }}>
+          <HowItWorksStep number={1} text="Make visual changes using the Design panel" />
+          <HowItWorksStep number={2} text="Review tracked changes in the Changes tab" />
+          <HowItWorksStep number={3} text='Click "Send to Claude Code" to analyze' />
+          <HowItWorksStep number={4} text="Review generated diffs for your source files" />
+          <HowItWorksStep number={5} text="Apply diffs to update your project code" />
+        </ol>
+      </div>
+
       {/* Step indicator */}
       <div className="flex items-center gap-2">
         <StepBadge number={1} active={step === 1} completed={cliAvailable === true} />
@@ -72,6 +89,39 @@ export function SetupFlow({ onComplete }: SetupFlowProps) {
             The Claude Code CLI must be installed and accessible in your PATH.
           </p>
 
+          {/* Installation instructions */}
+          <div
+            className="flex flex-col gap-2.5 px-3 py-2.5 rounded"
+            style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border)' }}
+          >
+            <div className="text-[11px] font-medium" style={{ color: 'var(--text-primary)' }}>
+              Installation steps
+            </div>
+
+            <InstructionStep
+              number={1}
+              title="Install Node.js"
+              description="Requires Node.js 18+. Download from nodejs.org if not installed."
+            />
+            <InstructionStep
+              number={2}
+              title="Install Claude Code CLI"
+              command="npm install -g @anthropic-ai/claude-code"
+            />
+            <InstructionStep
+              number={3}
+              title="Verify installation"
+              command="claude --version"
+              description="This should print the CLI version number."
+            />
+            <InstructionStep
+              number={4}
+              title="Authenticate"
+              command="claude auth"
+              description="Sign in with your Anthropic account to enable API access."
+            />
+          </div>
+
           {cliAvailable === true && cliVersion && (
             <div
               className="flex items-center gap-2 px-3 py-2 rounded text-xs"
@@ -86,22 +136,13 @@ export function SetupFlow({ onComplete }: SetupFlowProps) {
 
           {cliAvailable === false && checkError && (
             <div
-              className="flex flex-col gap-2 px-3 py-2 rounded text-xs"
+              className="flex items-center gap-2 px-3 py-2 rounded text-xs"
               style={{ background: 'rgba(244, 71, 71, 0.1)', border: '1px solid var(--error)' }}
             >
-              <div className="flex items-center gap-2">
-                <span style={{ color: 'var(--error)' }}>&#10007;</span>
-                <span style={{ color: 'var(--error)' }}>CLI not found</span>
-              </div>
-              <p className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>
-                Install Claude Code CLI:
-              </p>
-              <code
-                className="block px-2 py-1.5 rounded text-[11px] font-mono select-all"
-                style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)' }}
-              >
-                npm install -g @anthropic-ai/claude-code
-              </code>
+              <span style={{ color: 'var(--error)' }}>&#10007;</span>
+              <span style={{ color: 'var(--error)' }}>
+                {checkError}
+              </span>
             </div>
           )}
 
@@ -142,6 +183,31 @@ export function SetupFlow({ onComplete }: SetupFlowProps) {
             Enter the absolute path to the project directory that Claude will analyze and modify.
           </p>
 
+          <div
+            className="flex flex-col gap-2.5 px-3 py-2.5 rounded"
+            style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border)' }}
+          >
+            <div className="text-[11px] font-medium" style={{ color: 'var(--text-primary)' }}>
+              How to find your project root
+            </div>
+            <InstructionStep
+              number={1}
+              title="Open your terminal"
+              description="Navigate to the root folder of your target project."
+            />
+            <InstructionStep
+              number={2}
+              title="Print the path"
+              command="pwd"
+              description="Copy the full absolute path printed (e.g. /Users/you/my-project)."
+            />
+            <InstructionStep
+              number={3}
+              title="Paste below"
+              description="Paste the path into the input field and click Save."
+            />
+          </div>
+
           <ProjectRootSelector onSaved={handleProjectRootSaved} />
 
           <button
@@ -156,6 +222,8 @@ export function SetupFlow({ onComplete }: SetupFlowProps) {
     </div>
   );
 }
+
+// --- Sub-components ---
 
 function StepBadge({ number, active, completed }: { number: number; active: boolean; completed: boolean }) {
   let bgColor = 'var(--bg-tertiary)';
@@ -178,6 +246,56 @@ function StepBadge({ number, active, completed }: { number: number; active: bool
       style={{ background: bgColor, color: textColor, border: `1px solid ${borderColor}` }}
     >
       {completed ? '\u2713' : number}
+    </div>
+  );
+}
+
+function HowItWorksStep({ number, text }: { number: number; text: string }) {
+  return (
+    <li className="flex items-start gap-2">
+      <span
+        className="flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-medium flex-shrink-0 mt-px"
+        style={{ background: 'var(--accent)', color: '#fff' }}
+      >
+        {number}
+      </span>
+      <span>{text}</span>
+    </li>
+  );
+}
+
+function InstructionStep({ number, title, description, command }: {
+  number: number;
+  title: string;
+  description?: string;
+  command?: string;
+}) {
+  return (
+    <div className="flex gap-2">
+      <span
+        className="flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-medium flex-shrink-0 mt-0.5"
+        style={{ background: 'var(--border)', color: 'var(--text-primary)' }}
+      >
+        {number}
+      </span>
+      <div className="flex flex-col gap-1 min-w-0">
+        <span className="text-[11px] font-medium" style={{ color: 'var(--text-primary)' }}>
+          {title}
+        </span>
+        {description && (
+          <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+            {description}
+          </span>
+        )}
+        {command && (
+          <code
+            className="block px-2 py-1 rounded text-[11px] font-mono select-all"
+            style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}
+          >
+            {command}
+          </code>
+        )}
+      </div>
     </div>
   );
 }

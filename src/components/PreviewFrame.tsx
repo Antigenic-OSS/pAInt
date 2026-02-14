@@ -1,22 +1,22 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { useEditorStore } from '@/store';
 import { usePostMessage } from '@/hooks/usePostMessage';
-import { PROXY_HEADER, BREAKPOINTS } from '@/lib/constants';
+import { PREVIEW_WIDTH_MIN, PREVIEW_WIDTH_MAX } from '@/lib/constants';
+import { ResponsiveToolbar } from './ResponsiveToolbar';
 
 export function PreviewFrame() {
   const targetUrl = useEditorStore((s) => s.targetUrl);
   const connectionStatus = useEditorStore((s) => s.connectionStatus);
-  const activeBreakpoint = useEditorStore((s) => s.activeBreakpoint);
+  const previewWidth = useEditorStore((s) => s.previewWidth);
+  const setPreviewWidth = useEditorStore((s) => s.setPreviewWidth);
   const currentPagePath = useEditorStore((s) => s.currentPagePath);
   const setConnectionStatus = useEditorStore((s) => s.setConnectionStatus);
-  const { iframeRef } = usePostMessage();
+  const { iframeRef, sendToInspector } = usePostMessage();
   const containerRef = useRef<HTMLDivElement>(null);
-  // Track last iframe src to prevent double-loads (React Strict Mode runs
-  // effects twice — mount, cleanup, remount). The ref persists across the
-  // Strict Mode cycle so the second mount skips the redundant src assignment.
   const lastSrcRef = useRef<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
     if (!targetUrl || connectionStatus !== 'connecting') return;
@@ -24,11 +24,9 @@ export function PreviewFrame() {
     const iframe = iframeRef.current;
     if (!iframe) return;
 
-    const pagePath = currentPagePath === '/' ? '/' : currentPagePath;
-    const newSrc = `/api/proxy${pagePath}?${PROXY_HEADER}=${encodeURIComponent(targetUrl)}`;
+    const pagePath = currentPagePath === '/' ? '' : currentPagePath;
+    const newSrc = `${targetUrl}${pagePath}`;
 
-    // Only set src if it actually changed — prevents the iframe from
-    // reloading on React Strict Mode remount or redundant effect runs.
     if (lastSrcRef.current !== newSrc) {
       lastSrcRef.current = newSrc;
       iframe.src = newSrc;
@@ -45,7 +43,46 @@ export function PreviewFrame() {
     };
   }, [targetUrl, connectionStatus, currentPagePath, iframeRef, setConnectionStatus]);
 
-  const breakpointWidth = BREAKPOINTS[activeBreakpoint].width;
+  // Drag resize logic — symmetric from center
+  const dragStateRef = useRef<{ startX: number; startWidth: number; side: 'left' | 'right' } | null>(null);
+
+  const handleDragStart = useCallback((e: React.MouseEvent, side: 'left' | 'right') => {
+    e.preventDefault();
+    dragStateRef.current = { startX: e.clientX, startWidth: previewWidth, side };
+    setIsDragging(true);
+  }, [previewWidth]);
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const state = dragStateRef.current;
+      if (!state) return;
+      const delta = e.clientX - state.startX;
+      // Symmetric: dragging right handle right = wider, left handle left = wider
+      const direction = state.side === 'right' ? 1 : -1;
+      const newWidth = Math.round(state.startWidth + delta * direction * 2);
+      const clamped = Math.min(Math.max(newWidth, PREVIEW_WIDTH_MIN), PREVIEW_WIDTH_MAX);
+      setPreviewWidth(clamped);
+      sendToInspector({ type: 'SET_BREAKPOINT', payload: { width: clamped } });
+    };
+
+    const handleMouseUp = () => {
+      dragStateRef.current = null;
+      setIsDragging(false);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, setPreviewWidth, sendToInspector]);
+
+  // Check if preview fills container (no handles needed)
+  const containerWidth = containerRef.current?.clientWidth ?? 0;
+  const isFullWidth = previewWidth >= containerWidth && containerWidth > 0;
 
   if (!targetUrl) {
     return (
@@ -71,30 +108,79 @@ export function PreviewFrame() {
     );
   }
 
+  const showHandles = !isFullWidth && connectionStatus === 'connected';
+
   return (
-    <div
-      ref={containerRef}
-      className="flex items-start justify-center h-full overflow-auto"
-      style={{ background: 'var(--bg-primary)', padding: '0' }}
-    >
+    <div className="flex flex-col h-full" style={{ background: 'var(--bg-primary)' }}>
+      {connectionStatus === 'connected' && <ResponsiveToolbar />}
+
       <div
-        className="h-full mx-auto transition-[width] duration-200"
-        style={{
-          width: activeBreakpoint === 'desktop' ? '100%' : breakpointWidth,
-          maxWidth: '100%',
-        }}
+        ref={containerRef}
+        className="flex items-start justify-center flex-1 overflow-auto relative"
+        style={{ padding: '0' }}
       >
-        <iframe
-          ref={iframeRef}
-          className="w-full h-full border-0"
+        {/* Left drag handle */}
+        {showHandles && (
+          <div
+            onMouseDown={(e) => handleDragStart(e, 'left')}
+            className="absolute top-0 bottom-0 z-10 flex items-center justify-center"
+            style={{
+              width: 6,
+              left: `calc(50% - ${previewWidth / 2}px - 6px)`,
+              cursor: 'col-resize',
+            }}
+          >
+            <div
+              className="w-1 rounded-full transition-colors"
+              style={{
+                height: 40,
+                background: isDragging ? 'var(--accent)' : 'var(--border)',
+              }}
+            />
+          </div>
+        )}
+
+        <div
+          className="h-full mx-auto"
           style={{
-            background: '#fff',
-            borderLeft: activeBreakpoint !== 'desktop' ? '1px solid var(--border)' : 'none',
-            borderRight: activeBreakpoint !== 'desktop' ? '1px solid var(--border)' : 'none',
+            width: isFullWidth ? '100%' : previewWidth,
+            maxWidth: '100%',
+            transition: isDragging ? 'none' : 'width 0.2s ease',
           }}
-          sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
-          title="Preview"
-        />
+        >
+          <iframe
+            ref={iframeRef}
+            className="w-full h-full border-0"
+            style={{
+              background: '#fff',
+              pointerEvents: isDragging ? 'none' : 'auto',
+              borderLeft: !isFullWidth ? '1px solid var(--border)' : 'none',
+              borderRight: !isFullWidth ? '1px solid var(--border)' : 'none',
+            }}
+            title="Preview"
+          />
+        </div>
+
+        {/* Right drag handle */}
+        {showHandles && (
+          <div
+            onMouseDown={(e) => handleDragStart(e, 'right')}
+            className="absolute top-0 bottom-0 z-10 flex items-center justify-center"
+            style={{
+              width: 6,
+              right: `calc(50% - ${previewWidth / 2}px - 6px)`,
+              cursor: 'col-resize',
+            }}
+          >
+            <div
+              className="w-1 rounded-full transition-colors"
+              style={{
+                height: 40,
+                background: isDragging ? 'var(--accent)' : 'var(--border)',
+              }}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

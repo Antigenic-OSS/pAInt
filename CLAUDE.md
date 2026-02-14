@@ -151,6 +151,8 @@ Phases MUST be completed in order. Do not implement later-phase features before 
 - TypeScript 5.x (strict mode) + Next.js 15 (App Router), React 19, Zustand 5, Tailwind CSS 4 (001-visual-dev-editor)
 - localStorage (browser-only, no server-side database) (001-visual-dev-editor)
 - localStorage (browser-only, keyed by target URL) (003-components-tab)
+- TypeScript 5.x (strict mode), JavaScript (ES5 for inspector script) + Next.js 15 (App Router), React 19, Zustand 5, Tailwind CSS 4 (004-direct-iframe)
+- localStorage (browser-only, keyed by target URL) — no changes (004-direct-iframe)
 
 ## Known Issues & Root Causes
 
@@ -172,6 +174,6 @@ The SSR-rendered HTML + CSS is complete for visual editing. The inspector script
 - React Strict Mode double-mounted PreviewFrame, setting `iframe.src` twice (`lastSrcRef` guard)
 
 ## Recent Changes
+- 004-direct-iframe: Added TypeScript 5.x (strict mode), JavaScript (ES5 for inspector script) + Next.js 15 (App Router), React 19, Zustand 5, Tailwind CSS 4
 - 003-components-tab: Added TypeScript 5.x (strict mode) + Next.js 15 (App Router), React 19, Zustand 5, Tailwind CSS 4
 - 002-design-tab-redesign: Added TypeScript 5.x (strict mode) + Next.js 15 (App Router), React 19, Zustand 5, Tailwind CSS 4
-- 001-visual-dev-editor: Added TypeScript 5.x (strict mode) + Next.js 15 (App Router), React 19, Zustand 5, Tailwind CSS 4

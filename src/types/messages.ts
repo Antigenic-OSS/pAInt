@@ -96,6 +96,15 @@ export interface PageNavigateMessage {
   };
 }
 
+export interface TextChangedMessage {
+  type: 'TEXT_CHANGED';
+  payload: {
+    selectorPath: string;
+    originalText: string;
+    newText: string;
+  };
+}
+
 // Editor → Inspector messages
 
 export interface SelectElementMessage {
@@ -186,6 +195,22 @@ export interface RevertVariantMessage {
   };
 }
 
+export interface SetTextContentMessage {
+  type: 'SET_TEXT_CONTENT';
+  payload: {
+    selectorPath: string;
+    text: string;
+  };
+}
+
+export interface RevertTextContentMessage {
+  type: 'REVERT_TEXT_CONTENT';
+  payload: {
+    selectorPath: string;
+    originalText: string;
+  };
+}
+
 // Union types
 export type InspectorToEditorMessage =
   | InspectorReadyMessage
@@ -198,7 +223,8 @@ export type InspectorToEditorMessage =
   | CSSVariablesMessage
   | ComponentsDetectedMessage
   | VariantAppliedMessage
-  | PageNavigateMessage;
+  | PageNavigateMessage
+  | TextChangedMessage;
 
 export type EditorToInspectorMessage =
   | SelectElementMessage
@@ -213,7 +239,9 @@ export type EditorToInspectorMessage =
   | SetSelectionModeMessage
   | RequestComponentsMessage
   | ApplyVariantMessage
-  | RevertVariantMessage;
+  | RevertVariantMessage
+  | SetTextContentMessage
+  | RevertTextContentMessage;
 
 export type PostMessageType =
   | InspectorToEditorMessage['type']

@@ -13,7 +13,13 @@ export function performUndo() {
   const action = useEditorStore.getState().popUndo();
   if (!action) return;
 
-  if (action.wasNewChange) {
+  if (action.property === '__text_content__') {
+    if (action.wasNewChange) {
+      sendViaIframe({ type: 'REVERT_TEXT_CONTENT', payload: { selectorPath: action.elementSelector, originalText: action.beforeValue } });
+    } else {
+      sendViaIframe({ type: 'SET_TEXT_CONTENT', payload: { selectorPath: action.elementSelector, text: action.beforeValue } });
+    }
+  } else if (action.wasNewChange) {
     sendViaIframe({ type: 'REVERT_CHANGE', payload: { selectorPath: action.elementSelector, property: action.property } });
   } else {
     sendViaIframe({ type: 'PREVIEW_CHANGE', payload: { selectorPath: action.elementSelector, property: action.property, value: action.beforeValue } });
@@ -28,7 +34,11 @@ export function performRedo() {
   const action = useEditorStore.getState().popRedo();
   if (!action) return;
 
-  sendViaIframe({ type: 'PREVIEW_CHANGE', payload: { selectorPath: action.elementSelector, property: action.property, value: action.afterValue } });
+  if (action.property === '__text_content__') {
+    sendViaIframe({ type: 'SET_TEXT_CONTENT', payload: { selectorPath: action.elementSelector, text: action.afterValue } });
+  } else {
+    sendViaIframe({ type: 'PREVIEW_CHANGE', payload: { selectorPath: action.elementSelector, property: action.property, value: action.afterValue } });
+  }
 }
 
 /**
@@ -139,18 +149,44 @@ export function useChangeTracker() {
 
   const revertChange = useCallback(
     (changeId: string, selectorPath: string, property: string) => {
-      sendToInspector({
-        type: 'REVERT_CHANGE',
-        payload: { selectorPath, property },
-      });
+      if (property === '__text_content__') {
+        const change = useEditorStore.getState().styleChanges.find((c) => c.id === changeId);
+        if (change) {
+          sendToInspector({
+            type: 'REVERT_TEXT_CONTENT',
+            payload: { selectorPath, originalText: change.originalValue },
+          });
+        }
+      } else {
+        sendToInspector({
+          type: 'REVERT_CHANGE',
+          payload: { selectorPath, property },
+        });
+      }
       removeStyleChange(changeId);
     },
     [sendToInspector, removeStyleChange]
   );
 
   const revertAll = useCallback(() => {
-    sendToInspector({ type: 'REVERT_ALL' });
+    // Revert text changes before clearing (iframe reload handles style changes)
+    const textChanges = useEditorStore.getState().styleChanges.filter(
+      (c) => c.property === '__text_content__'
+    );
+    for (const tc of textChanges) {
+      sendToInspector({
+        type: 'REVERT_TEXT_CONTENT',
+        payload: { selectorPath: tc.elementSelector, originalText: tc.originalValue },
+      });
+    }
+
     useEditorStore.getState().clearAllChanges();
+    // Force-reload the iframe to guarantee a clean state — removing
+    // inline styles via REVERT_ALL can leave layout artifacts.
+    const iframe = document.querySelector<HTMLIFrameElement>('iframe[title="Preview"]');
+    if (iframe?.src) {
+      iframe.src = iframe.src;
+    }
   }, [sendToInspector]);
 
   return { applyChange, revertChange, revertAll, undo: performUndo, redo: performRedo };

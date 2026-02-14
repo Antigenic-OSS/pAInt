@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
+import { getClaudeBin } from '@/lib/claude-bin';
 import type { ClaudeStatusResponse } from '@/types/claude';
 
 export async function GET(): Promise<NextResponse<ClaudeStatusResponse>> {
   try {
-    const proc = Bun.spawn(['claude', '--version'], {
+    const claudeBin = getClaudeBin();
+    const proc = Bun.spawn([claudeBin, '--version'], {
       stdout: 'pipe',
       stderr: 'pipe',
     });

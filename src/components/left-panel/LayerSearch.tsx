@@ -12,7 +12,7 @@ export function LayerSearch() {
         type="text"
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
-        placeholder="Filter layers..."
+        placeholder="Search elements..."
         className="w-full text-xs py-1 px-2"
       />
     </div>

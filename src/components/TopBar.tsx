@@ -2,6 +2,7 @@
 
 import { TargetSelector } from './TargetSelector';
 import { BreakpointTabs } from './BreakpointTabs';
+import { SetupInstructions } from './SetupInstructions';
 import { useEditorStore } from '@/store';
 import { usePostMessage } from '@/hooks/usePostMessage';
 import { performUndo, performRedo } from '@/hooks/useChangeTracker';
@@ -23,8 +24,9 @@ export function TopBar() {
   const { sendToInspector, iframeRef } = usePostMessage();
 
   return (
+    <div className="relative flex-shrink-0">
     <div
-      className="flex items-center h-10 px-3 gap-3 flex-shrink-0"
+      className="flex items-center h-10 px-3 gap-3"
       style={{
         background: 'var(--bg-secondary)',
         borderBottom: '1px solid var(--border)',
@@ -204,6 +206,8 @@ export function TopBar() {
       >
         ☰
       </button>
+    </div>
+    <SetupInstructions />
     </div>
   );
 }

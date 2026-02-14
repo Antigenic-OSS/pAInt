@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { stripControlChars } from '@/lib/utils';
+import { getClaudeBin } from '@/lib/claude-bin';
 import type {
   ClaudeAnalyzeRequest,
   ClaudeAnalyzeResponse,
@@ -219,9 +220,10 @@ export async function POST(request: Request): Promise<NextResponse> {
   ].join('\n');
 
   try {
+    const claudeBin = getClaudeBin();
     const proc = Bun.spawn(
       [
-        'claude',
+        claudeBin,
         '--print',
         '--allowedTools', 'Read',
         '-p', prompt,

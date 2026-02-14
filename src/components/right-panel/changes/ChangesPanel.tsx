@@ -7,6 +7,12 @@ import { BREAKPOINTS, buildInstructionsFooter } from '@/lib/constants';
 import { inferSourcePath } from '@/lib/classifyElement';
 import type { StyleChange, ElementSnapshot } from '@/types/changelog';
 
+function truncateText(text: string, maxLen: number): string {
+  if (!text) return '(empty)';
+  if (text.length <= maxLen) return `"${text}"`;
+  return `"${text.substring(0, maxLen)}..."`;
+}
+
 function CopyIcon({ size = 14 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -79,7 +85,11 @@ function buildSingleElementLog(snapshot: ElementSnapshot, changes: StyleChange[]
 
   lines.push('CHANGES');
   for (const c of changes) {
-    lines.push(`  ${c.property}: "${c.originalValue}" → "${c.newValue}" [${c.breakpoint}]`);
+    if (c.property === '__text_content__') {
+      lines.push(`  text content: "${c.originalValue}" → "${c.newValue}"`);
+    } else {
+      lines.push(`  ${c.property}: "${c.originalValue}" → "${c.newValue}" [${c.breakpoint}]`);
+    }
   }
   lines.push('');
   lines.push(buildInstructionsFooter(changes.length, 1));
@@ -236,7 +246,17 @@ function ElementAccordion({
             {changes.map((change) => (
               <div key={change.id} className="flex items-center justify-between text-xs">
                 <span className="truncate" style={{ color: 'var(--text-muted)' }}>
-                  {change.property}: <span style={{ color: 'var(--success)' }}>{change.newValue}</span>
+                  {change.property === '__text_content__' ? (
+                    <>
+                      text: <span style={{ color: 'var(--text-muted)', textDecoration: 'line-through' }}>{truncateText(change.originalValue, 20)}</span>
+                      {' → '}
+                      <span style={{ color: 'var(--success)' }}>{truncateText(change.newValue, 20)}</span>
+                    </>
+                  ) : (
+                    <>
+                      {change.property}: <span style={{ color: 'var(--success)' }}>{change.newValue}</span>
+                    </>
+                  )}
                 </span>
                 <button
                   onClick={() => onRevert(change.id, change.elementSelector, change.property)}

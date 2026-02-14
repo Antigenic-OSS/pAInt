@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { getClaudeBin } from '@/lib/claude-bin';
 import type {
   ClaudeApplyRequest,
   ClaudeApplyResponse,
@@ -143,9 +144,10 @@ export async function POST(request: Request): Promise<NextResponse> {
   const resolvedRoot = path.resolve(projectRoot);
 
   try {
+    const claudeBin = getClaudeBin();
     const proc = Bun.spawn(
       [
-        'claude',
+        claudeBin,
         '--resume', sessionId,
         '--allowedTools', 'Read,Edit',
         '--print',

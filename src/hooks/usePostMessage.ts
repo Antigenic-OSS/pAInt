@@ -3,6 +3,16 @@
 import React, { useEffect, useCallback } from 'react';
 import { useEditorStore } from '@/store';
 import type { InspectorToEditorMessage, EditorToInspectorMessage } from '@/types/messages';
+import { generateId } from '@/lib/utils';
+
+function isLocalhostOrigin(origin: string): boolean {
+  try {
+    const url = new URL(origin);
+    return url.hostname === 'localhost' || url.hostname === '127.0.0.1';
+  } catch {
+    return false;
+  }
+}
 
 // Module-level shared iframe ref — ensures all callers of usePostMessage()
 // share the same ref. PreviewFrame assigns it to the DOM element, and other
@@ -19,11 +29,16 @@ let componentRescanTimer: ReturnType<typeof setTimeout> | null = null;
 export function sendViaIframe(message: EditorToInspectorMessage) {
   const iframe = sharedIframeRef.current;
   if (!iframe?.contentWindow) return;
-  iframe.contentWindow.postMessage(message, '*');
+  const targetUrl = useEditorStore.getState().targetUrl;
+  let origin = '*';
+  try {
+    if (targetUrl) origin = new URL(targetUrl).origin;
+  } catch { /* fallback to wildcard */ }
+  iframe.contentWindow.postMessage(message, origin);
 }
 
 function handleMessage(event: MessageEvent) {
-  if (event.origin !== window.location.origin) return;
+  if (!isLocalhostOrigin(event.origin)) return;
   const msg = event.data as InspectorToEditorMessage;
   if (!msg || !msg.type) return;
 
@@ -101,6 +116,52 @@ function handleMessage(event: MessageEvent) {
       store.setConnectionStatus('connecting');
       store.clearComponents();
       break;
+
+    case 'TEXT_CHANGED': {
+      const { selectorPath: textSelector, originalText, newText } = msg.payload;
+      const textProperty = '__text_content__';
+
+      // Check if a text change already exists for this element (dedup)
+      const existingText = store.styleChanges.find(
+        (c) => c.elementSelector === textSelector && c.property === textProperty
+      );
+
+      // Push undo action
+      store.pushUndo({
+        elementSelector: textSelector,
+        property: textProperty,
+        beforeValue: existingText ? existingText.newValue : originalText,
+        afterValue: newText,
+        breakpoint: store.activeBreakpoint,
+        wasNewChange: !existingText,
+      });
+
+      // Save element snapshot
+      const textEl = store.selectorPath === textSelector ? store : null;
+      store.saveElementSnapshot({
+        selectorPath: textSelector,
+        tagName: textEl?.tagName || 'unknown',
+        className: textEl?.className ?? null,
+        elementId: textEl?.elementId ?? null,
+        attributes: textEl?.attributes || {},
+        innerText: newText,
+        computedStyles: textEl?.computedStyles ? { ...textEl.computedStyles } : {},
+        pagePath: store.currentPagePath,
+        changeScope: store.changeScope,
+      });
+
+      // Add style change with sentinel property
+      store.addStyleChange({
+        id: generateId(),
+        elementSelector: textSelector,
+        property: textProperty,
+        originalValue: originalText,
+        newValue: newText,
+        breakpoint: store.activeBreakpoint,
+        timestamp: Date.now(),
+      });
+      break;
+    }
   }
 }
 

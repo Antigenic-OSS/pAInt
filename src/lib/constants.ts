@@ -125,6 +125,48 @@ export function buildInstructionsFooter(changeCount: number, elementCount: numbe
   return lines.join('\n');
 }
 
+export interface DevicePreset {
+  name: string;
+  width: number;
+  category: 'phone' | 'tablet' | 'desktop';
+}
+
+export const DEVICE_PRESETS: DevicePreset[] = [
+  // Phones
+  { name: 'iPhone SE', width: 375, category: 'phone' },
+  { name: 'iPhone 14 Pro', width: 393, category: 'phone' },
+  { name: 'iPhone 14 Pro Max', width: 430, category: 'phone' },
+  { name: 'Samsung Galaxy S24', width: 360, category: 'phone' },
+  { name: 'Samsung Galaxy S24 Ultra', width: 412, category: 'phone' },
+  { name: 'Google Pixel 9', width: 412, category: 'phone' },
+  { name: 'Google Pixel 9 Pro XL', width: 448, category: 'phone' },
+  { name: 'OnePlus 12', width: 400, category: 'phone' },
+  // Tablets
+  { name: 'iPad Mini', width: 768, category: 'tablet' },
+  { name: 'iPad Air', width: 820, category: 'tablet' },
+  { name: 'iPad Pro 12.9"', width: 1024, category: 'tablet' },
+  { name: 'Samsung Galaxy Tab S9', width: 800, category: 'tablet' },
+  { name: 'Samsung Galaxy Tab S9+', width: 930, category: 'tablet' },
+  { name: 'Samsung Galaxy Tab S9 Ultra', width: 1038, category: 'tablet' },
+  { name: 'Google Pixel Tablet', width: 834, category: 'tablet' },
+  { name: 'Lenovo Tab P12 Pro', width: 960, category: 'tablet' },
+  { name: 'Amazon Fire HD 10', width: 600, category: 'tablet' },
+  // Desktop
+  { name: 'Laptop', width: 1280, category: 'desktop' },
+  { name: 'Desktop', width: 1440, category: 'desktop' },
+  { name: 'Wide', width: 1920, category: 'desktop' },
+];
+
+// Maps breakpoint names to device categories
+export const BREAKPOINT_CATEGORY_MAP: Record<Breakpoint, DevicePreset['category']> = {
+  mobile: 'phone',
+  tablet: 'tablet',
+  desktop: 'desktop',
+};
+
+export const PREVIEW_WIDTH_MIN = 320;
+export const PREVIEW_WIDTH_MAX = 1920;
+
 export const PANEL_DEFAULTS = {
   leftWidth: 240,
   rightWidth: 300,

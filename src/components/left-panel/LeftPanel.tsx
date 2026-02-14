@@ -22,7 +22,7 @@ export function LeftPanel({ width }: LeftPanelProps) {
   const setActiveTab = useEditorStore((s) => s.setActiveLeftTab);
 
   const tabs: { id: LeftTab; label: string }[] = [
-    { id: 'layers', label: 'Layers' },
+    { id: 'layers', label: 'Navigator' },
     { id: 'pages', label: 'Pages' },
     { id: 'components', label: 'Comps' },
   ];
