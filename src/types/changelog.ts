@@ -22,6 +22,15 @@ export interface ElementSnapshot {
   changeScope: 'all' | 'breakpoint-only';
 }
 
+export interface UndoRedoAction {
+  elementSelector: string;
+  property: string;
+  beforeValue: string;
+  afterValue: string;
+  breakpoint: Breakpoint;
+  wasNewChange: boolean;
+}
+
 export const BREAKPOINT_WIDTHS: Record<Breakpoint, number> = {
   mobile: 375,
   tablet: 768,

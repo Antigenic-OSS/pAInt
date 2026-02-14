@@ -144,13 +144,48 @@ export function formatChangelog(opts: {
   lines.push(`Generated: ${timestamp}`);
   lines.push('');
 
-  // Group style changes by element selector
-  if (styleChanges.length > 0) {
+  // Separate component extractions from regular style changes
+  const componentExtractions = styleChanges.filter((c) => c.property === '__component_creation__');
+  const regularChanges = styleChanges.filter((c) => c.property !== '__component_creation__');
+
+  // Component Extractions section
+  if (componentExtractions.length > 0) {
+    lines.push('## Component Extractions');
+    lines.push('');
+
+    for (const extraction of componentExtractions) {
+      try {
+        const data = JSON.parse(extraction.newValue) as {
+          name: string;
+          variants: Array<{ groupName: string; options: string[] }>;
+        };
+        const kebabName = data.name
+          .replace(/([a-z])([A-Z])/g, '$1-$2')
+          .replace(/\s+/g, '-')
+          .toLowerCase();
+        lines.push(`### ${data.name} Component`);
+        lines.push(`- Selector: \`${extraction.elementSelector}\``);
+        lines.push(`- Suggested file: \`src/components/${kebabName}.tsx\``);
+        if (data.variants.length > 0) {
+          lines.push('- Suggested props:');
+          for (const v of data.variants) {
+            lines.push(`  - ${v.groupName.toLowerCase()}: ${v.options.join(' | ')}`);
+          }
+        }
+        lines.push('');
+      } catch {
+        // Skip malformed extraction entries
+      }
+    }
+  }
+
+  // Group regular style changes by element selector
+  if (regularChanges.length > 0) {
     lines.push('## Style Changes');
     lines.push('');
 
-    const grouped = new Map<string, typeof styleChanges>();
-    for (const change of styleChanges) {
+    const grouped = new Map<string, typeof regularChanges>();
+    for (const change of regularChanges) {
       const existing = grouped.get(change.elementSelector) || [];
       existing.push(change);
       grouped.set(change.elementSelector, existing);
@@ -166,9 +201,10 @@ export function formatChangelog(opts: {
   }
 
   // Summary
+  const totalChanges = styleChanges.length;
   const uniqueElements = new Set(styleChanges.map((c) => c.elementSelector)).size;
   lines.push('---');
-  lines.push(`Summary: ${styleChanges.length} change${styleChanges.length !== 1 ? 's' : ''} across ${uniqueElements} element${uniqueElements !== 1 ? 's' : ''}`);
+  lines.push(`Summary: ${totalChanges} change${totalChanges !== 1 ? 's' : ''} across ${uniqueElements} element${uniqueElements !== 1 ? 's' : ''}${componentExtractions.length > 0 ? ` (${componentExtractions.length} component extraction${componentExtractions.length !== 1 ? 's' : ''})` : ''}`);
   lines.push('');
   lines.push('## Instructions for Claude Code');
   lines.push('Apply these visual changes to the source files. For each style change,');

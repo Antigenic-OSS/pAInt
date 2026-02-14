@@ -2,14 +2,16 @@
 
 import { useEffect } from 'react';
 import { useEditorStore } from '@/store';
+import { performUndo, performRedo } from './useChangeTracker';
 
 /**
  * Global keyboard shortcuts for the editor.
  *
  * - Escape: Deselect current element
+ * - Cmd+Z / Ctrl+Z: Undo last style change
+ * - Cmd+Shift+Z / Ctrl+Shift+Z: Redo last undone change
  * - Cmd+[ / Ctrl+[: Toggle left panel
  * - Cmd+] / Ctrl+]: Toggle right panel
- * - Arrow Up/Down: Navigate tree nodes (when left panel focused)
  */
 export function useKeyboardShortcuts() {
   const clearSelection = useEditorStore((s) => s.clearSelection);
@@ -18,7 +20,21 @@ export function useKeyboardShortcuts() {
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      // Don't intercept shortcuts when typing in inputs
+      // Cmd+Z / Ctrl+Z — undo (works even when focused on inputs)
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        performUndo();
+        return;
+      }
+
+      // Cmd+Shift+Z / Ctrl+Shift+Z — redo (works even when focused on inputs)
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && e.shiftKey) {
+        e.preventDefault();
+        performRedo();
+        return;
+      }
+
+      // Don't intercept other shortcuts when typing in inputs
       const target = e.target as HTMLElement;
       if (
         target.tagName === 'INPUT' ||

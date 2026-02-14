@@ -17,7 +17,7 @@ export interface UISlice {
   currentPagePath: string;
   selectionMode: boolean;
   viewMode: boolean;
-  activeLeftTab: 'layers' | 'pages';
+  activeLeftTab: 'layers' | 'pages' | 'components';
 
   setTargetUrl: (url: string | null) => void;
   setConnectionStatus: (status: 'disconnected' | 'connecting' | 'connected') => void;
@@ -34,7 +34,7 @@ export interface UISlice {
   setSelectionMode: (enabled: boolean) => void;
   toggleSelectionMode: () => void;
   toggleViewMode: () => void;
-  setActiveLeftTab: (tab: 'layers' | 'pages') => void;
+  setActiveLeftTab: (tab: 'layers' | 'pages' | 'components') => void;
   loadPersistedUI: () => void;
 }
 

@@ -1,10 +1,15 @@
 import type { StateCreator } from 'zustand';
-import type { StyleChange, ElementSnapshot } from '@/types/changelog';
+import type { StyleChange, ElementSnapshot, UndoRedoAction } from '@/types/changelog';
 import { LOCAL_STORAGE_KEYS } from '@/lib/constants';
+import { generateId } from '@/lib/utils';
+
+const MAX_UNDO_STACK = 50;
 
 export interface ChangeSlice {
   styleChanges: StyleChange[];
   elementSnapshots: Record<string, ElementSnapshot>;
+  undoStack: UndoRedoAction[];
+  redoStack: UndoRedoAction[];
 
   addStyleChange: (change: StyleChange) => void;
   removeStyleChange: (id: string) => void;
@@ -14,11 +19,16 @@ export interface ChangeSlice {
   updateAllSnapshotsScope: (scope: 'all' | 'breakpoint-only') => void;
   persistChanges: (urlKey: string) => void;
   loadPersistedChanges: (urlKey: string) => void;
+  pushUndo: (action: UndoRedoAction) => void;
+  popUndo: () => UndoRedoAction | null;
+  popRedo: () => UndoRedoAction | null;
 }
 
 export const createChangeSlice: StateCreator<ChangeSlice, [], [], ChangeSlice> = (set, get) => ({
   styleChanges: [],
   elementSnapshots: {},
+  undoStack: [],
+  redoStack: [],
 
   addStyleChange: (change) => {
     set((state) => {
@@ -102,5 +112,85 @@ export const createChangeSlice: StateCreator<ChangeSlice, [], [], ChangeSlice> =
         });
       }
     } catch {}
+  },
+
+  pushUndo: (action) => {
+    set((state) => ({
+      undoStack: [...state.undoStack.slice(-(MAX_UNDO_STACK - 1)), action],
+      redoStack: [],
+    }));
+  },
+
+  popUndo: () => {
+    const { undoStack } = get();
+    if (undoStack.length === 0) return null;
+    const action = undoStack[undoStack.length - 1];
+
+    set((state) => {
+      const newUndo = state.undoStack.slice(0, -1);
+      const newRedo = [...state.redoStack, action];
+
+      let newChanges = state.styleChanges;
+      let newSnapshots = state.elementSnapshots;
+
+      if (action.wasNewChange) {
+        newChanges = newChanges.filter(
+          (c) => !(c.elementSelector === action.elementSelector && c.property === action.property)
+        );
+        const stillHas = newChanges.some((c) => c.elementSelector === action.elementSelector);
+        if (!stillHas) {
+          const { [action.elementSelector]: _, ...rest } = newSnapshots;
+          newSnapshots = rest;
+        }
+      } else {
+        newChanges = newChanges.map((c) =>
+          c.elementSelector === action.elementSelector && c.property === action.property
+            ? { ...c, newValue: action.beforeValue }
+            : c
+        );
+      }
+
+      return { undoStack: newUndo, redoStack: newRedo, styleChanges: newChanges, elementSnapshots: newSnapshots };
+    });
+
+    return action;
+  },
+
+  popRedo: () => {
+    const { redoStack } = get();
+    if (redoStack.length === 0) return null;
+    const action = redoStack[redoStack.length - 1];
+
+    set((state) => {
+      const newRedo = state.redoStack.slice(0, -1);
+      const newUndo = [...state.undoStack, action];
+
+      let newChanges = state.styleChanges;
+      const idx = newChanges.findIndex(
+        (c) => c.elementSelector === action.elementSelector && c.property === action.property
+      );
+
+      if (idx >= 0) {
+        newChanges = [...newChanges];
+        newChanges[idx] = { ...newChanges[idx], newValue: action.afterValue };
+      } else {
+        newChanges = [
+          ...newChanges,
+          {
+            id: generateId(),
+            elementSelector: action.elementSelector,
+            property: action.property,
+            originalValue: action.beforeValue,
+            newValue: action.afterValue,
+            breakpoint: action.breakpoint,
+            timestamp: Date.now(),
+          },
+        ];
+      }
+
+      return { undoStack: newUndo, redoStack: newRedo, styleChanges: newChanges };
+    });
+
+    return action;
   },
 });

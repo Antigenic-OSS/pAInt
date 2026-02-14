@@ -2,8 +2,34 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 import { useEditorStore } from '@/store';
-import { usePostMessage } from './usePostMessage';
+import { usePostMessage, sendViaIframe } from './usePostMessage';
 import { generateId } from '@/lib/utils';
+
+/**
+ * Perform undo — can be called outside React components (e.g., keyboard shortcuts).
+ * Pops from undo stack, reverts the change in the iframe, updates store.
+ */
+export function performUndo() {
+  const action = useEditorStore.getState().popUndo();
+  if (!action) return;
+
+  if (action.wasNewChange) {
+    sendViaIframe({ type: 'REVERT_CHANGE', payload: { selectorPath: action.elementSelector, property: action.property } });
+  } else {
+    sendViaIframe({ type: 'PREVIEW_CHANGE', payload: { selectorPath: action.elementSelector, property: action.property, value: action.beforeValue } });
+  }
+}
+
+/**
+ * Perform redo — can be called outside React components (e.g., keyboard shortcuts).
+ * Pops from redo stack, re-applies the change in the iframe, updates store.
+ */
+export function performRedo() {
+  const action = useEditorStore.getState().popRedo();
+  if (!action) return;
+
+  sendViaIframe({ type: 'PREVIEW_CHANGE', payload: { selectorPath: action.elementSelector, property: action.property, value: action.afterValue } });
+}
 
 /**
  * Hook that tracks style changes, sends PREVIEW_CHANGE to inspector,
@@ -17,6 +43,7 @@ export function useChangeTracker() {
   const addStyleChange = useEditorStore((s) => s.addStyleChange);
   const removeStyleChange = useEditorStore((s) => s.removeStyleChange);
   const saveElementSnapshot = useEditorStore((s) => s.saveElementSnapshot);
+  const pushUndo = useEditorStore((s) => s.pushUndo);
   const { sendToInspector } = usePostMessage();
 
   // Auto-persist changes when they update
@@ -61,6 +88,21 @@ export function useChangeTracker() {
       // Don't track if value hasn't changed
       if (originalValue === value) return;
 
+      // Check if a change already exists for this element+property
+      const existing = useEditorStore.getState().styleChanges.find(
+        (c) => c.elementSelector === selectorPath && c.property === property
+      );
+
+      // Push undo action
+      pushUndo({
+        elementSelector: selectorPath,
+        property,
+        beforeValue: existing ? existing.newValue : originalValue,
+        afterValue: value,
+        breakpoint: activeBreakpoint,
+        wasNewChange: !existing,
+      });
+
       // Send preview change to inspector
       sendToInspector({
         type: 'PREVIEW_CHANGE',
@@ -92,7 +134,7 @@ export function useChangeTracker() {
         timestamp: Date.now(),
       });
     },
-    [selectorPath, computedStyles, activeBreakpoint, addStyleChange, saveElementSnapshot, sendToInspector]
+    [selectorPath, computedStyles, activeBreakpoint, addStyleChange, saveElementSnapshot, sendToInspector, pushUndo]
   );
 
   const revertChange = useCallback(
@@ -111,5 +153,5 @@ export function useChangeTracker() {
     useEditorStore.getState().clearAllChanges();
   }, [sendToInspector]);
 
-  return { applyChange, revertChange, revertAll };
+  return { applyChange, revertChange, revertAll, undo: performUndo, redo: performRedo };
 }

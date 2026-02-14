@@ -1,12 +1,15 @@
 'use client';
 
+import React, { Suspense } from 'react';
 import { ResizablePanel } from '@/components/common/ResizablePanel';
 import { useEditorStore } from '@/store';
 import { LayersPanel } from './LayersPanel';
 import { PagesPanel } from './PagesPanel';
 import { PANEL_DEFAULTS } from '@/lib/constants';
 
-type LeftTab = 'layers' | 'pages';
+const ComponentsPanel = React.lazy(() => import('./ComponentsPanel'));
+
+type LeftTab = 'layers' | 'pages' | 'components';
 
 interface LeftPanelProps {
   width: number;
@@ -21,6 +24,7 @@ export function LeftPanel({ width }: LeftPanelProps) {
   const tabs: { id: LeftTab; label: string }[] = [
     { id: 'layers', label: 'Layers' },
     { id: 'pages', label: 'Pages' },
+    { id: 'components', label: 'Comps' },
   ];
 
   return (
@@ -54,7 +58,21 @@ export function LeftPanel({ width }: LeftPanelProps) {
 
         {/* Tab content */}
         {connectionStatus === 'connected' ? (
-          activeTab === 'layers' ? <LayersPanel /> : <PagesPanel />
+          activeTab === 'layers' ? (
+            <LayersPanel />
+          ) : activeTab === 'pages' ? (
+            <PagesPanel />
+          ) : (
+            <Suspense
+              fallback={
+                <div style={{ color: 'var(--text-muted)', padding: '8px', fontSize: '11px' }}>
+                  Loading...
+                </div>
+              }
+            >
+              <ComponentsPanel />
+            </Suspense>
+          )
         ) : (
           <div
             className="flex items-center justify-center flex-1 text-xs"

@@ -14,8 +14,9 @@ const sharedIframeRef: React.MutableRefObject<HTMLIFrameElement | null> = { curr
 // so it always reads fresh state without stale closures.
 let listenerRegistered = false;
 let heartbeatResolve: (() => void) | null = null;
+let componentRescanTimer: ReturnType<typeof setTimeout> | null = null;
 
-function sendViaIframe(message: EditorToInspectorMessage) {
+export function sendViaIframe(message: EditorToInspectorMessage) {
   const iframe = sharedIframeRef.current;
   if (!iframe?.contentWindow) return;
   iframe.contentWindow.postMessage(message, '*');
@@ -34,6 +35,9 @@ function handleMessage(event: MessageEvent) {
       sendViaIframe({ type: 'REQUEST_DOM_TREE' });
       sendViaIframe({ type: 'REQUEST_PAGE_LINKS' });
       sendViaIframe({ type: 'REQUEST_CSS_VARIABLES' });
+      setTimeout(function() {
+        sendViaIframe({ type: 'REQUEST_COMPONENTS', payload: {} });
+      }, 500);
       break;
 
     case 'ELEMENT_SELECTED':
@@ -61,6 +65,13 @@ function handleMessage(event: MessageEvent) {
           store.clearSelection();
         }
       }
+      // Debounced component rescan on DOM changes (2s to avoid
+      // excessive scanning during rapid DOM mutations)
+      if (componentRescanTimer) clearTimeout(componentRescanTimer);
+      componentRescanTimer = setTimeout(function() {
+        componentRescanTimer = null;
+        sendViaIframe({ type: 'REQUEST_COMPONENTS', payload: {} });
+      }, 2000);
       break;
 
     case 'HEARTBEAT_RESPONSE':
@@ -72,6 +83,23 @@ function handleMessage(event: MessageEvent) {
 
     case 'PAGE_LINKS':
       store.setPageLinks(msg.payload.links);
+      break;
+
+    case 'COMPONENTS_DETECTED':
+      store.setDetectedComponents(msg.payload.components);
+      break;
+
+    case 'VARIANT_APPLIED':
+      if (msg.payload.selectorPath === store.selectorPath) {
+        store.updateComputedStyles(msg.payload.computedStyles);
+        store.setCSSVariableUsages(msg.payload.cssVariableUsages);
+      }
+      break;
+
+    case 'PAGE_NAVIGATE':
+      store.setCurrentPagePath(msg.payload.path);
+      store.setConnectionStatus('connecting');
+      store.clearComponents();
       break;
   }
 }

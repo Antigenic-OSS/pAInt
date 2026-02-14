@@ -313,10 +313,24 @@ export function ChangesPanel() {
   const currentPagePath = useEditorStore((s) => s.currentPagePath);
   const { revertChange, revertAll } = useChangeTracker();
 
-  // Group changes by element selector
+  // Separate component extractions from regular changes
+  const { componentExtractions, regularChanges } = useMemo(() => {
+    const extractions: StyleChange[] = [];
+    const regular: StyleChange[] = [];
+    for (const change of styleChanges) {
+      if (change.property === '__component_creation__') {
+        extractions.push(change);
+      } else {
+        regular.push(change);
+      }
+    }
+    return { componentExtractions: extractions, regularChanges: regular };
+  }, [styleChanges]);
+
+  // Group regular changes by element selector
   const groups = useMemo(() => {
     const map = new Map<string, StyleChange[]>();
-    for (const change of styleChanges) {
+    for (const change of regularChanges) {
       const existing = map.get(change.elementSelector) || [];
       existing.push(change);
       map.set(change.elementSelector, existing);
@@ -329,7 +343,7 @@ export function ChangesPanel() {
       }
     }
     return result;
-  }, [styleChanges, elementSnapshots]);
+  }, [regularChanges, elementSnapshots]);
 
   const globalLogText = useMemo(() => buildGlobalLog({
     groups,
@@ -372,6 +386,48 @@ export function ChangesPanel() {
 
       {/* Per-element accordions */}
       <div className="flex-1 overflow-y-auto">
+        {/* Component extraction entries */}
+        {componentExtractions.map((extraction) => {
+          let name = 'Component';
+          try {
+            const data = JSON.parse(extraction.newValue);
+            name = data.name || 'Component';
+          } catch { /* use default */ }
+          return (
+            <div
+              key={extraction.id}
+              className="flex items-center gap-2 px-3 py-2 text-xs"
+              style={{
+                borderBottom: '1px solid var(--border)',
+                borderLeft: '2px solid var(--accent)',
+              }}
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="var(--accent)"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="flex-shrink-0"
+              >
+                <rect x="1" y="4" width="14" height="8" rx="1.5" />
+                <path d="M4 4V2.5A1.5 1.5 0 0 1 5.5 1h5A1.5 1.5 0 0 1 12 2.5V4" />
+              </svg>
+              <div className="truncate flex-1">
+                <div className="truncate font-medium" style={{ color: 'var(--accent)' }}>
+                  Create {name} component
+                </div>
+                <div className="truncate" style={{ color: 'var(--text-muted)', fontSize: '10px' }}>
+                  {extraction.elementSelector}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
         {groups.map(({ selector, snapshot, changes }) => (
           <ElementAccordion
             key={selector}

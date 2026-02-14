@@ -14,9 +14,12 @@ export function SectionHeader({ title, defaultOpen = true, actions, children }: 
 
   return (
     <div style={{ borderBottom: '1px solid var(--border)' }}>
-      <button
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-between w-full px-3 py-2 text-xs font-medium hover:bg-[var(--bg-hover)] transition-colors"
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setIsOpen(!isOpen); } }}
+        className="flex items-center justify-between w-full px-3 py-2 text-xs font-medium hover:bg-[var(--bg-hover)] transition-colors cursor-pointer select-none"
         style={{ color: 'var(--text-secondary)' }}
       >
         <span className="flex items-center">
@@ -36,7 +39,7 @@ export function SectionHeader({ title, defaultOpen = true, actions, children }: 
             {actions}
           </span>
         )}
-      </button>
+      </div>
       {isOpen && (
         <div className="px-3 pb-3 space-y-2">
           {children}

@@ -4,6 +4,7 @@ import { TargetSelector } from './TargetSelector';
 import { BreakpointTabs } from './BreakpointTabs';
 import { useEditorStore } from '@/store';
 import { usePostMessage } from '@/hooks/usePostMessage';
+import { performUndo, performRedo } from '@/hooks/useChangeTracker';
 
 export function TopBar() {
   const toggleLeftPanel = useEditorStore((s) => s.toggleLeftPanel);
@@ -17,6 +18,8 @@ export function TopBar() {
   const toggleSelectionMode = useEditorStore((s) => s.toggleSelectionMode);
   const viewMode = useEditorStore((s) => s.viewMode);
   const toggleViewMode = useEditorStore((s) => s.toggleViewMode);
+  const canUndo = useEditorStore((s) => s.undoStack.length > 0);
+  const canRedo = useEditorStore((s) => s.redoStack.length > 0);
   const { sendToInspector, iframeRef } = usePostMessage();
 
   return (
@@ -139,6 +142,44 @@ export function TopBar() {
 
       {/* Spacer */}
       <div className="flex-1" />
+
+      {/* Undo / Redo */}
+      {connectionStatus === 'connected' && (
+        <>
+          <button
+            onClick={performUndo}
+            disabled={!canUndo}
+            className="p-1.5 rounded hover:bg-[var(--bg-hover)] transition-colors"
+            style={{
+              color: canUndo ? 'var(--text-secondary)' : 'var(--text-muted)',
+              opacity: canUndo ? 1 : 0.4,
+              cursor: canUndo ? 'pointer' : 'default',
+            }}
+            title="Undo (Cmd+Z)"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="1 4 1 10 7 10" />
+              <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+            </svg>
+          </button>
+          <button
+            onClick={performRedo}
+            disabled={!canRedo}
+            className="p-1.5 rounded hover:bg-[var(--bg-hover)] transition-colors"
+            style={{
+              color: canRedo ? 'var(--text-secondary)' : 'var(--text-muted)',
+              opacity: canRedo ? 1 : 0.4,
+              cursor: canRedo ? 'pointer' : 'default',
+            }}
+            title="Redo (Cmd+Shift+Z)"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="23 4 23 10 17 10" />
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+            </svg>
+          </button>
+        </>
+      )}
 
       {/* Apply button — switches to Changes tab */}
       {connectionStatus === 'connected' && changeCount > 0 && (

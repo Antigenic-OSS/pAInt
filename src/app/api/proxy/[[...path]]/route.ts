@@ -240,16 +240,234 @@ function getInspectorCode(): string {
       window.addEventListener('scroll', updateSelectionOverlay, true);
       window.addEventListener('resize', updateSelectionOverlay, true);
 
-      // MutationObserver for DOM changes
-      var observer = new MutationObserver(function() {
-        var tree = serializeTree(document.body);
-        if (!tree) return;
-        var removedSelectors = [];
-        if (selectedElement && !document.body.contains(selectedElement)) {
-          removedSelectors.push(generateSelectorPath(selectedElement));
-          clearSelection();
+      // --- Component Detection ---
+      var SEMANTIC_COMPONENTS = {
+        button: 'Button', nav: 'Navigation', input: 'Input', header: 'Header',
+        footer: 'Footer', dialog: 'Dialog', a: 'Link', img: 'Image',
+        form: 'Form', select: 'Select', textarea: 'Textarea', table: 'Table',
+        aside: 'Sidebar', main: 'Main Content', section: 'Section'
+      };
+
+      var ARIA_ROLE_MAP = {
+        button: 'Button', navigation: 'Navigation', tab: 'Tab', tablist: 'Tab List',
+        dialog: 'Dialog', alert: 'Alert', menu: 'Menu', menuitem: 'Menu Item',
+        search: 'Search'
+      };
+
+      var CLASS_PATTERNS = [
+        [/\\bbtn\\b/i, 'Button'], [/\\bcard\\b/i, 'Card'], [/\\bmodal\\b/i, 'Modal'],
+        [/\\bdropdown\\b/i, 'Dropdown'], [/\\bbadge\\b/i, 'Badge'],
+        [/\\bnav\\b/i, 'Navigation'], [/\\balert\\b/i, 'Alert'], [/\\btabs?\\b/i, 'Tab']
+      ];
+
+      function detectSingleComponent(el) {
+        var tag = el.tagName.toLowerCase();
+        // Priority 1: data-component attribute
+        var dataComp = el.getAttribute('data-component');
+        if (dataComp) return { name: dataComp, method: 'data-attribute' };
+        // Priority 2: custom element (tag with hyphen)
+        if (tag.indexOf('-') >= 0) return { name: tag, method: 'custom-element' };
+        // Priority 3: semantic HTML
+        if (SEMANTIC_COMPONENTS[tag]) return { name: SEMANTIC_COMPONENTS[tag], method: 'semantic-html' };
+        // Priority 4: ARIA role
+        var role = el.getAttribute('role');
+        if (role && ARIA_ROLE_MAP[role]) return { name: ARIA_ROLE_MAP[role], method: 'aria-role' };
+        // Priority 5: class pattern
+        var cls = el.className;
+        if (cls && typeof cls === 'string') {
+          for (var pi = 0; pi < CLASS_PATTERNS.length; pi++) {
+            if (CLASS_PATTERNS[pi][0].test(cls)) return { name: CLASS_PATTERNS[pi][1], method: 'class-pattern' };
+          }
         }
-        send({ type: 'DOM_UPDATED', payload: { tree: tree, removedSelectors: removedSelectors } });
+        return null;
+      }
+
+      var SIZE_SUFFIXES = ['xs','sm','md','lg','xl','2xl'];
+      var COLOR_SUFFIXES = ['primary','secondary','success','danger','warning','info','light','dark'];
+      var STATE_SUFFIXES = ['active','disabled','loading','selected','checked'];
+
+      function detectClassVariants(el) {
+        var groups = [];
+        var cls = el.className;
+        if (!cls || typeof cls !== 'string') return groups;
+        var classes = cls.trim().split(/\\s+/).filter(Boolean);
+        // Extract base prefixes (e.g., "btn" from "btn-primary")
+        var prefixes = {};
+        for (var ci = 0; ci < classes.length; ci++) {
+          var parts = classes[ci].split('-');
+          if (parts.length >= 2) {
+            var base = parts[0];
+            var suffix = parts.slice(1).join('-');
+            if (!prefixes[base]) prefixes[base] = { currentClass: classes[ci], suffix: suffix };
+          }
+        }
+        // Scan stylesheets for matching classes
+        for (var base in prefixes) {
+          if (!prefixes.hasOwnProperty(base)) continue;
+          var sizeOpts = [], colorOpts = [], stateOpts = [];
+          var currentClass = prefixes[base].currentClass;
+          // Scan all accessible stylesheets
+          for (var si = 0; si < document.styleSheets.length; si++) {
+            var sheet = document.styleSheets[si];
+            var rules;
+            try { rules = sheet.cssRules || sheet.rules; } catch(e) { continue; }
+            if (!rules) continue;
+            for (var ri = 0; ri < rules.length; ri++) {
+              var rule = rules[ri];
+              if (!rule.selectorText) continue;
+              var escapedBase = base.replace(/[-\\/\\\\^*+?.()|\\[\\]]/g, '\\\\' + String.fromCharCode(36) + '&');
+              var match = rule.selectorText.match(new RegExp('\\\\.' + escapedBase + '-([\\\\w-]+)'));
+              if (!match) continue;
+              var foundSuffix = match[1];
+              var foundClass = base + '-' + foundSuffix;
+              if (foundClass === currentClass) continue; // skip current
+              var opt = { label: foundSuffix, className: foundClass, removeClassNames: [currentClass], pseudoState: null, pseudoStyles: null };
+              if (SIZE_SUFFIXES.indexOf(foundSuffix) >= 0) { sizeOpts.push(opt); }
+              else if (COLOR_SUFFIXES.indexOf(foundSuffix) >= 0) { colorOpts.push(opt); }
+              else if (STATE_SUFFIXES.indexOf(foundSuffix) >= 0) { stateOpts.push(opt); }
+            }
+          }
+          // Build groups (need 2+ options including current)
+          var currentSuffix = prefixes[base].suffix;
+          var currentOpt = { label: currentSuffix, className: currentClass, removeClassNames: [], pseudoState: null, pseudoStyles: null };
+          if (sizeOpts.length > 0) {
+            sizeOpts.unshift(currentOpt);
+            // Deduplicate
+            var seen = {};
+            sizeOpts = sizeOpts.filter(function(o) { if (seen[o.className]) return false; seen[o.className] = true; return true; });
+            if (sizeOpts.length >= 2) {
+              for (var soi = 0; soi < sizeOpts.length; soi++) { sizeOpts[soi].removeClassNames = [currentClass]; }
+              sizeOpts[0].removeClassNames = [];
+              groups.push({ groupName: 'Size', type: 'class', options: sizeOpts, activeIndex: 0 });
+            }
+          }
+          if (colorOpts.length > 0) {
+            colorOpts.unshift(currentOpt);
+            var seenC = {};
+            colorOpts = colorOpts.filter(function(o) { if (seenC[o.className]) return false; seenC[o.className] = true; return true; });
+            if (colorOpts.length >= 2) {
+              for (var coi = 0; coi < colorOpts.length; coi++) { colorOpts[coi].removeClassNames = [currentClass]; }
+              colorOpts[0].removeClassNames = [];
+              groups.push({ groupName: 'Color', type: 'class', options: colorOpts, activeIndex: 0 });
+            }
+          }
+          if (stateOpts.length > 0) {
+            stateOpts.unshift(currentOpt);
+            var seenS = {};
+            stateOpts = stateOpts.filter(function(o) { if (seenS[o.className]) return false; seenS[o.className] = true; return true; });
+            if (stateOpts.length >= 2) {
+              for (var stoi = 0; stoi < stateOpts.length; stoi++) { stateOpts[stoi].removeClassNames = [currentClass]; }
+              stateOpts[0].removeClassNames = [];
+              groups.push({ groupName: 'State', type: 'class', options: stateOpts, activeIndex: 0 });
+            }
+          }
+        }
+        return groups;
+      }
+
+      function detectPseudoVariants(el) {
+        try {
+          var visualProps = ['color','backgroundColor','borderColor','opacity','transform','boxShadow','textDecoration','outline'];
+          var defaultStyles = window.getComputedStyle(el);
+          var pseudos = ['hover','focus','active'];
+          var options = [{ label: 'default', className: null, removeClassNames: null, pseudoState: null, pseudoStyles: null }];
+          for (var pi = 0; pi < pseudos.length; pi++) {
+            var pseudo = pseudos[pi];
+            var pseudoStyles = window.getComputedStyle(el, ':' + pseudo);
+            var diffs = {};
+            var hasDiff = false;
+            for (var vi = 0; vi < visualProps.length; vi++) {
+              var prop = visualProps[vi];
+              var defaultVal = defaultStyles.getPropertyValue(prop);
+              var pseudoVal = pseudoStyles.getPropertyValue(prop);
+              if (defaultVal !== pseudoVal && pseudoVal) {
+                diffs[prop] = pseudoVal;
+                hasDiff = true;
+              }
+            }
+            if (hasDiff) {
+              options.push({ label: pseudo, className: null, removeClassNames: null, pseudoState: pseudo, pseudoStyles: diffs });
+            }
+          }
+          if (options.length >= 2) {
+            return [{ groupName: 'Pseudo States', type: 'pseudo', options: options, activeIndex: 0 }];
+          }
+        } catch(e) {}
+        return [];
+      }
+
+      function scanForComponents(rootElement) {
+        var allElements = rootElement.querySelectorAll('*');
+        var results = [];
+        var batchSize = 50;
+        var index = 0;
+        var scheduleNext = typeof requestIdleCallback === 'function'
+          ? function(cb) { requestIdleCallback(cb); }
+          : function(cb) { setTimeout(cb, 0); };
+
+        function processBatch() {
+          var end = Math.min(index + batchSize, allElements.length);
+          for (var i = index; i < end; i++) {
+            var el = allElements[i];
+            var detection = detectSingleComponent(el);
+            if (detection) {
+              var rect = el.getBoundingClientRect();
+              var text = (el.innerText || '').substring(0, 50) || null;
+              // Count child components
+              var childCount = 0;
+              var childEls = el.querySelectorAll('*');
+              for (var ci = 0; ci < childEls.length; ci++) {
+                if (detectSingleComponent(childEls[ci])) childCount++;
+              }
+              results.push({
+                selectorPath: generateSelectorPath(el),
+                name: detection.name,
+                tagName: el.tagName.toLowerCase(),
+                detectionMethod: detection.method,
+                className: el.className && typeof el.className === 'string' ? el.className : null,
+                elementId: el.id || null,
+                innerText: text,
+                boundingRect: { top: rect.top, left: rect.left, width: rect.width, height: rect.height },
+                variants: detectClassVariants(el).concat(detectPseudoVariants(el)),
+                childComponentCount: childCount
+              });
+            }
+          }
+          index = end;
+          if (index < allElements.length) {
+            scheduleNext(processBatch);
+          } else {
+            send({ type: 'COMPONENTS_DETECTED', payload: { components: results } });
+          }
+        }
+        if (allElements.length === 0) {
+          send({ type: 'COMPONENTS_DETECTED', payload: { components: [] } });
+        } else {
+          processBatch();
+        }
+      }
+
+      // MutationObserver for DOM changes — throttled to at most once per animation frame
+      var mutationPending = false;
+      var previousTreeJSON = '';
+      var observer = new MutationObserver(function() {
+        if (mutationPending) return;
+        mutationPending = true;
+        requestAnimationFrame(function() {
+          mutationPending = false;
+          var tree = serializeTree(document.body);
+          if (!tree) return;
+          // Skip sending if tree hasn't changed (avoids redundant postMessages)
+          var treeJSON = JSON.stringify(tree);
+          if (treeJSON === previousTreeJSON) return;
+          previousTreeJSON = treeJSON;
+          var removedSelectors = [];
+          if (selectedElement && !document.body.contains(selectedElement)) {
+            removedSelectors.push(generateSelectorPath(selectedElement));
+            clearSelection();
+          }
+          send({ type: 'DOM_UPDATED', payload: { tree: tree, removedSelectors: removedSelectors } });
+        });
       });
       observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'id', 'style'] });
 
@@ -273,7 +491,11 @@ function getInspectorCode(): string {
           case 'PREVIEW_CHANGE': {
             try {
               var target = document.querySelector(msg.payload.selectorPath);
-              if (target) target.style.setProperty(msg.payload.property, msg.payload.value, 'important');
+              if (target) {
+                requestAnimationFrame(function() {
+                  target.style.setProperty(msg.payload.property, msg.payload.value, 'important');
+                });
+              }
             } catch(err) {}
             break;
           }
@@ -337,6 +559,76 @@ function getInspectorCode(): string {
             var defs = scanCSSVariableDefinitions();
             console.log('[DevEditor] CSS variable definitions found:', Object.keys(defs).length, defs);
             send({ type: 'CSS_VARIABLES', payload: { definitions: defs } });
+            break;
+          }
+          case 'REQUEST_COMPONENTS': {
+            try {
+              var compRoot = document.body;
+              if (msg.payload && msg.payload.rootSelectorPath) {
+                var rootEl = document.querySelector(msg.payload.rootSelectorPath);
+                if (rootEl) compRoot = rootEl;
+              }
+              scanForComponents(compRoot);
+            } catch(err) {}
+            break;
+          }
+          case 'APPLY_VARIANT': {
+            try {
+              var avEl = document.querySelector(msg.payload.selectorPath);
+              if (avEl) {
+                if (msg.payload.type === 'class') {
+                  if (msg.payload.removeClassNames) {
+                    for (var rci = 0; rci < msg.payload.removeClassNames.length; rci++) {
+                      avEl.classList.remove(msg.payload.removeClassNames[rci]);
+                    }
+                  }
+                  if (msg.payload.addClassName) {
+                    avEl.classList.add(msg.payload.addClassName);
+                  }
+                } else if (msg.payload.type === 'pseudo') {
+                  if (msg.payload.revertPseudo && msg.payload.pseudoStyles) {
+                    var revertKeys = Object.keys(msg.payload.pseudoStyles);
+                    for (var rki = 0; rki < revertKeys.length; rki++) {
+                      avEl.style.removeProperty(revertKeys[rki]);
+                    }
+                  }
+                  if (msg.payload.pseudoStyles && !msg.payload.revertPseudo) {
+                    var psKeys = Object.keys(msg.payload.pseudoStyles);
+                    for (var psi = 0; psi < psKeys.length; psi++) {
+                      avEl.style.setProperty(psKeys[psi], msg.payload.pseudoStyles[psKeys[psi]], 'important');
+                    }
+                  }
+                }
+                var avStyles = getComputedStylesForElement(avEl);
+                var avVarUsages = detectCSSVariablesOnElement(avEl);
+                var avRect = avEl.getBoundingClientRect();
+                send({ type: 'VARIANT_APPLIED', payload: {
+                  selectorPath: msg.payload.selectorPath,
+                  computedStyles: avStyles,
+                  cssVariableUsages: avVarUsages,
+                  boundingRect: { top: avRect.top, left: avRect.left, width: avRect.width, height: avRect.height }
+                }});
+              }
+            } catch(err) {}
+            break;
+          }
+          case 'REVERT_VARIANT': {
+            try {
+              var rvEl = document.querySelector(msg.payload.selectorPath);
+              if (rvEl) {
+                if (msg.payload.removeClassName) {
+                  rvEl.classList.remove(msg.payload.removeClassName);
+                }
+                if (msg.payload.restoreClassName) {
+                  rvEl.classList.add(msg.payload.restoreClassName);
+                }
+                if (msg.payload.revertPseudo && msg.payload.pseudoProperties) {
+                  for (var rppi = 0; rppi < msg.payload.pseudoProperties.length; rppi++) {
+                    rvEl.style.removeProperty(msg.payload.pseudoProperties[rppi]);
+                  }
+                }
+              }
+            } catch(err) {}
             break;
           }
           case 'HEARTBEAT': {
@@ -470,6 +762,8 @@ async function handleProxy(
 
       // Rewrite asset URLs to go through proxy, preserving target param
       const encodedTarget = encodeURIComponent(targetUrl);
+      const targetOrigin = new URL(targetUrl).origin;
+      const escapedOrigin = targetOrigin.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
       // Helper to rewrite a single absolute path
       function proxyPath(originalPath: string): string {
@@ -477,10 +771,30 @@ async function handleProxy(
         return `/api/proxy${originalPath}${separator}${PROXY_HEADER}=${encodedTarget}`;
       }
 
-      // Rewrite src, href, action attributes (absolute paths)
+      // Rewrite fully-qualified target-origin URLs in attributes FIRST
+      // (e.g., http://localhost:4000/avatars/img.png → /api/proxy/avatars/img.png?...)
+      html = html.replace(
+        new RegExp(`(href|src|action|poster)=(["'])${escapedOrigin}(/[^"']*)`, 'g'),
+        (_match: string, attr: string, quote: string, pathPart: string) => {
+          return `${attr}=${quote}${proxyPath(pathPart)}`;
+        }
+      );
+
+      // Rewrite fully-qualified target-origin URLs in srcset
+      html = html.replace(
+        new RegExp(`${escapedOrigin}(/[^\\s,)"']+)`, 'g'),
+        (_match: string, pathPart: string) => {
+          // Only rewrite inside attribute contexts (not in script text)
+          return proxyPath(pathPart);
+        }
+      );
+
+      // Rewrite src, href, action attributes (absolute paths starting with /)
       html = html.replace(
         /(href|src|action)=(["'])(\/[^"']*)/g,
         (_match: string, attr: string, quote: string, originalPath: string) => {
+          // Skip already-rewritten paths
+          if (originalPath.startsWith('/api/proxy')) return _match;
           return `${attr}=${quote}${proxyPath(originalPath)}`;
         }
       );
@@ -491,7 +805,10 @@ async function handleProxy(
         (_match: string, quote: string, srcsetValue: string) => {
           const rewritten = srcsetValue.replace(
             /(\/[^\s,]+)/g,
-            (urlPart: string) => proxyPath(urlPart)
+            (urlPart: string) => {
+              if (urlPart.startsWith('/api/proxy')) return urlPart;
+              return proxyPath(urlPart);
+            }
           );
           return `srcset=${quote}${rewritten}`;
         }
@@ -501,6 +818,7 @@ async function handleProxy(
       html = html.replace(
         /data-src=(["'])(\/[^"']*)/g,
         (_match: string, quote: string, originalPath: string) => {
+          if (originalPath.startsWith('/api/proxy')) return _match;
           return `data-src=${quote}${proxyPath(originalPath)}`;
         }
       );
@@ -509,56 +827,247 @@ async function handleProxy(
         (_match: string, quote: string, srcsetValue: string) => {
           const rewritten = srcsetValue.replace(
             /(\/[^\s,]+)/g,
-            (urlPart: string) => proxyPath(urlPart)
+            (urlPart: string) => {
+              if (urlPart.startsWith('/api/proxy')) return urlPart;
+              return proxyPath(urlPart);
+            }
           );
           return `data-srcset=${quote}${rewritten}`;
         }
       );
 
-      // Rewrite CSS url() references in inline styles (background-image, etc.)
+      // Rewrite CSS url() references in inline styles — both absolute paths and full URLs
       html = html.replace(
         /url\((["']?)(\/[^)"']+)\1\)/g,
         (_match: string, quote: string, originalPath: string) => {
+          if (originalPath.startsWith('/api/proxy')) return _match;
           return `url(${quote}${proxyPath(originalPath)}${quote})`;
         }
       );
-
-      // --- Strip ALL <script> tags from the proxied page ---
-      // The proxied page's client-side JS (React hydration, Next.js router,
-      // HMR, etc.) causes infinite reload loops because:
-      //   1. The Next.js router sees /api/proxy/ as the URL, doesn't
-      //      recognize the route, and triggers hard navigation
-      //   2. window.location.href can't be reliably intercepted
-      //   3. HMR/webpack polling causes continuous 404 errors
-      //
-      // Stripping scripts is safe for a visual editor: the SSR HTML + CSS
-      // renders the page correctly, and our inspector script (injected
-      // separately below) handles element selection and style editing.
-      //
-      // We preserve: <script type="application/ld+json"> (structured data)
-      // and <noscript> tags (fallback images, etc.)
       html = html.replace(
-        /<script(?![^>]*type\s*=\s*["']application\/ld\+json["'])[^>]*>[\s\S]*?<\/script\s*>/gi,
-        ''
+        new RegExp(`url\\((["']?)${escapedOrigin}(/[^)"']+)\\1\\)`, 'g'),
+        (_match: string, quote: string, pathPart: string) => {
+          return `url(${quote}${proxyPath(pathPart)}${quote})`;
+        }
       );
-      // Also remove self-closing script tags and preload/modulepreload links for JS
-      html = html.replace(/<script[^>]*\/>/gi, '');
-      html = html.replace(/<link[^>]*rel\s*=\s*["'](?:preload|modulepreload)["'][^>]*as\s*=\s*["']script["'][^>]*\/?>/gi, '');
 
-      // Minimal interceptor — just sets the cookie for resource loading
+      // Rewrite @import in <style> blocks
+      html = html.replace(
+        /@import\s+(["'])(\/[^"']+)\1/g,
+        (_match: string, quote: string, originalPath: string) => {
+          return `@import ${quote}${proxyPath(originalPath)}${quote}`;
+        }
+      );
+
+      // --- Navigation blocker (replaces blanket script stripping) ---
+      // Instead of stripping ALL scripts (which breaks client-rendered content),
+      // we inject a navigation blocker that:
+      //   1. Fixes the URL via history.replaceState so client-side routers
+      //      see the correct path (not /api/proxy/...)
+      //   2. Mocks HMR WebSocket/EventSource connections
+      //   3. Intercepts full-page navigations to keep the iframe in the proxy
+      //   4. Patches fetch/XHR so API calls route through the proxy
+      //   5. Suppresses HMR-related errors
+      //   6. Detects infinite reload loops as a safety net
+      const targetPagePath = '/' + (path || '');
+      const safePagePath = JSON.stringify(targetPagePath);
+      const safeTargetUrl = JSON.stringify(targetUrl);
+      const safeEncodedTarget = JSON.stringify(encodedTarget);
+      const safeProxyHeader = JSON.stringify(PROXY_HEADER);
+
+      const navigationBlockerScript = `<script data-dev-editor-nav-blocker>
+(function(){
+  var tP=${safePagePath},tU=${safeTargetUrl},eT=${safeEncodedTarget},pH=${safeProxyHeader};
+
+  // Fix URL so client-side routers see the correct path
+  try {
+    var p = new URLSearchParams(window.location.search);
+    p.delete(pH);
+    var qs = p.toString();
+    history.replaceState(history.state, '', tP + (qs ? '?' + qs : ''));
+  } catch(e) {}
+
+  // Reload safety net - detect infinite reload loops
+  var rk = '_der';
+  var rc = parseInt(sessionStorage.getItem(rk) || '0');
+  sessionStorage.setItem(rk, String(rc + 1));
+  setTimeout(function(){ sessionStorage.removeItem(rk); }, 3000);
+  if (rc > 4) { sessionStorage.removeItem(rk); window.stop(); return; }
+
+  // Mock HMR WebSocket connections
+  var OWS = window.WebSocket;
+  window.WebSocket = function(u, pr) {
+    var s = String(u);
+    if (s.indexOf('_next') >= 0 || s.indexOf('hmr') >= 0 || s.indexOf('webpack') >= 0 || s.indexOf('turbopack') >= 0 || s.indexOf('hot-update') >= 0) {
+      var m = {readyState:3, close:function(){}, send:function(){}, addEventListener:function(){}, removeEventListener:function(){}, dispatchEvent:function(){return true}, onopen:null, onclose:null, onmessage:null, onerror:null};
+      setTimeout(function(){ if(m.onclose) m.onclose({code:1000, reason:'', wasClean:true}); }, 50);
+      return m;
+    }
+    return pr !== undefined ? new OWS(u, pr) : new OWS(u);
+  };
+  window.WebSocket.CONNECTING=0; window.WebSocket.OPEN=1; window.WebSocket.CLOSING=2; window.WebSocket.CLOSED=3;
+
+  // Mock HMR EventSource
+  var OES = window.EventSource;
+  if (OES) {
+    window.EventSource = function(u, c) {
+      var s = String(u);
+      if (s.indexOf('hmr') >= 0 || s.indexOf('hot') >= 0 || s.indexOf('turbopack') >= 0 || s.indexOf('webpack') >= 0 || s.indexOf('_next') >= 0) {
+        return {close:function(){}, addEventListener:function(){}, removeEventListener:function(){}, dispatchEvent:function(){return true}, readyState:2, url:s, withCredentials:false, onopen:null, onmessage:null, onerror:null};
+      }
+      return c ? new OES(u, c) : new OES(u);
+    };
+    window.EventSource.CONNECTING=0; window.EventSource.OPEN=1; window.EventSource.CLOSED=2;
+  }
+
+  // Intercept full-page navigations via Navigation API
+  if (window.navigation) {
+    window.navigation.addEventListener('navigate', function(e) {
+      if (e.hashChange) return;
+      try {
+        var d = new URL(e.destination.url);
+        if (d.pathname.indexOf('/api/proxy') === 0) return;
+        if (d.origin !== window.location.origin) return;
+        if (e.canIntercept) {
+          e.intercept({
+            handler: function() {
+              window.parent.postMessage({type:'PAGE_NAVIGATE', payload:{path:d.pathname}}, window.location.origin);
+              return Promise.resolve();
+            }
+          });
+        }
+      } catch(err) {}
+    });
+  }
+
+  // Patch fetch for same-origin AND target-origin API calls
+  var oF = window.fetch;
+  var tO = new URL(tU).origin;
+  function rewriteUrl(s) {
+    if (typeof s !== 'string') return s;
+    // Relative paths starting with /
+    if (s.charAt(0) === '/' && s.indexOf('/api/proxy') !== 0) {
+      return '/api/proxy' + s + (s.indexOf('?') >= 0 ? '&' : '?') + pH + '=' + eT;
+    }
+    // Fully-qualified target-origin URLs (e.g. http://localhost:4000/api/data)
+    if (s.indexOf(tO) === 0) {
+      var path = s.substring(tO.length) || '/';
+      return '/api/proxy' + path + (path.indexOf('?') >= 0 ? '&' : '?') + pH + '=' + eT;
+    }
+    return s;
+  }
+  window.fetch = function(i, n) {
+    try {
+      if (typeof i === 'string') {
+        i = rewriteUrl(i);
+      } else if (typeof Request !== 'undefined' && i instanceof Request) {
+        var u = new URL(i.url);
+        if ((u.origin === window.location.origin && u.pathname.indexOf('/api/proxy') !== 0) || u.origin === tO) {
+          var rp = u.origin === tO ? u.pathname : u.pathname;
+          i = new Request('/api/proxy' + rp + u.search + (u.search ? '&' : '?') + pH + '=' + eT, i);
+        }
+      }
+    } catch(e) {}
+    return oF.call(this, i, n);
+  };
+
+  // Patch XMLHttpRequest for same-origin AND target-origin calls
+  var oX = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function(m, u) {
+    try {
+      if (typeof u === 'string') {
+        arguments[1] = rewriteUrl(u);
+      }
+    } catch(e) {}
+    return oX.apply(this, arguments);
+  };
+
+  // Runtime interceptor: rewrite src/href on dynamically-created elements
+  // Catches images, scripts, links set by client-side JS
+  var rObs = new MutationObserver(function(mutations) {
+    for (var mi = 0; mi < mutations.length; mi++) {
+      var added = mutations[mi].addedNodes;
+      for (var ni = 0; ni < added.length; ni++) {
+        var node = added[ni];
+        if (node.nodeType !== 1) continue;
+        rewriteNodeUrls(node);
+        if (node.querySelectorAll) {
+          var children = node.querySelectorAll('[src],[href],[poster],[data-src]');
+          for (var ci = 0; ci < children.length; ci++) rewriteNodeUrls(children[ci]);
+        }
+      }
+      // Handle attribute changes (e.g., lazy-load libraries setting src)
+      if (mutations[mi].type === 'attributes') {
+        rewriteNodeUrls(mutations[mi].target);
+      }
+    }
+  });
+  function rewriteNodeUrls(el) {
+    if (!el || !el.getAttribute) return;
+    var attrs = ['src', 'href', 'poster', 'data-src'];
+    for (var ai = 0; ai < attrs.length; ai++) {
+      var val = el.getAttribute(attrs[ai]);
+      if (!val) continue;
+      // Rewrite target-origin full URLs
+      if (val.indexOf(tO) === 0) {
+        var path = val.substring(tO.length) || '/';
+        el.setAttribute(attrs[ai], '/api/proxy' + path + (path.indexOf('?') >= 0 ? '&' : '?') + pH + '=' + eT);
+      }
+    }
+    // Handle srcset — split on comma, rewrite each entry
+    var srcset = el.getAttribute('srcset');
+    if (srcset && srcset.indexOf(tO) >= 0) {
+      var parts = srcset.split(',');
+      var rewritten = [];
+      for (var si = 0; si < parts.length; si++) {
+        var part = parts[si].trim();
+        if (part.indexOf(tO) === 0) {
+          part = part.replace(tO, '/api/proxy');
+        }
+        rewritten.push(part);
+      }
+      el.setAttribute('srcset', rewritten.join(', '));
+    }
+  }
+  if (document.body) {
+    rObs.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['src', 'href', 'poster', 'data-src', 'srcset'] });
+  } else {
+    document.addEventListener('DOMContentLoaded', function() {
+      rObs.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['src', 'href', 'poster', 'data-src', 'srcset'] });
+    });
+  }
+
+  // Suppress HMR-related errors
+  window.addEventListener('error', function(e) {
+    var m = e.message || '';
+    if (m.indexOf('hmr') >= 0 || m.indexOf('hot') >= 0 || m.indexOf('WebSocket') >= 0 || m.indexOf('__webpack') >= 0 || m.indexOf('turbopack') >= 0) {
+      e.preventDefault(); return false;
+    }
+  });
+  window.addEventListener('unhandledrejection', function(e) {
+    var r = e.reason ? String(e.reason) : '';
+    if (r.indexOf('hmr') >= 0 || r.indexOf('hot') >= 0 || r.indexOf('WebSocket') >= 0 || r.indexOf('__webpack') >= 0 || r.indexOf('turbopack') >= 0) {
+      e.preventDefault();
+    }
+  });
+})();
+</script>`;
+
+      // Cookie setter for resource loading
       const urlInterceptorScript = `<script data-dev-editor-interceptor>
 (function(){
   document.cookie='${PROXY_HEADER}='+encodeURIComponent('${targetUrl}')+';path=/;SameSite=Strict;max-age=86400';
 })();
 </script>`;
 
-      // Inject URL interceptor at the top of <head> (before any scripts)
+      // Inject navigation blocker + cookie setter at the top of <head>
+      const headInjection = navigationBlockerScript + urlInterceptorScript;
       if (html.includes('<head>')) {
-        html = html.replace('<head>', '<head>' + urlInterceptorScript);
+        html = html.replace('<head>', '<head>' + headInjection);
       } else if (html.includes('<head ')) {
-        html = html.replace(/<head\s[^>]*>/, '$&' + urlInterceptorScript);
+        html = html.replace(/<head\s[^>]*>/, '$&' + headInjection);
       } else {
-        html = urlInterceptorScript + html;
+        html = headInjection + html;
       }
 
       // Set cookie on the response for dynamic resource loading
@@ -583,15 +1092,36 @@ async function handleProxy(
     // Rewrite url() references in CSS responses
     if (contentType.includes('text/css')) {
       let css = await response.text();
-      const encodedTarget = encodeURIComponent(targetUrl);
+      const cssEncodedTarget = encodeURIComponent(targetUrl);
+      const cssTargetOrigin = new URL(targetUrl).origin;
+      const cssEscapedOrigin = cssTargetOrigin.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      // Rewrite absolute-path url() references
       css = css.replace(
         /url\(\s*(["']?)(\/[^)"'\s]+)\1\s*\)/g,
         (_match: string, quote: string, originalPath: string) => {
+          if (originalPath.startsWith('/api/proxy')) return _match;
           const separator = originalPath.includes('?') ? '&' : '?';
-          return `url(${quote}/api/proxy${originalPath}${separator}${PROXY_HEADER}=${encodedTarget}${quote})`;
+          return `url(${quote}/api/proxy${originalPath}${separator}${PROXY_HEADER}=${cssEncodedTarget}${quote})`;
+        }
+      );
+      // Rewrite fully-qualified target-origin url() references
+      css = css.replace(
+        new RegExp(`url\\(\\s*(["']?)${cssEscapedOrigin}(/[^)"'\\s]+)\\1\\s*\\)`, 'g'),
+        (_match: string, quote: string, pathPart: string) => {
+          const separator = pathPart.includes('?') ? '&' : '?';
+          return `url(${quote}/api/proxy${pathPart}${separator}${PROXY_HEADER}=${cssEncodedTarget}${quote})`;
+        }
+      );
+      // Rewrite @import with absolute paths
+      css = css.replace(
+        /@import\s+(["'])(\/[^"']+)\1/g,
+        (_match: string, quote: string, originalPath: string) => {
+          const separator = originalPath.includes('?') ? '&' : '?';
+          return `@import ${quote}/api/proxy${originalPath}${separator}${PROXY_HEADER}=${cssEncodedTarget}${quote}`;
         }
       );
       responseHeaders.set('content-type', 'text/css; charset=utf-8');
+      responseHeaders.set('cache-control', 'public, max-age=3600');
       responseHeaders.delete('content-length');
       return new NextResponse(css, {
         status: response.status,
@@ -599,7 +1129,25 @@ async function handleProxy(
       });
     }
 
-    // Passthrough other responses
+    // Add CORS headers for fonts (often needed for cross-origin loading)
+    if (
+      contentType.includes('font/') ||
+      contentType.includes('application/font') ||
+      path.match(/\.(woff2?|ttf|eot|otf)(\?|$)/)
+    ) {
+      responseHeaders.set('access-control-allow-origin', '*');
+      responseHeaders.set('cache-control', 'public, max-age=31536000, immutable');
+    }
+
+    // Cache static assets aggressively to reduce repeat load times
+    if (
+      contentType.includes('image/') ||
+      path.match(/\.(png|jpg|jpeg|gif|svg|ico|webp|avif)(\?|$)/)
+    ) {
+      responseHeaders.set('cache-control', 'public, max-age=3600');
+    }
+
+    // Passthrough other responses (streams body directly — no buffering)
     return new NextResponse(response.body, {
       status: response.status,
       headers: responseHeaders,
@@ -648,4 +1196,18 @@ export async function DELETE(
 ) {
   const params = await context.params;
   return handleProxy(request, params);
+}
+
+export async function OPTIONS(
+  request: NextRequest,
+) {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'access-control-allow-origin': '*',
+      'access-control-allow-methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+      'access-control-allow-headers': request.headers.get('access-control-request-headers') || '*',
+      'access-control-max-age': '86400',
+    },
+  });
 }

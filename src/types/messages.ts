@@ -1,5 +1,6 @@
 import type { TreeNode } from './tree';
 import type { CSSVariableDefinition } from './cssVariables';
+import type { DetectedComponent } from './component';
 
 // Inspector → Editor messages
 
@@ -71,6 +72,30 @@ export interface CSSVariablesMessage {
   };
 }
 
+export interface ComponentsDetectedMessage {
+  type: 'COMPONENTS_DETECTED';
+  payload: {
+    components: DetectedComponent[];
+  };
+}
+
+export interface VariantAppliedMessage {
+  type: 'VARIANT_APPLIED';
+  payload: {
+    selectorPath: string;
+    computedStyles: Record<string, string>;
+    cssVariableUsages: Record<string, string>;
+    boundingRect: { top: number; left: number; width: number; height: number };
+  };
+}
+
+export interface PageNavigateMessage {
+  type: 'PAGE_NAVIGATE';
+  payload: {
+    path: string;
+  };
+}
+
 // Editor → Inspector messages
 
 export interface SelectElementMessage {
@@ -131,6 +156,36 @@ export interface SetSelectionModeMessage {
   };
 }
 
+export interface RequestComponentsMessage {
+  type: 'REQUEST_COMPONENTS';
+  payload: {
+    rootSelectorPath?: string;
+  };
+}
+
+export interface ApplyVariantMessage {
+  type: 'APPLY_VARIANT';
+  payload: {
+    selectorPath: string;
+    type: 'class' | 'pseudo';
+    addClassName?: string;
+    removeClassNames?: string[];
+    pseudoStyles?: Record<string, string>;
+    revertPseudo?: boolean;
+  };
+}
+
+export interface RevertVariantMessage {
+  type: 'REVERT_VARIANT';
+  payload: {
+    selectorPath: string;
+    removeClassName?: string;
+    restoreClassName?: string;
+    revertPseudo?: boolean;
+    pseudoProperties?: string[];
+  };
+}
+
 // Union types
 export type InspectorToEditorMessage =
   | InspectorReadyMessage
@@ -140,7 +195,10 @@ export type InspectorToEditorMessage =
   | DOMTreeMessage
   | PageLinksMessage
   | HeartbeatResponseMessage
-  | CSSVariablesMessage;
+  | CSSVariablesMessage
+  | ComponentsDetectedMessage
+  | VariantAppliedMessage
+  | PageNavigateMessage;
 
 export type EditorToInspectorMessage =
   | SelectElementMessage
@@ -152,7 +210,10 @@ export type EditorToInspectorMessage =
   | RequestPageLinksMessage
   | HeartbeatMessage
   | RequestCSSVariablesMessage
-  | SetSelectionModeMessage;
+  | SetSelectionModeMessage
+  | RequestComponentsMessage
+  | ApplyVariantMessage
+  | RevertVariantMessage;
 
 export type PostMessageType =
   | InspectorToEditorMessage['type']
