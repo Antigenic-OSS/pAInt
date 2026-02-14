@@ -1,0 +1,152 @@
+# Dev Editor — Development Guidelines
+
+Visual design editor for localhost web projects. Inspect elements,
+edit styles, drag-and-drop reposition, and generate changelogs for
+Claude Code — all from a Webflow-style three-column dark UI.
+
+## Tech Stack
+
+- **Runtime / Package Manager**: Bun (`bun dev`, `bun run build`, `bun install`)
+- **Framework**: Next.js 15 App Router (TypeScript)
+- **Styling**: Tailwind CSS — `class` dark mode strategy, CSS custom properties
+- **State**: Zustand with slices (`elementSlice`, `changeSlice`, `uiSlice`, `treeSlice`, `claudeSlice`)
+- **Communication**: `window.postMessage` between editor (parent) and inspector (iframe)
+- **Persistence**: `localStorage` (changes keyed by target URL, recent URLs, settings)
+
+## Project Structure
+
+```
+src/
+├── app/
+│   ├── layout.tsx              # Root layout, dark mode, providers
+│   ├── page.tsx                # Main editor (three-column layout)
+│   ├── globals.css             # Tailwind entry + dark mode variables
+│   └── api/
+│       ├── proxy/[...path]/route.ts   # Reverse proxy to target localhost
+│       └── claude/
+│           ├── analyze/route.ts       # Claude CLI read-only analysis
+│           ├── apply/route.ts         # Claude CLI write mode
+│           └── status/route.ts        # CLI availability check
+├── components/
+│   ├── Editor.tsx              # Three-column shell
+│   ├── TopBar.tsx              # URL input, breakpoints, drag toggle, apply
+│   ├── TargetSelector.tsx      # Localhost URL bar + connect + status dot
+│   ├── BreakpointTabs.tsx      # Mobile | Tablet | Desktop
+│   ├── PageSelector.tsx        # Page navigation dropdown
+│   ├── DragModeToggle.tsx      # Off / Free Position / Reorder
+│   ├── PreviewFrame.tsx        # Iframe container
+│   ├── left-panel/             # Navigator/Layers tree
+│   ├── right-panel/            # Design tab + Changes tab + Claude panel
+│   └── common/                 # Shared UI (ResizablePanel, ColorPicker, etc.)
+├── hooks/                      # useTargetUrl, usePostMessage, useChangeTracker, etc.
+├── store/                      # Zustand store + slices
+├── types/                      # TypeScript type definitions
+├── lib/                        # Utilities (constants, CSS parsing, prompt builder, diff parser)
+└── inspector/                  # Injected into iframe via proxy
+    ├── inspector.ts            # Entry point
+    ├── DOMTraverser.ts
+    ├── ElementSelector.ts
+    ├── HoverHighlighter.ts
+    ├── SelectionHighlighter.ts
+    ├── StyleExtractor.ts
+    ├── ViewportController.ts
+    ├── messaging.ts
+    └── drag/                   # DragHandler + strategies
+```
+
+## Commands
+
+```bash
+bun install          # Install dependencies
+bun dev              # Start dev server
+bun run build        # Production build
+bun run lint         # Lint (when configured)
+```
+
+## Dark Mode Color Palette
+
+```
+Background (panels):  #1e1e1e    Accent (selection):  #4a9eff
+Background (inputs):  #2a2a2a    Accent (hover):      #3a8aef
+Borders:              #3a3a3a    Success:             #4ade80
+Text (primary):       #e0e0e0    Warning:             #fbbf24
+Text (secondary):     #a0a0a0    Error:               #f87171
+Text (muted):         #666666    Panel dividers:      #2d2d2d
+Top bar background:   #171717
+```
+
+## Architecture Rules
+
+1. **Dark mode only** — no light theme, no theme toggle.
+2. **Iframe + reverse proxy** — target page loaded via `/api/proxy/[...path]`. Inspector script injected by proxy into HTML responses.
+3. **postMessage only** — editor and iframe inspector communicate exclusively via `window.postMessage`. No direct iframe DOM access.
+4. **Localhost only** — URL validation rejects non-local addresses. Proxy MUST NOT forward to external hosts.
+5. **Zustand single store** — all shared state in one store with slices. No React Context for state management.
+6. **Strategy pattern for drag** — `DragHandler` delegates to `FreePositionStrategy` or `SiblingReorderStrategy`. New modes follow the same pattern.
+7. **Changelog is truth** — every visual change MUST be recorded with original→new values and CSS selector paths.
+8. **Bun everywhere** — all commands use Bun. No npm/yarn/pnpm.
+9. **No shell exec** — Claude CLI spawned via `Bun.spawn` or `execFile` only. Never `exec` with shell strings.
+
+## Implementation Phases
+
+| Phase | Focus | Dependencies |
+|-------|-------|-------------|
+| 1 | Foundation (scaffolding, proxy, dark mode, three-column layout, URL input) | None |
+| 2 | Left Panel — DOM Inspection + Layers | Phase 1 |
+| 3 | Right Panel — Properties Editor (all sections + live preview) | Phase 2 |
+| 4 | Change Tracking + Changelog Export | Phase 3 |
+| 5 | Top Bar — Responsive Breakpoints + Page Navigation | Phase 4 |
+| 6 | Polish (keyboard shortcuts, search, error handling) | Phase 5 |
+| 7 | Drag & Drop Repositioning (free position + sibling reorder) | Phase 6 |
+| 8 | Claude Code API Integration (log analysis + diff viewer) | Phase 7 |
+
+Phases MUST be completed in order. Do not implement later-phase features before dependencies are done.
+
+## Code Style
+
+- TypeScript strict mode
+- Functional components with hooks (no class components)
+- Server Components for layout; Client Components (`'use client'`) for interactive panels
+- Tailwind utility classes for styling — no CSS modules or CSS-in-JS
+- Named exports for components; default export only for page/layout files
+- Types in `src/types/`; constants in `src/lib/constants.ts`
+- Inspector code in `src/inspector/` — this runs inside the iframe, not the editor
+
+## Key postMessage Types
+
+| Message | Direction | Purpose |
+|---------|-----------|---------|
+| `INSPECTOR_READY` | iframe → editor | Inspector loaded and ready |
+| `SELECT_ELEMENT` | editor → iframe | Request element selection |
+| `ELEMENT_SELECTED` | iframe → editor | Element was selected |
+| `PREVIEW_CHANGE` | editor → iframe | Apply style change |
+| `REVERT_CHANGE` | editor → iframe | Undo a style change |
+| `DOM_UPDATED` | iframe → editor | DOM mutation detected |
+| `SET_BREAKPOINT` | editor → iframe | Change viewport width |
+| `DRAG_MODE_CHANGED` | editor → iframe | Toggle drag mode |
+| `POSITION_CHANGED` | iframe → editor | Free-position drag complete |
+| `ELEMENT_REORDERED` | iframe → editor | Sibling reorder complete |
+
+## Security
+
+- Proxy: localhost-only validation, no external forwarding
+- Claude API routes: `projectRoot` must be absolute, exist, and be under `$HOME`
+- CLI spawn: `execFile` / `Bun.spawn` only (no shell injection)
+- Analyze: `--allowedTools Read` (read-only)
+- Apply: `--allowedTools Read,Edit` (no Bash)
+- Changelog sanitization: strip control chars, enforce 50KB max
+
+## Documentation
+
+- `docs/features.md` — Complete feature specifications
+- `docs/implementation-plan.md` — Architecture, file structure, phase details
+- `docs/user-flows.md` — 11 detailed user flow scenarios
+- `docs/visual-editor-extensions.md` — Competitive landscape and comparison
+- `.specify/memory/constitution.md` — Project constitution (governance)
+
+## Active Technologies
+- TypeScript 5.x (strict mode) + Next.js 15 (App Router), React 19, Zustand 5, Tailwind CSS 4 (001-visual-dev-editor)
+- localStorage (browser-only, no server-side database) (001-visual-dev-editor)
+
+## Recent Changes
+- 001-visual-dev-editor: Added TypeScript 5.x (strict mode) + Next.js 15 (App Router), React 19, Zustand 5, Tailwind CSS 4

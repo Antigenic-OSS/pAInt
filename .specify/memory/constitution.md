@@ -1,50 +1,143 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+  Sync Impact Report
+  ==================
+  Version change: 0.0.0 → 1.0.0 (initial ratification)
+  Modified principles: N/A (first version)
+  Added sections:
+    - Core Principles (7 principles)
+    - Technical Constraints
+    - Development Workflow
+    - Governance
+  Removed sections: N/A
+  Templates status:
+    - .specify/templates/plan-template.md — ✅ compatible (constitution check gate present)
+    - .specify/templates/spec-template.md — ✅ compatible (priority-based stories align with Phase-Driven principle)
+    - .specify/templates/tasks-template.md — ✅ compatible (parallel markers and story-based phases align)
+    - .specify/templates/agent-file-template.md — ✅ compatible (auto-generated, references active technologies)
+  Follow-up TODOs: None
+-->
+
+# Dev Editor Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Dark Mode Only
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+Dev Editor ships a single dark theme. There MUST NOT be a light mode
+toggle or theme switcher. All UI surfaces — panels, top bar, inputs,
+dialogs, overlays — MUST use the dark color palette defined in the
+design system (`#1e1e1e` backgrounds, `#e0e0e0` text, `#4a9eff`
+accent). This reduces design surface area, ensures visual consistency,
+and keeps the editor aligned with developer tool conventions.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### II. Iframe + Reverse Proxy Architecture
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+The target page MUST be loaded inside an iframe via a Next.js API route
+reverse proxy (`/api/proxy/[...path]`). The proxy injects the inspector
+script into HTML responses. Direct DOM access from the editor frame is
+forbidden — all communication between editor and preview MUST use
+`window.postMessage`. This preserves same-origin access without CORS
+hacks while keeping the inspector sandboxed.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### III. Localhost Only
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+Dev Editor MUST only connect to `localhost` or `127.0.0.1` origins.
+URL validation MUST reject any non-local address before the proxy
+forwards a request. This is a security boundary — the reverse proxy
+MUST NOT be used as an open relay to external hosts.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### IV. Phase-Driven Implementation
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+Features MUST be implemented in the defined 8-phase order (Foundation →
+Left Panel → Right Panel → Change Tracking → Top Bar → Polish →
+Drag & Drop → Claude Integration). Each phase builds on the previous.
+Skipping phases or implementing later-phase features before their
+dependencies are complete is not permitted. Within a phase, tasks
+marked `[P]` MAY run in parallel.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+### V. Zustand Single Store
+
+All client-side state MUST live in a single Zustand store composed of
+slices (`elementSlice`, `changeSlice`, `uiSlice`, `treeSlice`,
+`claudeSlice`). No component-local state for data that is shared
+across panels. React Context MUST NOT be used as a state management
+layer. This ensures predictable state flow and makes the three-column
+panel synchronization straightforward.
+
+### VI. Strategy Pattern for Extensible Behaviors
+
+Drag modes MUST be implemented via the Strategy pattern
+(`DragHandler` → `FreePositionStrategy` | `SiblingReorderStrategy`).
+New drag behaviors or inspector behaviors MUST follow this pattern
+rather than adding conditional branches. This keeps each mode isolated,
+independently testable, and prevents cross-mode interference.
+
+### VII. Changelog as the Source of Truth
+
+Every visual change — style edits, position changes, DOM reorders —
+MUST be captured in the changelog data structure with original and new
+values. The changelog format MUST be human-readable, include CSS
+selector paths, and be directly usable as input to Claude Code CLI.
+Changes not recorded in the changelog do not exist from the user's
+perspective.
+
+## Technical Constraints
+
+- **Runtime**: Bun MUST be used as both runtime and package manager.
+  All scripts in `package.json` MUST use `bun` commands
+  (`bun dev`, `bun run build`, `bun install`).
+- **Framework**: Next.js 15 App Router. Server Components for layout,
+  Client Components for interactive panels. API Routes for proxy and
+  Claude CLI bridge.
+- **Styling**: Tailwind CSS with `class` dark mode strategy and CSS
+  custom properties for the dark palette. No CSS-in-JS libraries.
+- **State**: Zustand (~1KB). No Redux, MobX, or Jotai.
+- **Inspector Communication**: `window.postMessage` only. No shared
+  memory, no direct iframe DOM access from the parent frame.
+- **Claude CLI**: Spawned via `Bun.spawn` or `child_process.execFile`.
+  MUST NOT use `exec` or shell strings to prevent injection.
+  Analyze mode: `--allowedTools Read`. Apply mode:
+  `--allowedTools Read,Edit`. No Bash tool.
+- **Persistence**: `localStorage` for changes (keyed by target URL),
+  recent URLs, project settings, and panel sizes. No database.
+- **Security**: Proxy validates localhost-only origins. API routes
+  validate `projectRoot` is absolute, exists, and is under `$HOME`.
+  Changelog content sanitized (strip control chars, max 50KB).
+
+## Development Workflow
+
+- **Specification First**: Features MUST have documentation in `/docs`
+  or a spec file before implementation begins. Code without a
+  corresponding spec or plan is not accepted.
+- **Branch Naming**: Feature branches MUST follow `###-feature-name`
+  format (e.g., `001-foundation`, `002-left-panel`).
+- **Commit Discipline**: Commit after each task or logical group.
+  Commit messages MUST describe the change, not the file.
+- **Testing**: Each implementation phase defines its own test criteria
+  in the implementation plan. Phase completion MUST be verified against
+  those criteria before moving to the next phase.
+- **File Organization**: Source code MUST follow the file structure
+  defined in `docs/implementation-plan.md`. New files MUST be placed
+  in the correct directory per that structure.
+- **No Over-Engineering**: Implement only what the current phase
+  requires. Do not add abstractions, utilities, or config for
+  hypothetical future needs (YAGNI).
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution supersedes all ad-hoc practices. Amendments require:
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+1. A documented rationale explaining why the change is necessary.
+2. Verification that the change does not break existing phase
+   dependencies or architectural invariants.
+3. Update to this file with incremented version number and amended
+   date.
+
+All code reviews and PR approvals MUST verify compliance with these
+principles. Complexity beyond what a principle permits MUST be
+justified in a Complexity Tracking table (see plan template).
+
+Use `CLAUDE.md` at the repository root for runtime development
+guidance that supplements this constitution.
+
+**Version**: 1.0.0 | **Ratified**: 2026-02-14 | **Last Amended**: 2026-02-14
