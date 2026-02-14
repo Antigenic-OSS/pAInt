@@ -22,7 +22,7 @@ src/
 │   ├── page.tsx                # Main editor (three-column layout)
 │   ├── globals.css             # Tailwind entry + dark mode variables
 │   └── api/
-│       ├── proxy/[...path]/route.ts   # Reverse proxy to target localhost
+│       ├── proxy/[[...path]]/route.ts  # Reverse proxy to target localhost (strips scripts)
 │       └── claude/
 │           ├── analyze/route.ts       # Claude CLI read-only analysis
 │           ├── apply/route.ts         # Claude CLI write mode
@@ -78,7 +78,7 @@ Top bar background:   #171717
 ## Architecture Rules
 
 1. **Dark mode only** — no light theme, no theme toggle.
-2. **Iframe + reverse proxy** — target page loaded via `/api/proxy/[...path]`. Inspector script injected by proxy into HTML responses.
+2. **Iframe + reverse proxy** — target page loaded via `/api/proxy/[[...path]]`. Inspector script injected by proxy into HTML responses. **All `<script>` tags are stripped** from proxied HTML (except `type="application/ld+json"`) to prevent target-page client JS from interfering. SSR HTML + CSS is sufficient for visual editing; the inspector script is injected separately.
 3. **postMessage only** — editor and iframe inspector communicate exclusively via `window.postMessage`. No direct iframe DOM access.
 4. **Localhost only** — URL validation rejects non-local addresses. Proxy MUST NOT forward to external hosts.
 5. **Zustand single store** — all shared state in one store with slices. No React Context for state management.
@@ -86,6 +86,9 @@ Top bar background:   #171717
 7. **Changelog is truth** — every visual change MUST be recorded with original→new values and CSS selector paths.
 8. **Bun everywhere** — all commands use Bun. No npm/yarn/pnpm.
 9. **No shell exec** — Claude CLI spawned via `Bun.spawn` or `execFile` only. Never `exec` with shell strings.
+10. **Singleton message listener** — `usePostMessage` hook registers ONE global `window.addEventListener('message', ...)` via a module-level singleton. Multiple components may call the hook but only one listener exists. This prevents duplicate message processing.
+11. **Middleware matches assets only** — Next.js middleware MUST only match `/_next/static/:path*` and `/_next/image`. Never match page-level paths — doing so pollutes the editor's HMR route tree and causes reload loops.
+12. **HMR isolation** — Proxy short-circuits `.hot-update.*`, `webpack-hmr`, and `turbopack-hmr` requests with empty 200/204 responses. `page.tsx` suppresses unhandled HMR rejection errors as a safety net.
 
 ## Implementation Phases
 
@@ -148,5 +151,26 @@ Phases MUST be completed in order. Do not implement later-phase features before 
 - TypeScript 5.x (strict mode) + Next.js 15 (App Router), React 19, Zustand 5, Tailwind CSS 4 (001-visual-dev-editor)
 - localStorage (browser-only, no server-side database) (001-visual-dev-editor)
 
+## Known Issues & Root Causes
+
+### Infinite Iframe Reload (RESOLVED)
+**Root cause**: When a target page (e.g. a Next.js app) is loaded through the proxy,
+its client-side router hydrates, sees `/api/proxy/` as the URL pathname (not a valid
+route in the target app), and triggers `window.location.href = '/'`. Browsers do NOT
+allow intercepting `window.location` property assignments — no amount of JavaScript
+patching (`Object.defineProperty`, `Proxy`) can prevent this navigation.
+
+**Fix**: Strip ALL `<script>` tags from proxied HTML in `src/app/api/proxy/[[...path]]/route.ts`.
+The SSR-rendered HTML + CSS is complete for visual editing. The inspector script
+(injected separately by the proxy) handles element selection and style editing.
+
+**Contributing factors fixed**:
+- `usePostMessage` had 6+ duplicate event listeners (singleton pattern fix)
+- Middleware matched page-level paths, polluting HMR route tree (reduced matcher scope)
+- Target app HMR requests (hot-update, webpack-hmr) returned 404s (short-circuit in proxy)
+- React Strict Mode double-mounted PreviewFrame, setting `iframe.src` twice (`lastSrcRef` guard)
+
 ## Recent Changes
 - 001-visual-dev-editor: Added TypeScript 5.x (strict mode) + Next.js 15 (App Router), React 19, Zustand 5, Tailwind CSS 4
+- 001-visual-dev-editor: Fixed infinite iframe reload — proxy now strips all script tags from proxied HTML
+- 001-visual-dev-editor: Singleton usePostMessage listener, reduced middleware matcher scope, HMR isolation
