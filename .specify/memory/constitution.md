@@ -1,12 +1,11 @@
 <!--
   Sync Impact Report
   ==================
-  Version change: 1.0.0 → 1.1.0
+  Version change: 1.1.0 → 1.2.0
   Modified principles:
-    - II. Iframe + Reverse Proxy Architecture — expanded with Script Stripping,
-      HMR Isolation, and Middleware Scope sub-sections based on infinite-reload
-      bug fix (target page's Next.js router hydrating and triggering unblockable
-      window.location.href navigation).
+    - Development Workflow / Branch Strategy — updated to reflect all feature
+      branches (001–004) merged to main and deleted. Development continues
+      on main.
   Added sections: None
   Removed sections: None
   Templates status:
@@ -130,8 +129,9 @@ perspective.
 - **Specification First**: Features MUST have documentation in `/docs`
   or a spec file before implementation begins. Code without a
   corresponding spec or plan is not accepted.
-- **Branch Naming**: Feature branches MUST follow `###-feature-name`
-  format (e.g., `001-foundation`, `002-left-panel`).
+- **Branch Strategy**: All feature branches (001–004) have been merged
+  to `main` and deleted. Development continues on `main`. New feature
+  branches, if needed, SHOULD follow `###-feature-name` format.
 - **Commit Discipline**: Commit after each task or logical group.
   Commit messages MUST describe the change, not the file.
 - **Testing**: Each implementation phase defines its own test criteria
@@ -161,4 +161,4 @@ justified in a Complexity Tracking table (see plan template).
 Use `CLAUDE.md` at the repository root for runtime development
 guidance that supplements this constitution.
 
-**Version**: 1.1.0 | **Ratified**: 2026-02-14 | **Last Amended**: 2026-02-14
+**Version**: 1.2.0 | **Ratified**: 2026-02-14 | **Last Amended**: 2026-02-15
