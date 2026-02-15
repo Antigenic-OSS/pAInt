@@ -252,8 +252,55 @@
 
     // Selection highlight
     var selectionOverlay = document.createElement('div');
-    selectionOverlay.style.cssText = 'position:fixed;pointer-events:none;z-index:999997;border:2px solid #4a9eff;background:rgba(74,158,255,0.15);display:none;';
+    selectionOverlay.style.cssText = 'position:fixed;pointer-events:none;z-index:999997;border:2px solid #4a9eff;display:none;';
     document.body.appendChild(selectionOverlay);
+
+    // Hover highlight — dashed green border + element name label
+    var hoverOverlay = document.createElement('div');
+    hoverOverlay.style.cssText = 'position:fixed;pointer-events:none;z-index:999996;border:1px dashed #4ade80;display:none;transition:top 0.04s,left 0.04s,width 0.04s,height 0.04s;';
+    document.body.appendChild(hoverOverlay);
+
+    var hoverLabel = document.createElement('div');
+    hoverLabel.style.cssText = 'position:absolute;top:-18px;left:-1px;padding:1px 6px;font-size:10px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;line-height:14px;color:#fff;background:#1D3F23;border-radius:3px 3px 0 0;white-space:nowrap;pointer-events:none;';
+    hoverOverlay.appendChild(hoverLabel);
+
+    var hoveredElement = null;
+
+    function getElementLabel(el) {
+      var tag = el.tagName.toLowerCase();
+      if (el.id) return tag + '#' + el.id;
+      var cls = el.className;
+      if (cls && typeof cls === 'string') {
+        var first = cls.trim().split(/\s+/)[0];
+        if (first) return tag + '.' + first;
+      }
+      return tag;
+    }
+
+    document.addEventListener('mousemove', function(e) {
+      if (!selectionModeEnabled) { hoverOverlay.style.display = 'none'; return; }
+      var el = document.elementFromPoint(e.clientX, e.clientY);
+      if (!el || el === hoverOverlay || el === selectionOverlay || el === hoverLabel) return;
+      if (el === selectedElement) { hoverOverlay.style.display = 'none'; hoveredElement = null; return; }
+      if (el === hoveredElement) return;
+      hoveredElement = el;
+      var rect = el.getBoundingClientRect();
+      hoverOverlay.style.display = 'block';
+      hoverOverlay.style.top = rect.top + 'px';
+      hoverOverlay.style.left = rect.left + 'px';
+      hoverOverlay.style.width = rect.width + 'px';
+      hoverOverlay.style.height = rect.height + 'px';
+      hoverLabel.textContent = getElementLabel(el);
+      if (rect.top < 20) {
+        hoverLabel.style.top = 'auto';
+        hoverLabel.style.bottom = '-18px';
+        hoverLabel.style.borderRadius = '0 0 3px 3px';
+      } else {
+        hoverLabel.style.top = '-18px';
+        hoverLabel.style.bottom = 'auto';
+        hoverLabel.style.borderRadius = '3px 3px 0 0';
+      }
+    });
 
     var selectedElement = null;
     var selectionModeEnabled = true;
@@ -277,7 +324,8 @@
       e.preventDefault();
       e.stopPropagation();
       var el = document.elementFromPoint(e.clientX, e.clientY);
-      if (!el || el === selectionOverlay) return;
+      if (!el || el === selectionOverlay || el === hoverOverlay || el === hoverLabel) return;
+      hoverOverlay.style.display = 'none';
       selectElement(el);
     }, true);
 
@@ -733,6 +781,23 @@
           selectionModeEnabled = !!msg.payload.enabled;
           if (!selectionModeEnabled) {
             selectionOverlay.style.display = 'none';
+            hoverOverlay.style.display = 'none';
+            hoveredElement = null;
+          }
+          break;
+        }
+        case 'HIDE_SELECTION_OVERLAY': {
+          selectionOverlay.style.display = 'none';
+          break;
+        }
+        case 'SHOW_SELECTION_OVERLAY': {
+          if (selectedElement) {
+            var sr = selectedElement.getBoundingClientRect();
+            selectionOverlay.style.top = sr.top + 'px';
+            selectionOverlay.style.left = sr.left + 'px';
+            selectionOverlay.style.width = sr.width + 'px';
+            selectionOverlay.style.height = sr.height + 'px';
+            selectionOverlay.style.display = 'block';
           }
           break;
         }

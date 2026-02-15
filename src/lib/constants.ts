@@ -78,7 +78,7 @@ export const CSS_PROPERTIES = {
     'border-top-left-radius', 'border-top-right-radius',
     'border-bottom-right-radius', 'border-bottom-left-radius',
   ],
-  background: ['background-color', 'background-image'],
+  background: ['background-color', 'background-image', 'background-size', 'background-position', 'background-repeat', 'background-attachment', 'background-clip'],
   layout: [
     'display', 'flex-direction', 'justify-content', 'align-items',
     'align-content', 'flex-wrap', 'gap', 'row-gap', 'column-gap',

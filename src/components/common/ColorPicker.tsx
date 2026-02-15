@@ -64,6 +64,10 @@ function hexToRgb(hex: string): RGB | null {
 }
 
 function parseColor(value: string): { rgb: RGB; alpha: number } {
+  // Handle transparent keyword
+  if (!value || value === 'transparent') {
+    return { rgb: { r: 0, g: 0, b: 0 }, alpha: 0 };
+  }
   // Handle rgba/rgb
   const rgbaMatch = value.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
   if (rgbaMatch) {
@@ -464,7 +468,7 @@ export function ColorPicker({ value, onChange, label }: ColorPickerProps) {
   }, [isOpen]);
 
   const currentRgb = hsvToRgb(hsv);
-  const displayHex = rgbToHex(currentRgb);
+  const displayHex = alpha === 0 ? 'transparent' : rgbToHex(currentRgb);
 
   // Saturation/brightness cursor position
   const satCursorX = `${hsv.s}%`;
@@ -486,9 +490,11 @@ export function ColorPicker({ value, onChange, label }: ColorPickerProps) {
           onClick={() => setIsOpen(!isOpen)}
           className="w-6 h-6 rounded border flex-shrink-0"
           style={{
-            background: alpha < 100
-              ? `linear-gradient(${formatOutput(currentRgb, alpha)}, ${formatOutput(currentRgb, alpha)}), repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 0 0 / 8px 8px`
-              : displayHex,
+            background: alpha === 0
+              ? `repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 0 0 / 8px 8px`
+              : alpha < 100
+                ? `linear-gradient(${formatOutput(currentRgb, alpha)}, ${formatOutput(currentRgb, alpha)}), repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 0 0 / 8px 8px`
+                : displayHex,
             borderColor: 'var(--border)',
           }}
         />

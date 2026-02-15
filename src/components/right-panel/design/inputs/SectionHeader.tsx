@@ -49,8 +49,8 @@ export function SectionHeader({ title, defaultOpen = true, actions, children, ha
               onClick={onReset}
               className="text-[9px] px-1.5 py-0.5 rounded hover:opacity-80"
               style={{
-                color: 'var(--accent)',
-                background: 'rgba(74, 158, 255, 0.10)',
+                color: '#f87171',
+                background: 'rgba(248, 113, 113, 0.10)',
                 border: 'none',
                 cursor: 'pointer',
               }}

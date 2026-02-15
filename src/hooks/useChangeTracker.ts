@@ -40,11 +40,23 @@ export function performUndo() {
  * Pops from redo stack, re-applies the change in the iframe, updates store.
  */
 export function performRedo() {
+  // Check if this redo will auto-remove a change (value returns to original)
+  const { redoStack, styleChanges } = useEditorStore.getState();
+  if (redoStack.length === 0) return;
+  const peekAction = redoStack[redoStack.length - 1];
+  const existingChange = styleChanges.find(
+    (c) => c.elementSelector === peekAction.elementSelector && c.property === peekAction.property
+  );
+  const willAutoRemove = existingChange && peekAction.afterValue === existingChange.originalValue;
+
   const action = useEditorStore.getState().popRedo();
   if (!action) return;
 
   if (action.property === '__text_content__') {
     sendViaIframe({ type: 'SET_TEXT_CONTENT', payload: { selectorPath: action.elementSelector, text: action.afterValue } });
+  } else if (willAutoRemove) {
+    // Value returned to original — revert inline style entirely
+    sendViaIframe({ type: 'REVERT_CHANGE', payload: { selectorPath: action.elementSelector, property: action.property } });
   } else {
     sendViaIframe({ type: 'PREVIEW_CHANGE', payload: { selectorPath: action.elementSelector, property: action.property, value: action.afterValue } });
   }
@@ -56,6 +68,29 @@ export function performRedo() {
       ...store.computedStyles,
       [action.property]: action.afterValue,
     });
+  }
+}
+
+/**
+ * Revert all changes — can be called outside React components.
+ * Reverts text changes, clears the store, and reloads the iframe.
+ */
+export function performRevertAll() {
+  const textChanges = useEditorStore.getState().styleChanges.filter(
+    (c) => c.property === '__text_content__'
+  );
+  for (const tc of textChanges) {
+    sendViaIframe({
+      type: 'REVERT_TEXT_CONTENT',
+      payload: { selectorPath: tc.elementSelector, originalText: tc.originalValue },
+    });
+  }
+
+  useEditorStore.getState().clearAllChanges();
+  // Force-reload the iframe to guarantee a clean state
+  const iframe = document.querySelector<HTMLIFrameElement>('iframe[title="Preview"]');
+  if (iframe?.src) {
+    iframe.src = iframe.src;
   }
 }
 
@@ -121,6 +156,9 @@ export function useChangeTracker() {
         (c) => c.elementSelector === selectorPath && c.property === property
       );
 
+      // Detect auto-reset: value returning to the true original
+      const isAutoReset = existing && value === existing.originalValue;
+
       // Push undo action
       const state0 = useEditorStore.getState();
       pushUndo({
@@ -133,11 +171,19 @@ export function useChangeTracker() {
         changeScope: state0.changeScope,
       });
 
-      // Send preview change to inspector
-      sendToInspector({
-        type: 'PREVIEW_CHANGE',
-        payload: { selectorPath, property, value },
-      });
+      if (isAutoReset) {
+        // Revert inline style in iframe (remove it entirely)
+        sendToInspector({
+          type: 'REVERT_CHANGE',
+          payload: { selectorPath, property },
+        });
+      } else {
+        // Send preview change to inspector
+        sendToInspector({
+          type: 'PREVIEW_CHANGE',
+          payload: { selectorPath, property, value },
+        });
+      }
 
       // Update local computedStyles so UI reacts immediately
       useEditorStore.getState().updateComputedStyles({
@@ -159,7 +205,7 @@ export function useChangeTracker() {
         changeScope: state.changeScope,
       });
 
-      // Track the change
+      // Track the change (addStyleChange auto-removes if newValue === originalValue)
       addStyleChange({
         id: generateId(),
         elementSelector: selectorPath,

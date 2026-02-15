@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback, useState, useRef } from 'react';
+import { useCallback, useState, useRef, useEffect } from 'react';
 import { useEditorStore } from '@/store';
+import { sendViaIframe } from '@/hooks/usePostMessage';
 import { ElementBreadcrumb } from './ElementBreadcrumb';
 import { ElementLogBox } from '../ElementLogBox';
 import { BorderSection } from './BorderSection';
@@ -73,6 +74,61 @@ export function DesignPanel() {
   const startY = useRef(0);
   const startHeight = useRef(0);
 
+  // Hide selection overlay while user interacts with design panel controls
+  const designRef = useRef<HTMLDivElement>(null);
+  const overlayHidden = useRef(false);
+
+  useEffect(() => {
+    const el = designRef.current;
+    if (!el) return;
+
+    const hideOverlay = () => {
+      if (!overlayHidden.current) {
+        overlayHidden.current = true;
+        sendViaIframe({ type: 'HIDE_SELECTION_OVERLAY' });
+      }
+    };
+
+    const showOverlay = () => {
+      if (overlayHidden.current) {
+        overlayHidden.current = false;
+        sendViaIframe({ type: 'SHOW_SELECTION_OVERLAY' });
+      }
+    };
+
+    // Any pointer interaction inside the design panel hides the overlay
+    el.addEventListener('pointerdown', hideOverlay);
+
+    // Clicks outside the design panel restore the overlay
+    const onDocumentClick = (e: MouseEvent) => {
+      if (overlayHidden.current && !el.contains(e.target as Node)) {
+        showOverlay();
+      }
+    };
+    document.addEventListener('pointerdown', onDocumentClick);
+
+    // Also restore when an input blurs and focus leaves the panel entirely
+    const onFocusOut = (e: FocusEvent) => {
+      if (!overlayHidden.current) return;
+      const related = e.relatedTarget as Node | null;
+      if (!related || !el.contains(related)) {
+        // Small delay so clicking another control within the panel doesn't flash
+        setTimeout(() => {
+          if (overlayHidden.current && document.activeElement && !el.contains(document.activeElement)) {
+            showOverlay();
+          }
+        }, 150);
+      }
+    };
+    el.addEventListener('focusout', onFocusOut);
+
+    return () => {
+      el.removeEventListener('pointerdown', hideOverlay);
+      document.removeEventListener('pointerdown', onDocumentClick);
+      el.removeEventListener('focusout', onFocusOut);
+    };
+  }, []);
+
   const handleDragStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     isDragging.current = true;
@@ -142,7 +198,7 @@ export function DesignPanel() {
       </div>
 
       {/* Bottom section: design properties (fills remaining) */}
-      <div className="flex-1 overflow-y-auto min-h-0">
+      <div ref={designRef} className="flex-1 overflow-y-auto min-h-0">
         <DesignCSSTabToggle activeTab={activeTab} onTabChange={setActiveTab} />
         {activeTab === 'design' ? (
           <>

@@ -1,11 +1,13 @@
 'use client';
 
+import { useState } from 'react';
 import { TargetSelector } from './TargetSelector';
 import { BreakpointTabs } from './BreakpointTabs';
 import { SetupInstructions } from './SetupInstructions';
+import { ChangeSummaryModal } from './ChangeSummaryModal';
 import { useEditorStore } from '@/store';
 import { usePostMessage } from '@/hooks/usePostMessage';
-import { performUndo, performRedo } from '@/hooks/useChangeTracker';
+import { performUndo, performRedo, performRevertAll } from '@/hooks/useChangeTracker';
 
 export function TopBar() {
   const toggleLeftPanel = useEditorStore((s) => s.toggleLeftPanel);
@@ -13,7 +15,6 @@ export function TopBar() {
   const leftPanelOpen = useEditorStore((s) => s.leftPanelOpen);
   const rightPanelOpen = useEditorStore((s) => s.rightPanelOpen);
   const connectionStatus = useEditorStore((s) => s.connectionStatus);
-  const setActiveRightTab = useEditorStore((s) => s.setActiveRightTab);
   const changeCount = useEditorStore((s) => s.styleChanges.length);
   const selectionMode = useEditorStore((s) => s.selectionMode);
   const toggleSelectionMode = useEditorStore((s) => s.toggleSelectionMode);
@@ -21,6 +22,7 @@ export function TopBar() {
   const toggleViewMode = useEditorStore((s) => s.toggleViewMode);
   const canUndo = useEditorStore((s) => s.undoStack.length > 0);
   const canRedo = useEditorStore((s) => s.redoStack.length > 0);
+  const [showSummary, setShowSummary] = useState(false);
   const { sendToInspector, iframeRef } = usePostMessage();
 
   return (
@@ -182,18 +184,28 @@ export function TopBar() {
         </>
       )}
 
-      {/* Apply button — switches to Changes tab */}
+      {/* Summary + Reset All buttons */}
       {connectionStatus === 'connected' && changeCount > 0 && (
-        <button
-          onClick={() => {
-            setActiveRightTab('changes');
-            if (!rightPanelOpen) toggleRightPanel();
-          }}
-          className="px-3 py-1 text-xs font-medium rounded transition-colors"
-          style={{ background: 'var(--accent)', color: '#fff' }}
-        >
-          Apply ({changeCount})
-        </button>
+        <>
+          <button
+            onClick={() => setShowSummary(true)}
+            className="px-3 py-1 text-xs font-medium rounded transition-colors"
+            style={{
+              border: '1px solid var(--accent)',
+              color: 'var(--accent)',
+              background: 'transparent',
+            }}
+          >
+            Summary ({changeCount})
+          </button>
+          <button
+            onClick={performRevertAll}
+            className="px-3 py-1 text-xs font-medium rounded transition-colors"
+            style={{ background: '#f87171', color: '#fff' }}
+          >
+            Reset All
+          </button>
+        </>
       )}
 
       {/* Right panel toggle */}
@@ -207,6 +219,9 @@ export function TopBar() {
       </button>
     </div>
     <SetupInstructions />
+    {showSummary && (
+      <ChangeSummaryModal onClose={() => setShowSummary(false)} />
+    )}
     </div>
   );
 }

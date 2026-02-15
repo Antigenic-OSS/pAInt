@@ -47,6 +47,7 @@ function parseStop(stopStr: string): GradientStop | null {
 
 /**
  * Parse a CSS gradient string into a GradientData object.
+ * Supports both regular and repeating variants.
  */
 export function parseGradient(css: string): GradientData | null {
   if (!css) return null;
@@ -54,8 +55,21 @@ export function parseGradient(css: string): GradientData | null {
 
   let type: 'linear' | 'radial' | 'conic';
   let inner: string;
+  let repeat = false;
 
-  if (trimmed.startsWith('linear-gradient(')) {
+  if (trimmed.startsWith('repeating-linear-gradient(')) {
+    type = 'linear';
+    repeat = true;
+    inner = trimmed.slice('repeating-linear-gradient('.length, -1);
+  } else if (trimmed.startsWith('repeating-radial-gradient(')) {
+    type = 'radial';
+    repeat = true;
+    inner = trimmed.slice('repeating-radial-gradient('.length, -1);
+  } else if (trimmed.startsWith('repeating-conic-gradient(')) {
+    type = 'conic';
+    repeat = true;
+    inner = trimmed.slice('repeating-conic-gradient('.length, -1);
+  } else if (trimmed.startsWith('linear-gradient(')) {
     type = 'linear';
     inner = trimmed.slice('linear-gradient('.length, -1);
   } else if (trimmed.startsWith('radial-gradient(')) {
@@ -80,6 +94,12 @@ export function parseGradient(css: string): GradientData | null {
   if (angleMatch) {
     angle = parseFloat(angleMatch[1]);
     stopStartIndex = 1;
+  } else if (firstArg.startsWith('from ')) {
+    const fromMatch = firstArg.match(/^from\s+(\d+(?:\.\d+)?)deg$/);
+    if (fromMatch) {
+      angle = parseFloat(fromMatch[1]);
+      stopStartIndex = 1;
+    }
   } else if (firstArg === 'to top') {
     angle = 0; stopStartIndex = 1;
   } else if (firstArg === 'to right') {
@@ -114,21 +134,23 @@ export function parseGradient(css: string): GradientData | null {
 
   if (stops.length < 2) return null;
 
-  return { type, angle, stops };
+  return { type, angle, stops, repeat };
 }
 
 /**
  * Serialize a GradientData object back to a valid CSS gradient string.
+ * Supports repeating variants when data.repeat is true.
  */
 export function serializeGradient(data: GradientData): string {
   const stopStrs = data.stops.map((s) => `${s.color} ${s.position}%`);
+  const prefix = data.repeat ? 'repeating-' : '';
 
   switch (data.type) {
     case 'linear':
-      return `linear-gradient(${data.angle}deg, ${stopStrs.join(', ')})`;
+      return `${prefix}linear-gradient(${data.angle}deg, ${stopStrs.join(', ')})`;
     case 'radial':
-      return `radial-gradient(${stopStrs.join(', ')})`;
+      return `${prefix}radial-gradient(${stopStrs.join(', ')})`;
     case 'conic':
-      return `conic-gradient(from ${data.angle}deg, ${stopStrs.join(', ')})`;
+      return `${prefix}conic-gradient(from ${data.angle}deg, ${stopStrs.join(', ')})`;
   }
 }

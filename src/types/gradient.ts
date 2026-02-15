@@ -8,4 +8,5 @@ export interface GradientData {
   type: 'linear' | 'radial' | 'conic';
   angle: number;
   stops: GradientStop[];
+  repeat?: boolean;
 }

@@ -82,7 +82,9 @@ function getInspectorCode(): string {
           'border-width','border-style','border-color','border-radius',
           'border-top-left-radius','border-top-right-radius',
           'border-bottom-right-radius','border-bottom-left-radius',
-          'background-color','background-image','opacity',
+          'background-color','background-image',
+          'background-size','background-position','background-repeat','background-attachment','background-clip',
+          'opacity',
           'display','flex-direction','justify-content','align-items',
           'flex-wrap','gap','grid-template-columns','grid-template-rows',
           'position','top','right','bottom','left','z-index'
@@ -168,11 +170,11 @@ function getInspectorCode(): string {
 
       // Hover highlight — dotted green border + element name label (Webflow-style)
       var hoverOverlay = document.createElement('div');
-      hoverOverlay.style.cssText = 'position:fixed;pointer-events:none;z-index:999996;border:1px dashed rgba(74,222,128,0.30);display:none;transition:top 0.04s,left 0.04s,width 0.04s,height 0.04s;';
+      hoverOverlay.style.cssText = 'position:fixed;pointer-events:none;z-index:999996;border:1px dashed #4ade80;display:none;transition:top 0.04s,left 0.04s,width 0.04s,height 0.04s;';
       document.body.appendChild(hoverOverlay);
 
       var hoverLabel = document.createElement('div');
-      hoverLabel.style.cssText = 'position:absolute;top:-18px;left:-1px;padding:1px 6px;font-size:10px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;line-height:14px;color:#fff;background:rgba(74,222,128,0.70);border-radius:3px 3px 0 0;white-space:nowrap;pointer-events:none;';
+      hoverLabel.style.cssText = 'position:absolute;top:-18px;left:-1px;padding:1px 6px;font-size:10px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;line-height:14px;color:#fff;background:#1D3F23;border-radius:3px 3px 0 0;white-space:nowrap;pointer-events:none;';
       hoverOverlay.appendChild(hoverLabel);
 
       var hoveredElement = null;
