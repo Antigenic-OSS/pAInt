@@ -106,6 +106,74 @@ function buildSingleElementLog(snapshot: ElementSnapshot, changes: StyleChange[]
   return lines.join('\n').trim();
 }
 
+function buildElementSection(snapshot: ElementSnapshot, changes: StyleChange[]): string {
+  const lines: string[] = [];
+
+  const sourcePath = inferSourcePath({
+    tagName: snapshot.tagName,
+    className: snapshot.className,
+    id: snapshot.elementId,
+    selectorPath: snapshot.selectorPath,
+    pagePath: snapshot.pagePath,
+  });
+
+  const attrParts: string[] = [];
+  if (snapshot.elementId) attrParts.push(`id="${snapshot.elementId}"`);
+  if (snapshot.className) attrParts.push(`class="${snapshot.className}"`);
+  const tag = `<${snapshot.tagName}${attrParts.length ? ' ' + attrParts.join(' ') : ''}>`;
+
+  lines.push('SOURCE');
+  lines.push(sourcePath);
+  lines.push('');
+  lines.push('ELEMENT');
+  lines.push(tag);
+  lines.push('');
+  lines.push('APPLIES TO');
+  const changeBp = (changes[0]?.breakpoint || 'mobile') as Breakpoint;
+  const { deviceName: elDevice, range: elRange } = getBreakpointDeviceInfo(changeBp);
+  lines.push(snapshot.changeScope === 'all' ? 'All breakpoints' : `${elDevice} (${elRange})`);
+  lines.push('');
+  lines.push('PATH');
+  lines.push(snapshot.selectorPath);
+  lines.push('');
+
+  const attrEntries = Object.entries(snapshot.attributes);
+  if (attrEntries.length > 0) {
+    lines.push('ATTRIBUTES');
+    for (const [key, value] of attrEntries) {
+      lines.push(`  ${key}: ${value}`);
+    }
+    lines.push('');
+  }
+
+  const styleKeys = ['color', 'background-color', 'font-size', 'font-family', 'display', 'position'];
+  lines.push('COMPUTED STYLES');
+  for (const key of styleKeys) {
+    if (snapshot.computedStyles[key]) {
+      lines.push(`  ${key}: ${snapshot.computedStyles[key]}`);
+    }
+  }
+  lines.push('');
+
+  if (snapshot.innerText) {
+    lines.push('INNER TEXT');
+    lines.push(snapshot.innerText);
+    lines.push('');
+  }
+
+  lines.push('CHANGES');
+  for (const c of changes) {
+    if (c.property === '__text_content__') {
+      lines.push(`  text content: "${c.originalValue}" → "${c.newValue}"`);
+    } else {
+      const cInfo = getBreakpointDeviceInfo(c.breakpoint);
+      lines.push(`  ${c.property}: "${c.originalValue}" → "${c.newValue}" [${cInfo.deviceName} ${cInfo.range}]`);
+    }
+  }
+
+  return lines.join('\n');
+}
+
 function buildGlobalLog(opts: {
   groups: Array<{ snapshot: ElementSnapshot; changes: StyleChange[] }>;
   targetUrl: string | null;
@@ -126,12 +194,17 @@ function buildGlobalLog(opts: {
   lines.push(`Generated: ${new Date().toISOString()}`);
   lines.push('');
 
-  for (const { snapshot, changes } of opts.groups) {
-    lines.push(buildSingleElementLog(snapshot, changes));
-    lines.push('');
-    lines.push('');
+  for (let i = 0; i < opts.groups.length; i++) {
+    const { snapshot, changes } = opts.groups[i];
+    lines.push(buildElementSection(snapshot, changes));
+    if (i < opts.groups.length - 1) {
+      lines.push('');
+      lines.push('---');
+      lines.push('');
+    }
   }
 
+  lines.push('');
   lines.push(buildInstructionsFooter(totalChanges, opts.groups.length));
 
   return lines.join('\n').trim();
