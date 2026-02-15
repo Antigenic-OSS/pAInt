@@ -166,6 +166,7 @@ export function useChangeTracker() {
         newValue: value,
         breakpoint: activeBreakpoint,
         timestamp: Date.now(),
+        changeScope: state.changeScope,
       });
     },
     [addStyleChange, saveElementSnapshot, sendToInspector, pushUndo]

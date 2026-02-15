@@ -3,10 +3,27 @@
 import { useMemo, useState, useCallback, useRef } from 'react';
 import { useEditorStore } from '@/store';
 import { useChangeTracker } from '@/hooks/useChangeTracker';
-import { BREAKPOINTS, buildInstructionsFooter, getBreakpointDeviceInfo, getBreakpointRange } from '@/lib/constants';
+import { buildInstructionsFooter, getBreakpointDeviceInfo } from '@/lib/constants';
 import { inferSourcePath } from '@/lib/classifyElement';
 import { EditablePre } from '@/components/common/EditablePre';
 import type { StyleChange, ElementSnapshot, Breakpoint } from '@/types/changelog';
+
+type BreakpointGroupKey = 'all' | 'desktop-only' | 'tablet-only' | 'mobile-only';
+
+const GROUP_ORDER: BreakpointGroupKey[] = ['all', 'desktop-only', 'tablet-only', 'mobile-only'];
+
+const GROUP_META: Record<BreakpointGroupKey, { label: string }> = {
+  'all':           { label: 'All' },
+  'desktop-only':  { label: 'Desktop Only' },
+  'tablet-only':   { label: 'Tablet Only' },
+  'mobile-only':   { label: 'Mobile Only' },
+};
+
+function getGroupKey(change: StyleChange): BreakpointGroupKey {
+  const scope = change.changeScope ?? 'all';
+  if (scope === 'all') return 'all';
+  return `${change.breakpoint}-only` as BreakpointGroupKey;
+}
 
 function truncateText(text: string, maxLen: number): string {
   if (!text) return '(empty)';
@@ -188,17 +205,19 @@ function buildElementSection(snapshot: ElementSnapshot, changes: StyleChange[]):
   return lines.join('\n');
 }
 
-function buildGlobalLog(opts: {
-  groups: Array<{ snapshot: ElementSnapshot; changes: StyleChange[] }>;
+function buildGroupLog(opts: {
+  groupLabel: string;
+  elements: Array<{ snapshot: ElementSnapshot; changes: StyleChange[] }>;
   targetUrl: string | null;
   pagePath: string;
   breakpoint: Breakpoint;
 }): string {
   const lines: string[] = [];
-  const totalChanges = opts.groups.reduce((sum, g) => sum + g.changes.length, 0);
+  const totalChanges = opts.elements.reduce((sum, g) => sum + g.changes.length, 0);
   const { deviceName, range } = getBreakpointDeviceInfo(opts.breakpoint);
 
   lines.push('=== DEV EDITOR CHANGELOG ===');
+  lines.push(`Scope: ${opts.groupLabel}`);
   if (opts.targetUrl) {
     lines.push(`Project URL: ${opts.targetUrl}`);
     lines.push(`Page: ${opts.pagePath || '/'}`);
@@ -208,10 +227,10 @@ function buildGlobalLog(opts: {
   lines.push(`Generated: ${new Date().toISOString()}`);
   lines.push('');
 
-  for (let i = 0; i < opts.groups.length; i++) {
-    const { snapshot, changes } = opts.groups[i];
+  for (let i = 0; i < opts.elements.length; i++) {
+    const { snapshot, changes } = opts.elements[i];
     lines.push(buildElementSection(snapshot, changes));
-    if (i < opts.groups.length - 1) {
+    if (i < opts.elements.length - 1) {
       lines.push('');
       lines.push('---');
       lines.push('');
@@ -219,7 +238,7 @@ function buildGlobalLog(opts: {
   }
 
   lines.push('');
-  lines.push(buildInstructionsFooter(totalChanges, opts.groups.length));
+  lines.push(buildInstructionsFooter(totalChanges, opts.elements.length));
 
   return lines.join('\n').trim();
 }
@@ -259,23 +278,6 @@ function CopyButton({ text, size = 11 }: { text: string; size?: number }) {
     >
       {copied ? <CheckIcon size={size} /> : <CopyIcon size={size} />}
       {copied ? 'Copied' : 'Copy'}
-    </button>
-  );
-}
-
-function GlobalCopyButton({ text }: { text: string }) {
-  const { copied, copy } = useCopy();
-  return (
-    <button
-      onClick={() => copy(text)}
-      className="w-full py-1.5 px-3 rounded text-xs font-medium transition-colors flex items-center justify-center gap-1.5"
-      style={{
-        background: copied ? 'var(--success)' : 'var(--accent)',
-        color: '#fff',
-      }}
-    >
-      {copied ? <CheckIcon size={12} /> : <CopyIcon size={12} />}
-      {copied ? 'Copied!' : 'Copy All Changes'}
     </button>
   );
 }
@@ -405,6 +407,117 @@ function ElementAccordion({
   );
 }
 
+interface BreakpointGroupData {
+  key: BreakpointGroupKey;
+  label: string;
+  elements: Array<{ selector: string; snapshot: ElementSnapshot; changes: StyleChange[] }>;
+  allChanges: StyleChange[];
+}
+
+function BreakpointGroupAccordion({
+  group,
+  targetUrl,
+  pagePath,
+  breakpoint,
+  onRevert,
+}: {
+  group: BreakpointGroupData;
+  targetUrl: string | null;
+  pagePath: string;
+  breakpoint: Breakpoint;
+  onRevert: (id: string, selector: string, property: string) => void;
+}) {
+  const [open, setOpen] = useState(true);
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  const groupLogText = useMemo(() => buildGroupLog({
+    groupLabel: group.label,
+    elements: group.elements,
+    targetUrl,
+    pagePath,
+    breakpoint,
+  }), [group, targetUrl, pagePath, breakpoint]);
+
+  const totalChanges = group.allChanges.length;
+
+  const handleClearGroup = useCallback(() => {
+    for (const c of group.allChanges) {
+      onRevert(c.id, c.elementSelector, c.property);
+    }
+    setShowConfirm(false);
+  }, [group.allChanges, onRevert]);
+
+  return (
+    <div style={{ borderBottom: '2px solid var(--border)' }}>
+      {/* Group header */}
+      <div
+        onClick={() => setOpen(!open)}
+        className="flex items-center w-full px-3 py-2 text-xs hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
+        style={{ background: 'rgba(42,42,42,0.5)' }}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(!open); } }}
+      >
+        <span
+          className="mr-2 text-[10px] transition-transform"
+          style={{ transform: open ? 'rotate(0deg)' : 'rotate(-90deg)' }}
+        >
+          ▼
+        </span>
+        <span className="flex-1 text-left font-medium" style={{ color: 'var(--text-primary)' }}>
+          {group.label}
+          <span className="font-normal ml-2" style={{ color: 'var(--text-muted)' }}>
+            {totalChanges} change{totalChanges !== 1 ? 's' : ''}
+          </span>
+        </span>
+        <CopyButton text={groupLogText} size={11} />
+        {showConfirm ? (
+          <span className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={handleClearGroup}
+              className="px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors"
+              style={{ background: 'var(--error)', color: '#fff' }}
+            >
+              Confirm
+            </button>
+            <button
+              onClick={() => setShowConfirm(false)}
+              className="px-1.5 py-0.5 rounded text-[10px] transition-colors"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              Cancel
+            </button>
+          </span>
+        ) : (
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowConfirm(true); }}
+            className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] transition-colors flex-shrink-0 hover:bg-[var(--bg-hover)]"
+            style={{ color: 'var(--text-muted)' }}
+            title={`Clear all ${group.label.toLowerCase()} changes`}
+          >
+            <ClearIcon size={11} />
+            Clear
+          </button>
+        )}
+      </div>
+
+      {/* Group body: element accordions */}
+      {open && (
+        <div>
+          {group.elements.map(({ selector, snapshot, changes }) => (
+            <ElementAccordion
+              key={selector}
+              snapshot={snapshot}
+              changes={changes}
+              onRevert={onRevert}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ChangeScopeToggle() {
   const changeScope = useEditorStore((s) => s.changeScope);
   const setChangeScope = useEditorStore((s) => s.setChangeScope);
@@ -451,14 +564,12 @@ function ChangeScopeToggle() {
 }
 
 export function ChangesPanel() {
-  const [showConfirm, setShowConfirm] = useState(false);
-
   const styleChanges = useEditorStore((s) => s.styleChanges);
   const elementSnapshots = useEditorStore((s) => s.elementSnapshots);
   const targetUrl = useEditorStore((s) => s.targetUrl);
   const activeBreakpoint = useEditorStore((s) => s.activeBreakpoint);
   const currentPagePath = useEditorStore((s) => s.currentPagePath);
-  const { revertChange, revertAll } = useChangeTracker();
+  const { revertChange } = useChangeTracker();
 
   // Separate component extractions from regular changes
   const { componentExtractions, regularChanges } = useMemo(() => {
@@ -474,35 +585,51 @@ export function ChangesPanel() {
     return { componentExtractions: extractions, regularChanges: regular };
   }, [styleChanges]);
 
-  // Group regular changes by element selector
-  const groups = useMemo(() => {
-    const map = new Map<string, StyleChange[]>();
+  // Group regular changes by breakpoint scope, then by element selector
+  const breakpointGroups = useMemo(() => {
+    // First pass: group changes by breakpoint group key
+    const groupMap = new Map<BreakpointGroupKey, StyleChange[]>();
     for (const change of regularChanges) {
-      const existing = map.get(change.elementSelector) || [];
+      const key = getGroupKey(change);
+      const existing = groupMap.get(key) || [];
       existing.push(change);
-      map.set(change.elementSelector, existing);
+      groupMap.set(key, existing);
     }
-    const result: Array<{ selector: string; snapshot: ElementSnapshot; changes: StyleChange[] }> = [];
-    for (const [selector, changes] of map) {
-      const snapshot = elementSnapshots[selector];
-      if (snapshot) {
-        result.push({ selector, snapshot, changes });
+
+    // Second pass: within each group, sub-group by element selector
+    const result: BreakpointGroupData[] = [];
+    for (const groupKey of GROUP_ORDER) {
+      const changes = groupMap.get(groupKey);
+      if (!changes || changes.length === 0) continue;
+
+      const elementMap = new Map<string, StyleChange[]>();
+      for (const change of changes) {
+        const existing = elementMap.get(change.elementSelector) || [];
+        existing.push(change);
+        elementMap.set(change.elementSelector, existing);
+      }
+
+      const elements: Array<{ selector: string; snapshot: ElementSnapshot; changes: StyleChange[] }> = [];
+      for (const [selector, elChanges] of elementMap) {
+        const snapshot = elementSnapshots[selector];
+        if (snapshot) {
+          elements.push({ selector, snapshot, changes: elChanges });
+        }
+      }
+
+      if (elements.length > 0) {
+        result.push({
+          key: groupKey,
+          label: GROUP_META[groupKey].label,
+          elements,
+          allChanges: changes,
+        });
       }
     }
     return result;
   }, [regularChanges, elementSnapshots]);
 
-  const globalLogText = useMemo(() => buildGlobalLog({
-    groups,
-    targetUrl,
-    pagePath: currentPagePath,
-    breakpoint: activeBreakpoint,
-  }), [groups, targetUrl, currentPagePath, activeBreakpoint]);
-
-  const handleClearAll = useCallback(() => {
-    revertAll();
-    setShowConfirm(false);
-  }, [revertAll]);
+  const totalElements = breakpointGroups.reduce((sum, g) => sum + g.elements.length, 0);
 
   if (styleChanges.length === 0) {
     return (
@@ -526,11 +653,11 @@ export function ChangesPanel() {
         style={{ borderBottom: '1px solid var(--border)' }}
       >
         <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-          {styleChanges.length} change{styleChanges.length !== 1 ? 's' : ''} · {groups.length} element{groups.length !== 1 ? 's' : ''}
+          {regularChanges.length} change{regularChanges.length !== 1 ? 's' : ''} · {totalElements} element{totalElements !== 1 ? 's' : ''}
         </span>
       </div>
 
-      {/* Per-element accordions */}
+      {/* Breakpoint group accordions */}
       <div className="flex-1 overflow-y-auto">
         {/* Component extraction entries */}
         {componentExtractions.map((extraction) => {
@@ -574,46 +701,16 @@ export function ChangesPanel() {
           );
         })}
 
-        {groups.map(({ selector, snapshot, changes }) => (
-          <ElementAccordion
-            key={selector}
-            snapshot={snapshot}
-            changes={changes}
+        {breakpointGroups.map((group) => (
+          <BreakpointGroupAccordion
+            key={group.key}
+            group={group}
+            targetUrl={targetUrl}
+            pagePath={currentPagePath}
+            breakpoint={activeBreakpoint}
             onRevert={revertChange}
           />
         ))}
-      </div>
-
-      {/* Global actions at bottom */}
-      <div className="flex-shrink-0 flex flex-col gap-2 p-3" style={{ borderTop: '1px solid var(--border)' }}>
-        <GlobalCopyButton text={globalLogText} />
-
-        {showConfirm ? (
-          <div className="flex gap-2">
-            <button
-              onClick={handleClearAll}
-              className="flex-1 py-1.5 px-3 rounded text-xs font-medium transition-colors"
-              style={{ background: 'var(--error)', color: '#fff' }}
-            >
-              Confirm Clear
-            </button>
-            <button
-              onClick={() => setShowConfirm(false)}
-              className="flex-1 py-1.5 px-3 rounded text-xs font-medium transition-colors"
-              style={{ background: 'var(--bg-hover)', color: 'var(--text-secondary)' }}
-            >
-              Cancel
-            </button>
-          </div>
-        ) : (
-          <button
-            onClick={() => setShowConfirm(true)}
-            className="w-full py-1.5 px-3 rounded text-xs font-medium transition-colors"
-            style={{ background: 'var(--bg-hover)', color: 'var(--text-secondary)' }}
-          >
-            Clear All Changes
-          </button>
-        )}
       </div>
     </div>
   );

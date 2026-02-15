@@ -8,6 +8,7 @@ export interface StyleChange {
   newValue: string;
   breakpoint: Breakpoint;
   timestamp: number;
+  changeScope?: 'all' | 'breakpoint-only';
 }
 
 export interface ElementSnapshot {
