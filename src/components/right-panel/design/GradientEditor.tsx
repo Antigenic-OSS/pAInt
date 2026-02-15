@@ -714,6 +714,7 @@ export function GradientEditor({ value, onChange, showTypeSelector = true }: Gra
         <ColorPicker
           value={currentStop?.color || '#000000'}
           onChange={updateStopColor}
+          onSelectVariable={(varExpr) => updateStopColor(varExpr)}
         />
         <div className="flex items-center gap-0.5 ml-auto shrink-0">
           <input

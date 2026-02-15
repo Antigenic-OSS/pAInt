@@ -327,7 +327,7 @@ function OverlayPanel({
       <span className="text-[11px] w-12 shrink-0" style={{ color: 'var(--text-muted)' }}>
         Color
       </span>
-      <ColorPicker value={color} onChange={onChange} />
+      <ColorPicker value={color} onChange={onChange} onSelectVariable={onChange} />
     </div>
   );
 }

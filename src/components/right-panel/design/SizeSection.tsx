@@ -4,6 +4,7 @@ import { useCallback } from 'react';
 import { useEditorStore } from '@/store';
 import { SectionHeader } from '@/components/right-panel/design/inputs/SectionHeader';
 import { CompactInput } from '@/components/right-panel/design/inputs/CompactInput';
+import { DraggableLabel } from '@/components/right-panel/design/inputs/DraggableLabel';
 import { useChangeTracker } from '@/hooks/useChangeTracker';
 
 // ─── Properties tracked ─────────────────────────────────────────
@@ -46,7 +47,7 @@ export function SizeSection() {
     <SectionHeader title="Size" defaultOpen={true} hasChanges={hasChanges} onReset={handleResetAll}>
       {/* Width & Height */}
       <div className="grid grid-cols-[auto_1fr_auto_1fr] items-center gap-x-2 gap-y-2">
-        <span className="text-[11px] whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>Width</span>
+        <DraggableLabel value={computedStyles.width || 'auto'} property="width" onChange={handleChange} className="text-[11px] whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>Width</DraggableLabel>
         <CompactInput
           value={computedStyles.width || 'auto'}
           property="width"
@@ -55,7 +56,7 @@ export function SizeSection() {
           units={['px', '%', 'em', 'rem', 'vw', 'auto']}
           className="min-w-0"
         />
-        <span className="text-[11px] whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>Height</span>
+        <DraggableLabel value={computedStyles.height || 'auto'} property="height" onChange={handleChange} className="text-[11px] whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>Height</DraggableLabel>
         <CompactInput
           value={computedStyles.height || 'auto'}
           property="height"
@@ -66,7 +67,7 @@ export function SizeSection() {
         />
 
         {/* Min Width & Min Height */}
-        <span className="text-[11px] whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>Min W</span>
+        <DraggableLabel value={computedStyles.minWidth || '0px'} property="minWidth" onChange={handleChange} min={0} className="text-[11px] whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>Min W</DraggableLabel>
         <CompactInput
           value={computedStyles.minWidth || '0px'}
           property="minWidth"
@@ -76,7 +77,7 @@ export function SizeSection() {
           min={0}
           className="min-w-0"
         />
-        <span className="text-[11px] whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>Min H</span>
+        <DraggableLabel value={computedStyles.minHeight || '0px'} property="minHeight" onChange={handleChange} min={0} className="text-[11px] whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>Min H</DraggableLabel>
         <CompactInput
           value={computedStyles.minHeight || '0px'}
           property="minHeight"
@@ -88,7 +89,7 @@ export function SizeSection() {
         />
 
         {/* Max Width & Max Height */}
-        <span className="text-[11px] whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>Max W</span>
+        <DraggableLabel value={computedStyles.maxWidth || 'none'} property="maxWidth" onChange={handleChange} className="text-[11px] whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>Max W</DraggableLabel>
         <CompactInput
           value={computedStyles.maxWidth || 'none'}
           property="maxWidth"
@@ -97,7 +98,7 @@ export function SizeSection() {
           units={['px', '%', 'em', 'rem', 'vw', 'none']}
           className="min-w-0"
         />
-        <span className="text-[11px] whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>Max H</span>
+        <DraggableLabel value={computedStyles.maxHeight || 'none'} property="maxHeight" onChange={handleChange} className="text-[11px] whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>Max H</DraggableLabel>
         <CompactInput
           value={computedStyles.maxHeight || 'none'}
           property="maxHeight"

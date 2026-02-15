@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { sendViaIframe } from '@/hooks/usePostMessage';
+import { useEditorStore } from '@/store';
+import { filterColorVariables } from '@/lib/cssVariableUtils';
 
 // ─── Color Conversion Utilities ─────────────────────────────────
 
@@ -288,13 +290,32 @@ function ScrubInput({
 interface ColorPickerProps {
   value: string;
   onChange: (value: string) => void;
+  onSelectVariable?: (varExpr: string) => void;
   label?: string;
 }
 
-export function ColorPicker({ value, onChange, label }: ColorPickerProps) {
+export function ColorPicker({ value, onChange, onSelectVariable, label }: ColorPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [varsOpen, setVarsOpen] = useState(false);
+  const [varSearch, setVarSearch] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
+
+  // CSS variable definitions from store
+  const definitions = useEditorStore((s) => s.cssVariableDefinitions);
+  const colorVars = useMemo(() => filterColorVariables(definitions), [definitions]);
+  const filteredColorVars = useMemo(() => {
+    if (!varSearch) return colorVars;
+    const lower = varSearch.toLowerCase();
+    const result: typeof colorVars = {};
+    for (const [name, def] of Object.entries(colorVars)) {
+      if (name.toLowerCase().includes(lower)) {
+        result[name] = def;
+      }
+    }
+    return result;
+  }, [colorVars, varSearch]);
+  const hasColorVars = Object.keys(colorVars).length > 0;
 
   // Parse incoming color
   const { rgb: initRgb, alpha: initAlpha } = parseColor(value);
@@ -642,6 +663,89 @@ export function ColorPicker({ value, onChange, label }: ColorPickerProps) {
               <ScrubInput label="B" value={hsv.v} min={0} max={100} onChange={updateV} />
               <ScrubInput label="A" value={alpha} min={0} max={100} onChange={updateA} />
             </div>
+
+            {/* ─── Variables section ─────────────────── */}
+            {hasColorVars && (
+              <div className="mt-2" style={{ borderTop: '1px solid var(--border)' }}>
+                <button
+                  type="button"
+                  onClick={() => setVarsOpen(!varsOpen)}
+                  className="w-full flex items-center justify-between py-1.5 px-0.5"
+                  style={{ color: 'var(--text-secondary)' }}
+                >
+                  <span className="text-[10px] font-medium">Variables</span>
+                  <svg
+                    width="10"
+                    height="10"
+                    viewBox="0 0 10 10"
+                    className={`transition-transform ${varsOpen ? 'rotate-180' : ''}`}
+                    style={{ fill: 'var(--text-muted)' }}
+                  >
+                    <path d="M2 3.5L5 6.5L8 3.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
+                  </svg>
+                </button>
+
+                {varsOpen && (
+                  <div>
+                    {/* Search */}
+                    <input
+                      type="text"
+                      placeholder="Filter variables..."
+                      value={varSearch}
+                      onChange={(e) => setVarSearch(e.target.value)}
+                      className="w-full text-[10px] py-1 px-1.5 rounded mb-1"
+                      style={{
+                        background: 'var(--bg-primary, #1e1e1e)',
+                        border: '1px solid var(--border)',
+                        color: 'var(--text-primary)',
+                        outline: 'none',
+                      }}
+                      autoFocus
+                    />
+
+                    {/* Scrollable list */}
+                    <div className="overflow-y-auto" style={{ maxHeight: '140px' }}>
+                      {Object.entries(filteredColorVars).length === 0 && (
+                        <div
+                          className="text-[10px] px-1 py-2 text-center"
+                          style={{ color: 'var(--text-muted)' }}
+                        >
+                          No matching variables
+                        </div>
+                      )}
+                      {Object.entries(filteredColorVars).map(([name, def]) => (
+                        <button
+                          key={name}
+                          type="button"
+                          onClick={() => {
+                            const expr = `var(${name})`;
+                            if (onSelectVariable) {
+                              onSelectVariable(expr);
+                            } else {
+                              onChange(expr);
+                            }
+                            setIsOpen(false);
+                            setVarsOpen(false);
+                            setVarSearch('');
+                          }}
+                          className="w-full flex items-center gap-1.5 px-1 py-1 rounded text-[10px] hover:opacity-80"
+                          style={{ color: 'var(--text-primary)' }}
+                        >
+                          <div
+                            className="w-3.5 h-3.5 rounded border flex-shrink-0"
+                            style={{
+                              background: def.resolvedValue,
+                              borderColor: 'var(--border)',
+                            }}
+                          />
+                          <span className="truncate">{name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

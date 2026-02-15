@@ -50,6 +50,7 @@ export function ColorInput({
       label={label}
       value={value}
       onChange={(val) => onChange(property, val)}
+      onSelectVariable={(varExpr) => onChange(property, varExpr)}
     />
   );
 }

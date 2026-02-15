@@ -171,6 +171,7 @@ export function ShadowBlurSection() {
             label="Color"
             value={shadow.color}
             onChange={(c) => updateShadow(i, { color: c })}
+            onSelectVariable={(varExpr) => updateShadow(i, { color: varExpr })}
           />
         </div>
       ))}

@@ -326,7 +326,24 @@ export default function ComponentsPanel() {
                       + Create
                     </button>
                   ) : null}
-                  {isSelected && (
+                  {/* Expand chevron for variants */}
+                  {component.variants.length > 0 && (
+                    <svg
+                      width="10"
+                      height="10"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      stroke={isSelected ? 'var(--accent)' : 'var(--text-muted)'}
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="flex-shrink-0 transition-transform"
+                      style={{ transform: isSelected ? 'rotate(90deg)' : 'rotate(0deg)' }}
+                    >
+                      <path d="M6 4l4 4-4 4" />
+                    </svg>
+                  )}
+                  {isSelected && component.variants.length === 0 && (
                     <div
                       className="w-1.5 h-1.5 rounded-full flex-shrink-0"
                       style={{ background: 'var(--accent)' }}
@@ -334,35 +351,39 @@ export default function ComponentsPanel() {
                   )}
                 </div>
 
-                {/* Variant dropdowns */}
-                {component.variants.length > 0 && (
-                  <div className="px-3 pb-2 flex flex-wrap gap-2">
+                {/* Variant dropdowns — only visible when selected */}
+                {isSelected && component.variants.length > 0 && (
+                  <div
+                    className="px-3 pb-2 pt-1 flex flex-col gap-2"
+                    style={{ background: 'rgba(74, 158, 255, 0.04)' }}
+                  >
                     {component.variants.map((group, gi) => (
-                      <div key={group.groupName} className="flex items-center gap-1">
-                        <span style={{ color: 'var(--text-muted)', fontSize: '10px' }}>
-                          {group.groupName}:
-                        </span>
-                        <select
-                          value={group.activeIndex}
-                          onChange={(e) =>
-                            handleVariantChange(component, gi, parseInt(e.target.value, 10))
-                          }
-                          className="text-xs"
-                          style={{
-                            background: 'var(--bg-input)',
-                            border: '1px solid var(--border)',
-                            color: 'var(--text-primary)',
-                            padding: '2px 4px',
-                            borderRadius: '3px',
-                            outline: 'none',
-                          }}
+                      <div key={group.groupName}>
+                        <div
+                          className="text-[10px] font-medium uppercase tracking-wider mb-1"
+                          style={{ color: 'var(--text-muted)' }}
                         >
-                          {group.options.map((option, oi) => (
-                            <option key={option.label} value={oi}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
+                          {group.groupName}
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {group.options.map((option, oi) => {
+                            const isActive = group.activeIndex === oi;
+                            return (
+                              <button
+                                key={option.label}
+                                onClick={() => handleVariantChange(component, gi, oi)}
+                                className="px-2 py-0.5 text-[11px] rounded transition-colors"
+                                style={{
+                                  background: isActive ? 'var(--accent)' : 'var(--bg-input)',
+                                  color: isActive ? '#fff' : 'var(--text-secondary)',
+                                  border: `1px solid ${isActive ? 'var(--accent)' : 'var(--border)'}`,
+                                }}
+                              >
+                                {option.label}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
                     ))}
                   </div>

@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { useEditorStore } from '@/store';
 import { SectionHeader } from '@/components/right-panel/design/inputs/SectionHeader';
 import { CompactInput } from '@/components/right-panel/design/inputs/CompactInput';
+import { DraggableLabel } from '@/components/right-panel/design/inputs/DraggableLabel';
 import { IconToggleGroup } from '@/components/right-panel/design/inputs/IconToggleGroup';
 import { ColorInput } from '@/components/right-panel/design/inputs/ColorInput';
 import { ColorPicker } from '@/components/common/ColorPicker';
@@ -242,7 +243,7 @@ export function TextSection() {
 
       {/* Size + Height + Spacing */}
       <div className="grid grid-cols-[52px_1fr_auto_1fr] items-center gap-x-2 gap-y-2">
-        <span className="text-[11px] whitespace-nowrap" style={{ color: 'var(--accent)' }}>Size</span>
+        <DraggableLabel value={fontSize} property="fontSize" onChange={handleChange} min={0} className="text-[11px] whitespace-nowrap" style={{ color: 'var(--accent)' }}>Size</DraggableLabel>
         <CompactInput
           value={fontSize}
           property="fontSize"
@@ -251,7 +252,7 @@ export function TextSection() {
           min={0}
           className="min-w-0"
         />
-        <span className="text-[11px] whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>Height</span>
+        <DraggableLabel value={lineHeight} property="lineHeight" onChange={handleChange} className="text-[11px] whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>Height</DraggableLabel>
         <CompactInput
           value={lineHeight}
           property="lineHeight"
@@ -259,7 +260,7 @@ export function TextSection() {
           units={['px', 'em', 'rem', '']}
           className="min-w-0"
         />
-        <span className="text-[11px] whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>Spacing</span>
+        <DraggableLabel value={letterSpacing} property="letterSpacing" onChange={handleChange} className="text-[11px] whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>Spacing</DraggableLabel>
         <CompactInput
           value={letterSpacing}
           property="letterSpacing"
@@ -267,7 +268,7 @@ export function TextSection() {
           units={['px', 'em', 'rem']}
           className="min-w-0"
         />
-        <span className="text-[11px] whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>Indent</span>
+        <DraggableLabel value={textIndent} property="textIndent" onChange={handleChange} className="text-[11px] whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>Indent</DraggableLabel>
         <CompactInput
           value={textIndent}
           property="textIndent"
@@ -463,6 +464,7 @@ export function TextSection() {
                 value={webkitTextStrokeColor}
                 property="webkitTextStrokeColor"
                 onChange={handleChange}
+                varExpression={cssVariableUsages['webkit-text-stroke-color']}
               />
             </div>
           </div>
@@ -539,6 +541,7 @@ export function TextSection() {
               label="Color"
               value={shadow.color}
               onChange={(c) => updateShadow(i, { color: c })}
+              onSelectVariable={(varExpr) => updateShadow(i, { color: varExpr })}
             />
           </div>
         ))}
