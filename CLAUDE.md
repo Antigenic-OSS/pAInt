@@ -4,6 +4,64 @@ Visual design editor for localhost web projects. Inspect elements,
 edit styles, drag-and-drop reposition, and generate changelogs for
 Claude Code — all from a Webflow-style three-column dark UI.
 
+## How to Use
+
+### Quick Start
+
+1. Start the Dev Editor: `bun dev` (runs on `http://localhost:4000` by default)
+2. Start your target project's dev server (e.g., `http://localhost:3000`)
+3. Open the Dev Editor in your browser
+4. Select your target's localhost port from the dropdown in the top bar and click **Connect**
+5. The target page loads in the center iframe — start inspecting and editing
+
+### Connecting to Your Project
+
+There are **two ways** to connect the Dev Editor to your project:
+
+#### Method 1: Automatic (Reverse Proxy) — Recommended
+When you click **Connect**, the Dev Editor loads your target page through a built-in reverse proxy. The proxy automatically injects the inspector script into the HTML — no setup needed. This is the default behavior and works out of the box.
+
+#### Method 2: Manual Script Tag
+If the automatic connection takes longer than 5 seconds (the inspector script hasn't been detected), you'll see a banner:
+
+> **Inspector script not detected**
+> Add this script tag to your project's HTML layout:
+> `<script src="https://dev-editor-flow.vercel.app/dev-editor-inspector.js"></script>`
+
+Click **Copy**, paste the script tag into your project's root HTML layout (e.g., `layout.tsx`, `index.html`), and the editor will connect once the page reloads. This method is useful when the proxy can't inject the script (e.g., non-standard HTML responses, or running the editor and target on separate machines).
+
+### Use Cases
+
+1. **Visual Style Tweaking** — Select any element on your page, then adjust colors, spacing, typography, borders, and layout from the right panel. Changes preview instantly in the iframe.
+
+2. **Responsive Design Testing** — Switch between Mobile (375px), Tablet (768px), and Desktop (1280px) breakpoints in the top bar. Make per-breakpoint style adjustments and export them all at once.
+
+3. **Layout Debugging** — Use the left panel DOM tree (Layers) to navigate the page structure. Click any node to highlight it in the preview. Inspect flexbox/grid properties and adjust layout in the right panel.
+
+4. **Drag-and-Drop Repositioning** — Toggle **Free Position** mode to drag elements to new positions, or **Reorder** mode to rearrange siblings within flex/grid containers.
+
+5. **Change Tracking & Export** — Every style edit is tracked with original → new values. Review all changes in the Changes tab, undo individual edits, or export a structured changelog.
+
+6. **Claude Code Integration** — Click **Copy Changelog** to get a formatted log you can paste into Claude Code, which reads it and applies the CSS changes to your actual source files. Or use **Send to Claude Code** for direct CLI integration (analyze diffs, then apply).
+
+7. **Multi-Page Editing** — Navigate between pages using the PageSelector dropdown without leaving the editor. Changes are persisted per-page and included in a combined changelog export.
+
+### Typical Workflow
+
+```
+Open Dev Editor → Connect to localhost project
+       ↓
+Inspect elements (hover/click in preview or click in Layers tree)
+       ↓
+Edit styles in the right panel (typography, spacing, colors, layout)
+       ↓
+Test across breakpoints (Mobile / Tablet / Desktop)
+       ↓
+Review tracked changes in the Changes tab
+       ↓
+Export changelog → Paste into Claude Code → Changes applied to source files
+```
+
 ## Tech Stack
 
 - **Runtime / Package Manager**: Bun (`bun dev`, `bun run build`, `bun install`)
