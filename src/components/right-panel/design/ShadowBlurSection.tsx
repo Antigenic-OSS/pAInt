@@ -10,6 +10,8 @@ import { parseShadow, serializeShadow } from '@/lib/shadowParser';
 import { useChangeTracker } from '@/hooks/useChangeTracker';
 import type { ShadowData } from '@/types/shadow';
 
+const SHADOW_PROPERTIES = ['boxShadow', 'filter'];
+
 const DEFAULT_SHADOW: ShadowData = {
   x: 0,
   y: 0,
@@ -21,7 +23,20 @@ const DEFAULT_SHADOW: ShadowData = {
 
 export function ShadowBlurSection() {
   const computedStyles = useEditorStore((state) => state.computedStyles);
-  const { applyChange } = useChangeTracker();
+  const { applyChange, resetProperty } = useChangeTracker();
+
+  const hasChanges = useEditorStore((s) => {
+    const sp = s.selectorPath;
+    if (!sp) return false;
+    return s.styleChanges.some((c) => c.elementSelector === sp && SHADOW_PROPERTIES.includes(c.property));
+  });
+
+  const handleResetAll = () => {
+    const { selectorPath, styleChanges } = useEditorStore.getState();
+    if (!selectorPath) return;
+    const matching = styleChanges.filter((c) => c.elementSelector === selectorPath && SHADOW_PROPERTIES.includes(c.property));
+    for (const c of matching) resetProperty(c.property);
+  };
 
   const boxShadow = computedStyles.boxShadow || 'none';
   const filter = computedStyles.filter || 'none';
@@ -64,6 +79,8 @@ export function ShadowBlurSection() {
     <SectionHeader
       title="Shadow & Blur"
       defaultOpen={false}
+      hasChanges={hasChanges}
+      onReset={handleResetAll}
       actions={
         <button
           type="button"

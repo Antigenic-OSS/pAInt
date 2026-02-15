@@ -3,9 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useEditorStore } from '@/store';
 import { SectionHeader } from '@/components/right-panel/design/inputs/SectionHeader';
-import { CompactInput } from '@/components/right-panel/design/inputs/CompactInput';
 import { LinkedInputPair } from '@/components/right-panel/design/inputs/LinkedInputPair';
-import { ClipContentIcon, BorderBoxIcon } from '@/components/right-panel/design/icons';
 import { BoxModelPreview } from '@/components/right-panel/design/inputs/BoxModelPreview';
 import { useChangeTracker } from '@/hooks/useChangeTracker';
 import { parseCSSValue, formatCSSValue } from '@/lib/utils';
@@ -591,6 +589,10 @@ function GapInput({
   const parsed = parseCSSValue(value);
   const [localVal, setLocalVal] = useState(String(parsed.number));
   const [unit, setUnit] = useState(parsed.unit || 'px');
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
+  const dragStartX = useRef(0);
+  const dragStartValue = useRef(0);
 
   useEffect(() => {
     const p = parseCSSValue(value);
@@ -603,6 +605,36 @@ function GapInput({
     if (!isNaN(n)) onChange(property, formatCSSValue(Math.max(0, n), u));
   }, [onChange, property]);
 
+  // --- Drag-to-scrub (2px per pixel of movement) ---
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    // Don't hijack if user clicked on the unit button
+    if ((e.target as HTMLElement).tagName === 'BUTTON') return;
+    e.preventDefault();
+    isDragging.current = true;
+    dragStartX.current = e.clientX;
+    dragStartValue.current = parseFloat(localVal || '0');
+    containerRef.current?.setPointerCapture(e.pointerId);
+    document.body.style.cursor = 'ew-resize';
+    document.body.style.userSelect = 'none';
+  }, [localVal]);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!isDragging.current) return;
+    const delta = e.clientX - dragStartX.current;
+    const next = Math.max(0, Math.round(dragStartValue.current + delta * 2));
+    const nextStr = String(next);
+    setLocalVal(nextStr);
+    onChange(property, formatCSSValue(next, unit));
+  }, [onChange, property, unit]);
+
+  const handlePointerUp = useCallback((e: React.PointerEvent) => {
+    if (!isDragging.current) return;
+    isDragging.current = false;
+    containerRef.current?.releasePointerCapture(e.pointerId);
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  }, []);
+
   const units = ['px', 'rem', 'em', '%'];
   const cycleUnit = useCallback(() => {
     const idx = units.indexOf(unit);
@@ -614,8 +646,12 @@ function GapInput({
 
   return (
     <div
+      ref={containerRef}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
       className="flex items-center h-6 rounded overflow-hidden"
-      style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border)' }}
+      style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border)', cursor: 'ew-resize' }}
     >
       <input
         type="text"
@@ -629,7 +665,7 @@ function GapInput({
           else if (e.key === 'ArrowDown') { e.preventDefault(); const n = Math.max(0, parseFloat(localVal || '0') - (e.shiftKey ? 10 : 1)); setLocalVal(String(n)); commit(String(n), unit); }
         }}
         className="flex-1 min-w-0 h-full px-1.5 text-[11px] bg-transparent border-none outline-none"
-        style={{ color: 'var(--text-primary)' }}
+        style={{ color: 'var(--text-primary)', cursor: 'ew-resize' }}
       />
       <button
         type="button"
@@ -930,9 +966,30 @@ function InlineControls({
 
 // ─── Main Component ────────────────────────────────────────────────
 
+const LAYOUT_PROPERTIES = [
+  'display', 'flexDirection', 'justifyContent', 'alignItems', 'gap', 'columnGap', 'rowGap',
+  'gridTemplateColumns', 'gridTemplateRows', 'gridAutoFlow', 'justifyItems', 'verticalAlign',
+  'width', 'height',
+  'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
+  'marginTop', 'marginRight', 'marginBottom', 'marginLeft',
+];
+
 export function LayoutSection() {
   const computedStyles = useEditorStore((state) => state.computedStyles);
   const { applyChange, resetProperty } = useChangeTracker();
+
+  const hasChanges = useEditorStore((s) => {
+    const sp = s.selectorPath;
+    if (!sp) return false;
+    return s.styleChanges.some((c) => c.elementSelector === sp && LAYOUT_PROPERTIES.includes(c.property));
+  });
+
+  const handleResetAll = useCallback(() => {
+    const { selectorPath, styleChanges } = useEditorStore.getState();
+    if (!selectorPath) return;
+    const matching = styleChanges.filter((c) => c.elementSelector === selectorPath && LAYOUT_PROPERTIES.includes(c.property));
+    for (const c of matching) resetProperty(c.property);
+  }, [resetProperty]);
 
   const handleChange = useCallback((property: string, value: string) => {
     applyChange(property, value);
@@ -961,10 +1018,6 @@ export function LayoutSection() {
   const isInline = display === 'inline' || display === 'inline-block';
   const isNone = display === 'none';
 
-  const overflow = computedStyles.overflow || 'visible';
-  const boxSizing = computedStyles.boxSizing || 'content-box';
-  const isClipped = overflow === 'hidden';
-  const isBorderBox = boxSizing === 'border-box';
 
   const handleDisplayChange = useCallback((mode: DisplayMode) => {
     handleChange('display', mode);
@@ -977,7 +1030,7 @@ export function LayoutSection() {
   }, [handleChange, flexDirection]);
 
   return (
-    <SectionHeader title="Layout" defaultOpen={true}>
+    <SectionHeader title="Layout" defaultOpen={true} hasChanges={hasChanges} onReset={handleResetAll}>
       {/* Display toggle */}
       <DisplayToggle display={display} onChange={handleDisplayChange} />
 
@@ -1009,28 +1062,6 @@ export function LayoutSection() {
       {/* Inline controls */}
       {isInline && (
         <InlineControls verticalAlign={verticalAlign} onChange={handleChange} />
-      )}
-
-      {/* Dimensions */}
-      {!isNone && (
-        <div className="grid grid-cols-2 gap-1.5 pt-1.5" style={{ borderTop: '1px solid var(--border)' }}>
-          <CompactInput
-            label="W"
-            value={computedStyles.width || 'auto'}
-            property="width"
-            onChange={handleChange}
-            onReset={handleReset}
-            units={['px', '%', 'em', 'rem', 'vw', 'auto']}
-          />
-          <CompactInput
-            label="H"
-            value={computedStyles.height || 'auto'}
-            property="height"
-            onChange={handleChange}
-            onReset={handleReset}
-            units={['px', '%', 'em', 'rem', 'vh', 'auto']}
-          />
-        </div>
       )}
 
       {/* Padding */}
@@ -1105,39 +1136,6 @@ export function LayoutSection() {
         />
       )}
 
-      {/* Toggles */}
-      {!isNone && (
-        <div className="flex items-center gap-3 pt-1" style={{ borderTop: '1px solid var(--border)' }}>
-          <label className="flex items-center gap-1.5 cursor-pointer">
-            <button
-              type="button"
-              onClick={() => handleChange('overflow', isClipped ? 'visible' : 'hidden')}
-              className="flex items-center justify-center w-5 h-5 rounded"
-              style={{
-                color: isClipped ? 'var(--accent)' : 'var(--text-muted)',
-                background: isClipped ? 'var(--accent-bg, rgba(74,158,255,0.15))' : 'transparent',
-              }}
-            >
-              <ClipContentIcon />
-            </button>
-            <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Clip</span>
-          </label>
-          <label className="flex items-center gap-1.5 cursor-pointer">
-            <button
-              type="button"
-              onClick={() => handleChange('boxSizing', isBorderBox ? 'content-box' : 'border-box')}
-              className="flex items-center justify-center w-5 h-5 rounded"
-              style={{
-                color: isBorderBox ? 'var(--accent)' : 'var(--text-muted)',
-                background: isBorderBox ? 'var(--accent-bg, rgba(74,158,255,0.15))' : 'transparent',
-              }}
-            >
-              <BorderBoxIcon />
-            </button>
-            <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Border Box</span>
-          </label>
-        </div>
-      )}
     </SectionHeader>
   );
 }

@@ -123,10 +123,30 @@ function extractDecorationKeyword(value: string): string {
 
 // --- Component ---
 
+const TYPOGRAPHY_PROPERTIES = [
+  'fontFamily', 'fontWeight', 'fontSize', 'lineHeight', 'color', 'textAlign', 'textDecoration',
+  'letterSpacing', 'textIndent', 'columnCount', 'fontStyle', 'textTransform', 'direction',
+  'wordBreak', 'lineBreak', 'whiteSpace', 'textOverflow',
+  'webkitTextStrokeWidth', 'webkitTextStrokeColor', 'textShadow',
+];
+
 export function TextSection() {
   const computedStyles = useEditorStore((state) => state.computedStyles);
   const cssVariableUsages = useEditorStore((state) => state.cssVariableUsages);
-  const { applyChange } = useChangeTracker();
+  const { applyChange, resetProperty } = useChangeTracker();
+
+  const hasChanges = useEditorStore((s) => {
+    const sp = s.selectorPath;
+    if (!sp) return false;
+    return s.styleChanges.some((c) => c.elementSelector === sp && TYPOGRAPHY_PROPERTIES.includes(c.property));
+  });
+
+  const handleResetAll = () => {
+    const { selectorPath, styleChanges } = useEditorStore.getState();
+    if (!selectorPath) return;
+    const matching = styleChanges.filter((c) => c.elementSelector === selectorPath && TYPOGRAPHY_PROPERTIES.includes(c.property));
+    for (const c of matching) resetProperty(c.property);
+  };
 
   const handleChange = (property: string, value: string) => {
     applyChange(property, value);
@@ -182,35 +202,36 @@ export function TextSection() {
   // Parse font stack into individual font options
   const fontOptions = useMemo(() => parseFontStack(fontFamily), [fontFamily]);
 
-  return (
-    <SectionHeader title="Typography" defaultOpen={true}>
-      {/* ===== US1: Core Typography ===== */}
+  // Row label width
+  const LW = 'w-[52px]';
 
-      {/* Font Family — dropdown parsed from font stack */}
-      <div>
-        <div className="text-[10px] mb-0.5" style={labelStyle}>Font</div>
+  return (
+    <SectionHeader title="Typography" defaultOpen={true} hasChanges={hasChanges} onReset={handleResetAll}>
+      {/* ===== Core Typography — Webflow row layout ===== */}
+
+      {/* Font */}
+      <div className="flex items-center gap-2">
+        <span className={`${LW} flex-shrink-0 text-[11px]`} style={{ color: 'var(--accent)' }}>Font</span>
         <select
           value={fontFamily}
           onChange={(e) => handleChange('fontFamily', e.target.value)}
-          className="w-full h-6 rounded text-[11px] px-1.5 cursor-pointer outline-none"
+          className="flex-1 h-7 rounded text-[11px] px-2 cursor-pointer outline-none"
           style={selectStyle}
         >
-          {/* Full stack as first option */}
-          <option value={fontFamily}>{fontFamily}</option>
-          {/* Individual fonts from the stack */}
+          <option value={fontFamily}>{fontOptions[0] || fontFamily}</option>
           {fontOptions.map((font) => (
             <option key={font} value={font}>{font}</option>
           ))}
         </select>
       </div>
 
-      {/* Weight — full width dropdown */}
-      <div>
-        <div className="text-[10px] mb-0.5" style={labelStyle}>Weight</div>
+      {/* Weight */}
+      <div className="flex items-center gap-2">
+        <span className={`${LW} flex-shrink-0 text-[11px]`} style={{ color: 'var(--accent)' }}>Weight</span>
         <select
           value={fontWeight}
           onChange={(e) => handleChange('fontWeight', e.target.value)}
-          className="w-full h-6 rounded text-[11px] px-1.5 cursor-pointer outline-none"
+          className="flex-1 h-7 rounded text-[11px] px-2 cursor-pointer outline-none"
           style={selectStyle}
         >
           {WEIGHT_OPTIONS.map((opt) => (
@@ -219,45 +240,59 @@ export function TextSection() {
         </select>
       </div>
 
-      {/* Size + Height — side by side */}
-      <div className="grid grid-cols-2 gap-1.5">
-        <div>
-          <div className="text-[10px] mb-0.5" style={labelStyle}>Size</div>
-          <CompactInput
-            label="S"
-            value={fontSize}
-            property="fontSize"
+      {/* Size + Height + Spacing */}
+      <div className="grid grid-cols-[52px_1fr_auto_1fr] items-center gap-x-2 gap-y-2">
+        <span className="text-[11px] whitespace-nowrap" style={{ color: 'var(--accent)' }}>Size</span>
+        <CompactInput
+          value={fontSize}
+          property="fontSize"
+          onChange={handleChange}
+          units={['px', 'em', 'rem', '%', 'vw']}
+          min={0}
+          className="min-w-0"
+        />
+        <span className="text-[11px] whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>Height</span>
+        <CompactInput
+          value={lineHeight}
+          property="lineHeight"
+          onChange={handleChange}
+          units={['px', 'em', 'rem', '']}
+          className="min-w-0"
+        />
+        <span className="text-[11px] whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>Spacing</span>
+        <CompactInput
+          value={letterSpacing}
+          property="letterSpacing"
+          onChange={handleChange}
+          units={['px', 'em', 'rem']}
+          className="min-w-0"
+        />
+        <span className="text-[11px] whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>Indent</span>
+        <CompactInput
+          value={textIndent}
+          property="textIndent"
+          onChange={handleChange}
+          units={['px', 'em', 'rem', '%']}
+          className="min-w-0"
+        />
+      </div>
+
+      {/* Color */}
+      <div className="flex items-center gap-2">
+        <span className={`${LW} flex-shrink-0 text-[11px]`} style={{ color: 'var(--accent)' }}>Color</span>
+        <div className="flex-1">
+          <ColorInput
+            value={color}
+            property="color"
             onChange={handleChange}
-            units={['px', 'em', 'rem', '%']}
-            min={0}
-          />
-        </div>
-        <div>
-          <div className="text-[10px] mb-0.5" style={labelStyle}>Height</div>
-          <CompactInput
-            label="H"
-            value={lineHeight}
-            property="lineHeight"
-            onChange={handleChange}
-            units={['px', 'em', 'rem', '']}
+            varExpression={cssVariableUsages['color']}
           />
         </div>
       </div>
 
-      {/* Color */}
-      <ColorInput
-        label="Color"
-        value={color}
-        property="color"
-        onChange={handleChange}
-        varExpression={cssVariableUsages['color']}
-      />
-
-      {/* ===== US2: Alignment + Decoration ===== */}
-
-      {/* Text Alignment */}
-      <div>
-        <div className="text-[10px] mb-0.5" style={labelStyle}>Align</div>
+      {/* Align */}
+      <div className="flex items-center gap-2">
+        <span className={`${LW} flex-shrink-0 text-[11px]`} style={{ color: 'var(--text-secondary)' }}>Align</span>
         <IconToggleGroup
           options={TEXT_ALIGN_OPTIONS}
           value={textAlign}
@@ -265,148 +300,123 @@ export function TextSection() {
         />
       </div>
 
-      {/* Text Decoration */}
-      <div>
-        <div className="text-[10px] mb-0.5" style={labelStyle}>Decoration</div>
+      {/* Decoration */}
+      <div className="flex items-center gap-2">
+        <span className={`${LW} flex-shrink-0 text-[11px]`} style={{ color: 'var(--text-secondary)' }}>Decor</span>
         <IconToggleGroup
           options={TEXT_DECORATION_OPTIONS}
           value={decoValue}
           onChange={(val) => handleChange('textDecoration', val)}
         />
+        <button
+          type="button"
+          onClick={() => setMoreOpen(!moreOpen)}
+          className="flex items-center justify-center w-6 h-6 rounded transition-colors"
+          style={{
+            color: moreOpen ? 'var(--accent)' : 'var(--text-muted)',
+            background: moreOpen ? 'rgba(74,158,255,0.10)' : 'transparent',
+          }}
+          title="More type options"
+        >
+          <svg width={14} height={14} viewBox="0 0 14 14" fill="none">
+            <circle cx={3} cy={7} r={1.2} fill="currentColor" />
+            <circle cx={7} cy={7} r={1.2} fill="currentColor" />
+            <circle cx={11} cy={7} r={1.2} fill="currentColor" />
+          </svg>
+        </button>
       </div>
 
-      {/* ===== US3: More Type Options (collapsible) ===== */}
-
-      <button
-        type="button"
-        onClick={() => setMoreOpen(!moreOpen)}
-        className="flex items-center gap-1 w-full py-1 text-[11px] rounded transition-colors"
-        style={{ color: 'var(--text-muted)' }}
-      >
-        <span className="text-[9px]">{moreOpen ? '\u25BE' : '\u25B8'}</span>
-        More type options
-      </button>
+      {/* ===== More Type Options (collapsible) ===== */}
 
       {moreOpen && (
-        <div className="space-y-2">
-          {/* Letter Spacing / Text Indent / Columns */}
-          <div className="grid grid-cols-3 gap-1">
-            <div>
+        <div className="space-y-2 pt-1" style={{ borderTop: '1px solid var(--border)' }}>
+          {/* Columns */}
+          <div className="flex items-center gap-2">
+            <span className={`${LW} flex-shrink-0 text-[11px]`} style={{ color: 'var(--text-secondary)' }}>Columns</span>
+            <div className="flex-1">
               <CompactInput
-                label="LS"
-                value={letterSpacing}
-                property="letterSpacing"
-                onChange={handleChange}
-                units={['px', 'em', 'rem']}
-              />
-              <div className="text-[9px] mt-0.5 text-center" style={labelStyle}>Letter spacing</div>
-            </div>
-            <div>
-              <CompactInput
-                label="TI"
-                value={textIndent}
-                property="textIndent"
-                onChange={handleChange}
-                units={['px', 'em', 'rem', '%']}
-              />
-              <div className="text-[9px] mt-0.5 text-center" style={labelStyle}>Text indent</div>
-            </div>
-            <div>
-              <CompactInput
-                label="Col"
                 value={columnCount}
                 property="columnCount"
                 onChange={handleChange}
-                units={['']}
+                units={['', 'auto']}
               />
-              <div className="text-[9px] mt-0.5 text-center" style={labelStyle}>Columns</div>
             </div>
           </div>
 
-          {/* Italicize / Capitalize / Direction */}
-          <div className="grid grid-cols-3 gap-1">
-            <div>
-              <IconToggleGroup
-                options={FONT_STYLE_OPTIONS}
-                value={fontStyle}
-                onChange={(val) => handleChange('fontStyle', val)}
-              />
-              <div className="text-[9px] mt-0.5 text-center" style={labelStyle}>Italicize</div>
-            </div>
-            <div>
-              <IconToggleGroup
-                options={TEXT_TRANSFORM_OPTIONS}
-                value={textTransform}
-                onChange={(val) => handleChange('textTransform', val)}
-              />
-              <div className="text-[9px] mt-0.5 text-center" style={labelStyle}>Capitalize</div>
-            </div>
-            <div>
-              <IconToggleGroup
-                options={DIRECTION_OPTIONS}
-                value={direction}
-                onChange={(val) => handleChange('direction', val)}
-              />
-              <div className="text-[9px] mt-0.5 text-center" style={labelStyle}>Direction</div>
-            </div>
+          {/* Style / Transform / Direction */}
+          <div className="flex items-center gap-2">
+            <span className={`${LW} flex-shrink-0 text-[11px]`} style={{ color: 'var(--text-secondary)' }}>Style</span>
+            <IconToggleGroup
+              options={FONT_STYLE_OPTIONS}
+              value={fontStyle}
+              onChange={(val) => handleChange('fontStyle', val)}
+            />
+            <IconToggleGroup
+              options={TEXT_TRANSFORM_OPTIONS}
+              value={textTransform}
+              onChange={(val) => handleChange('textTransform', val)}
+            />
+            <IconToggleGroup
+              options={DIRECTION_OPTIONS}
+              value={direction}
+              onChange={(val) => handleChange('direction', val)}
+            />
           </div>
 
           {/* Breaking */}
-          <div>
-            <div className="text-[10px] mb-0.5" style={labelStyle}>Breaking</div>
-            <div className="grid grid-cols-2 gap-1.5">
-              <div>
-                <div className="text-[9px] mb-0.5" style={labelStyle}>Word</div>
-                <select
-                  value={wordBreak}
-                  onChange={(e) => handleChange('wordBreak', e.target.value)}
-                  className="w-full h-6 rounded text-[11px] px-1.5 cursor-pointer outline-none"
-                  style={selectStyle}
-                >
-                  <option value="normal">normal</option>
-                  <option value="break-all">break-all</option>
-                  <option value="keep-all">keep-all</option>
-                  <option value="break-word">break-word</option>
-                </select>
-              </div>
-              <div>
-                <div className="text-[9px] mb-0.5" style={labelStyle}>Line</div>
-                <select
-                  value={lineBreak}
-                  onChange={(e) => handleChange('lineBreak', e.target.value)}
-                  className="w-full h-6 rounded text-[11px] px-1.5 cursor-pointer outline-none"
-                  style={selectStyle}
-                >
-                  <option value="normal">normal</option>
-                  <option value="loose">loose</option>
-                  <option value="strict">strict</option>
-                  <option value="anywhere">anywhere</option>
-                </select>
-              </div>
+          <div className="flex items-center gap-2">
+            <span className={`${LW} flex-shrink-0 text-[11px]`} style={{ color: 'var(--text-secondary)' }}>Break</span>
+            <div className="flex-1">
+              <select
+                value={wordBreak}
+                onChange={(e) => handleChange('wordBreak', e.target.value)}
+                className="w-full h-7 rounded text-[11px] px-1.5 cursor-pointer outline-none"
+                style={selectStyle}
+              >
+                <option value="normal">normal</option>
+                <option value="break-all">break-all</option>
+                <option value="keep-all">keep-all</option>
+                <option value="break-word">break-word</option>
+              </select>
+            </div>
+            <div className="flex-1">
+              <select
+                value={lineBreak}
+                onChange={(e) => handleChange('lineBreak', e.target.value)}
+                className="w-full h-7 rounded text-[11px] px-1.5 cursor-pointer outline-none"
+                style={selectStyle}
+              >
+                <option value="normal">normal</option>
+                <option value="loose">loose</option>
+                <option value="strict">strict</option>
+                <option value="anywhere">anywhere</option>
+              </select>
             </div>
           </div>
 
           {/* Wrap */}
-          <div>
-            <div className="text-[10px] mb-0.5" style={labelStyle}>Wrap</div>
-            <select
-              value={whiteSpace}
-              onChange={(e) => handleChange('whiteSpace', e.target.value)}
-              className="w-full h-6 rounded text-[11px] px-1.5 cursor-pointer outline-none"
-              style={selectStyle}
-            >
-              <option value="normal">normal</option>
-              <option value="nowrap">nowrap</option>
-              <option value="pre">pre</option>
-              <option value="pre-wrap">pre-wrap</option>
-              <option value="pre-line">pre-line</option>
-              <option value="break-spaces">break-spaces</option>
-            </select>
+          <div className="flex items-center gap-2">
+            <span className={`${LW} flex-shrink-0 text-[11px]`} style={{ color: 'var(--text-secondary)' }}>Wrap</span>
+            <div className="flex-1">
+              <select
+                value={whiteSpace}
+                onChange={(e) => handleChange('whiteSpace', e.target.value)}
+                className="w-full h-7 rounded text-[11px] px-1.5 cursor-pointer outline-none"
+                style={selectStyle}
+              >
+                <option value="normal">normal</option>
+                <option value="nowrap">nowrap</option>
+                <option value="pre">pre</option>
+                <option value="pre-wrap">pre-wrap</option>
+                <option value="pre-line">pre-line</option>
+                <option value="break-spaces">break-spaces</option>
+              </select>
+            </div>
           </div>
 
           {/* Truncate */}
-          <div>
-            <div className="text-[10px] mb-0.5" style={labelStyle}>Truncate</div>
+          <div className="flex items-center gap-2">
+            <span className={`${LW} flex-shrink-0 text-[11px]`} style={{ color: 'var(--text-secondary)' }}>Truncate</span>
             <div
               className="inline-flex rounded"
               style={{
@@ -436,9 +446,9 @@ export function TextSection() {
           </div>
 
           {/* Stroke */}
-          <div>
-            <div className="text-[10px] mb-0.5" style={labelStyle}>Stroke</div>
-            <div className="grid grid-cols-2 gap-1.5">
+          <div className="flex items-center gap-2">
+            <span className={`${LW} flex-shrink-0 text-[11px]`} style={{ color: 'var(--text-secondary)' }}>Stroke</span>
+            <div className="flex-1">
               <CompactInput
                 label="W"
                 value={webkitTextStrokeWidth}
@@ -447,8 +457,9 @@ export function TextSection() {
                 units={['px']}
                 min={0}
               />
+            </div>
+            <div className="flex-1">
               <ColorInput
-                label="Color"
                 value={webkitTextStrokeColor}
                 property="webkitTextStrokeColor"
                 onChange={handleChange}

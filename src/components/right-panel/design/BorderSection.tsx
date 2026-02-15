@@ -8,10 +8,28 @@ import { useChangeTracker } from '@/hooks/useChangeTracker';
 
 const BORDER_STYLES = ['none', 'solid', 'dashed', 'dotted', 'double', 'groove', 'ridge', 'inset', 'outset'];
 
+const BORDER_PROPERTIES = [
+  'borderWidth', 'borderStyle', 'borderColor',
+  'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
+];
+
 export function BorderSection() {
   const computedStyles = useEditorStore((state) => state.computedStyles);
   const cssVariableUsages = useEditorStore((state) => state.cssVariableUsages);
-  const { applyChange } = useChangeTracker();
+  const { applyChange, resetProperty } = useChangeTracker();
+
+  const hasChanges = useEditorStore((s) => {
+    const sp = s.selectorPath;
+    if (!sp) return false;
+    return s.styleChanges.some((c) => c.elementSelector === sp && BORDER_PROPERTIES.includes(c.property));
+  });
+
+  const handleResetAll = () => {
+    const { selectorPath, styleChanges } = useEditorStore.getState();
+    if (!selectorPath) return;
+    const matching = styleChanges.filter((c) => c.elementSelector === selectorPath && BORDER_PROPERTIES.includes(c.property));
+    for (const c of matching) resetProperty(c.property);
+  };
 
   const handleChange = (property: string, value: string) => {
     applyChange(property, value);
@@ -27,7 +45,7 @@ export function BorderSection() {
   const borderLeftWidth = computedStyles.borderLeftWidth || borderWidth;
 
   return (
-    <SectionHeader title="Border" defaultOpen={false}>
+    <SectionHeader title="Border" defaultOpen={false} hasChanges={hasChanges} onReset={handleResetAll}>
       {/* General Border */}
       <div className="space-y-1.5 pb-2" style={{ borderBottom: '1px solid var(--border)' }}>
         <div className="grid grid-cols-2 gap-1.5">

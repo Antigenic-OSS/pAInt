@@ -38,7 +38,10 @@ export function CompactInput({
   const [unit, setUnit] = useState(value === 'auto' ? 'auto' : parsed.unit || 'px');
   const inputRef = useRef<HTMLInputElement>(null);
   const labelRef = useRef<HTMLSpanElement>(null);
+  const unitBtnRef = useRef<HTMLButtonElement>(null);
+  const unitPopoverRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
+  const [showUnits, setShowUnits] = useState(false);
   const dragStartX = useRef(0);
   const dragStartValue = useRef(0);
 
@@ -53,6 +56,21 @@ export function CompactInput({
     inputRef.current?.focus();
     inputRef.current?.select();
   }, [unit]);
+
+  // Close unit popover on outside click
+  useEffect(() => {
+    if (!showUnits) return;
+    const handler = (e: MouseEvent) => {
+      if (
+        unitBtnRef.current && !unitBtnRef.current.contains(e.target as Node) &&
+        unitPopoverRef.current && !unitPopoverRef.current.contains(e.target as Node)
+      ) {
+        setShowUnits(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showUnits]);
 
   useEffect(() => {
     if (value === 'auto') {
@@ -138,11 +156,9 @@ export function CompactInput({
     [onChange, property, clampValue]
   );
 
-  const cycleUnit = useCallback(() => {
-    const currentIndex = units.indexOf(unit);
-    const nextIndex = (currentIndex + 1) % units.length;
-    const nextUnit = units[nextIndex];
+  const selectUnit = useCallback((nextUnit: string) => {
     setUnit(nextUnit);
+    setShowUnits(false);
 
     if (nextUnit === 'auto') {
       setLocalValue('');
@@ -155,7 +171,7 @@ export function CompactInput({
         onChange(property, formatCSSValue(clamped, nextUnit));
       }
     }
-  }, [units, unit, localValue, onChange, property, clampValue]);
+  }, [localValue, onChange, property, clampValue]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -184,70 +200,107 @@ export function CompactInput({
   const isAuto = unit === 'auto';
 
   return (
-    <div
-      className={`flex items-center h-6 rounded overflow-hidden ${className ?? ''}`}
-      style={{
-        background: 'var(--bg-tertiary)',
-        border: '1px solid var(--border)',
-      }}
-    >
-      {label && (
-        <span
-          ref={labelRef}
-          onPointerDown={handleLabelPointerDown}
-          onPointerMove={handleLabelPointerMove}
-          onPointerUp={handleLabelPointerUp}
-          onDoubleClick={handleDoubleClick}
-          className="relative flex-shrink-0 flex items-center justify-center w-6 h-full text-[11px] select-none"
-          style={{
-            color: hasChange ? 'var(--accent)' : 'var(--text-secondary)',
-            borderRight: '1px solid var(--border)',
-            cursor: isAuto ? 'default' : 'ew-resize',
-          }}
-          title={hasChange ? 'Double-click to reset' : undefined}
-        >
-          {label}
-          {hasChange && (
-            <span
-              className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full"
-              style={{ background: 'var(--accent)' }}
-            />
-          )}
-        </span>
-      )}
-
-      <input
-        ref={inputRef}
-        type="text"
-        inputMode="numeric"
-        value={isAuto ? 'auto' : localValue}
-        placeholder={placeholder}
-        onChange={(e) => {
-          if (!isAuto) {
-            setLocalValue(e.target.value);
-          }
-        }}
-        onBlur={() => commit(localValue, unit)}
-        onKeyDown={handleKeyDown}
-        disabled={isAuto}
-        className="flex-1 min-w-0 h-full px-1.5 text-[11px] bg-transparent border-none outline-none"
+    <div className={`relative ${className ?? ''}`}>
+      <div
+        className="flex items-center h-6 rounded overflow-hidden"
         style={{
-          color: 'var(--text-primary)',
-          opacity: isAuto ? 0.5 : 1,
-        }}
-      />
-
-      <button
-        type="button"
-        onClick={cycleUnit}
-        className="flex-shrink-0 flex items-center justify-center h-full px-1.5 text-[11px] cursor-pointer select-none hover:opacity-80 bg-transparent border-none outline-none"
-        style={{
-          color: 'var(--text-secondary)',
-          borderLeft: '1px solid var(--border)',
+          background: 'var(--bg-tertiary)',
+          border: '1px solid var(--border)',
         }}
       >
-        {unit}
-      </button>
+        {label && (
+          <span
+            ref={labelRef}
+            onPointerDown={handleLabelPointerDown}
+            onPointerMove={handleLabelPointerMove}
+            onPointerUp={handleLabelPointerUp}
+            onDoubleClick={handleDoubleClick}
+            className="relative flex-shrink-0 flex items-center justify-center w-6 h-full text-[11px] select-none"
+            style={{
+              color: hasChange ? 'var(--accent)' : 'var(--text-secondary)',
+              borderRight: '1px solid var(--border)',
+              cursor: isAuto ? 'default' : 'ew-resize',
+            }}
+            title={hasChange ? 'Double-click to reset' : undefined}
+          >
+            {label}
+            {hasChange && (
+              <span
+                className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full"
+                style={{ background: 'var(--accent)' }}
+              />
+            )}
+          </span>
+        )}
+
+        <input
+          ref={inputRef}
+          type="text"
+          inputMode="numeric"
+          value={isAuto ? 'auto' : localValue}
+          placeholder={placeholder}
+          onChange={(e) => {
+            if (!isAuto) {
+              setLocalValue(e.target.value);
+            }
+          }}
+          onBlur={() => commit(localValue, unit)}
+          onKeyDown={handleKeyDown}
+          disabled={isAuto}
+          className="flex-1 min-w-0 h-full px-1.5 text-[11px] bg-transparent border-none outline-none"
+          style={{
+            color: 'var(--text-primary)',
+            opacity: isAuto ? 0.5 : 1,
+          }}
+        />
+
+        <button
+          ref={unitBtnRef}
+          type="button"
+          onClick={() => setShowUnits(!showUnits)}
+          className="flex-shrink-0 flex items-center justify-center h-6 px-1.5 text-[11px] cursor-pointer select-none hover:opacity-80 bg-transparent border-none outline-none gap-0.5"
+          style={{
+            color: 'var(--text-secondary)',
+            borderLeft: '1px solid var(--border)',
+          }}
+        >
+          {unit}
+          <svg width={6} height={6} viewBox="0 0 6 6" fill="none" style={{ opacity: 0.5 }}>
+            <path d="M1 2l2 2 2-2" stroke="currentColor" strokeWidth={1} strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      </div>
+
+      {showUnits && (
+        <div
+          ref={unitPopoverRef}
+          className="absolute z-50 right-0 mt-1 rounded-md overflow-hidden shadow-lg"
+          style={{
+            background: '#252525',
+            border: '1px solid var(--border)',
+            minWidth: 56,
+            top: '100%',
+          }}
+        >
+          {units.map((u) => {
+            const isActive = u === unit;
+            return (
+              <button
+                key={u}
+                type="button"
+                onMouseDown={(e) => { e.preventDefault(); selectUnit(u); }}
+                className="flex items-center w-full px-2.5 py-1 text-[11px] transition-colors"
+                style={{
+                  color: isActive ? 'var(--accent)' : 'var(--text-secondary)',
+                  background: isActive ? 'rgba(74, 158, 255, 0.08)' : 'transparent',
+                }}
+              >
+                {u}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

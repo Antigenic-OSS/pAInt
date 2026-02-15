@@ -6,6 +6,7 @@ import { ElementBreadcrumb } from './ElementBreadcrumb';
 import { ElementLogBox } from '../ElementLogBox';
 import { BorderSection } from './BorderSection';
 import { LayoutSection } from './LayoutSection';
+import { SizeSection } from './SizeSection';
 import { PositionSection } from './PositionSection';
 import { AppearanceSection } from './AppearanceSection';
 import { TextSection } from './TextSection';
@@ -147,6 +148,7 @@ export function DesignPanel() {
           <>
             <PositionSection />
             <LayoutSection />
+            <SizeSection />
             <AppearanceSection />
             <TextSection />
             <BackgroundSection />

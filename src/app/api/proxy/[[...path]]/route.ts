@@ -163,8 +163,64 @@ function getInspectorCode(): string {
 
       // Selection highlight
       var selectionOverlay = document.createElement('div');
-      selectionOverlay.style.cssText = 'position:fixed;pointer-events:none;z-index:999997;border:2px solid #4a9eff;background:rgba(74,158,255,0.15);display:none;';
+      selectionOverlay.style.cssText = 'position:fixed;pointer-events:none;z-index:999997;border:2px solid #4a9eff;display:none;';
       document.body.appendChild(selectionOverlay);
+
+      // Hover highlight — dotted green border + element name label (Webflow-style)
+      var hoverOverlay = document.createElement('div');
+      hoverOverlay.style.cssText = 'position:fixed;pointer-events:none;z-index:999996;border:1px dashed rgba(74,222,128,0.30);display:none;transition:top 0.04s,left 0.04s,width 0.04s,height 0.04s;';
+      document.body.appendChild(hoverOverlay);
+
+      var hoverLabel = document.createElement('div');
+      hoverLabel.style.cssText = 'position:absolute;top:-18px;left:-1px;padding:1px 6px;font-size:10px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;line-height:14px;color:#fff;background:rgba(74,222,128,0.70);border-radius:3px 3px 0 0;white-space:nowrap;pointer-events:none;';
+      hoverOverlay.appendChild(hoverLabel);
+
+      var hoveredElement = null;
+
+      function getElementLabel(el) {
+        var tag = el.tagName.toLowerCase();
+        // Show id if present
+        if (el.id) return tag + '#' + el.id;
+        // Show first meaningful class
+        var cls = el.className;
+        if (cls && typeof cls === 'string') {
+          var first = cls.trim().split(/\s+/)[0];
+          if (first) return tag + '.' + first;
+        }
+        return tag;
+      }
+
+      document.addEventListener('mousemove', function(e) {
+        if (!selectionModeEnabled) { hoverOverlay.style.display = 'none'; return; }
+        var el = document.elementFromPoint(e.clientX, e.clientY);
+        if (!el || el === hoverOverlay || el === selectionOverlay || el === hoverLabel) return;
+        // Don't show hover on already-selected element
+        if (el === selectedElement) { hoverOverlay.style.display = 'none'; hoveredElement = null; return; }
+        if (el === hoveredElement) return;
+        hoveredElement = el;
+        var rect = el.getBoundingClientRect();
+        hoverOverlay.style.display = 'block';
+        hoverOverlay.style.top = rect.top + 'px';
+        hoverOverlay.style.left = rect.left + 'px';
+        hoverOverlay.style.width = rect.width + 'px';
+        hoverOverlay.style.height = rect.height + 'px';
+        hoverLabel.textContent = getElementLabel(el);
+        // If element is near top of viewport, show label below instead
+        if (rect.top < 20) {
+          hoverLabel.style.top = 'auto';
+          hoverLabel.style.bottom = '-18px';
+          hoverLabel.style.borderRadius = '0 0 3px 3px';
+        } else {
+          hoverLabel.style.top = '-18px';
+          hoverLabel.style.bottom = 'auto';
+          hoverLabel.style.borderRadius = '3px 3px 0 0';
+        }
+      }, true);
+
+      document.addEventListener('mouseleave', function() {
+        hoverOverlay.style.display = 'none';
+        hoveredElement = null;
+      });
 
       var selectedElement = null;
       var selectionModeEnabled = true;
@@ -182,6 +238,9 @@ function getInspectorCode(): string {
 
       function selectElement(el) {
         selectedElement = el;
+        // Hide hover overlay when selecting
+        hoverOverlay.style.display = 'none';
+        hoveredElement = null;
         var rect = el.getBoundingClientRect();
         selectionOverlay.style.display = 'block';
         selectionOverlay.style.top = rect.top + 'px';
@@ -228,17 +287,25 @@ function getInspectorCode(): string {
         selectionOverlay.style.display = 'none';
       }
 
-      // Update selection overlay on scroll so it follows the selected element
-      function updateSelectionOverlay() {
-        if (!selectedElement || selectionOverlay.style.display === 'none') return;
-        var rect = selectedElement.getBoundingClientRect();
-        selectionOverlay.style.top = rect.top + 'px';
-        selectionOverlay.style.left = rect.left + 'px';
-        selectionOverlay.style.width = rect.width + 'px';
-        selectionOverlay.style.height = rect.height + 'px';
+      // Update overlays on scroll so they follow elements
+      function updateOverlays() {
+        if (selectedElement && selectionOverlay.style.display !== 'none') {
+          var sr = selectedElement.getBoundingClientRect();
+          selectionOverlay.style.top = sr.top + 'px';
+          selectionOverlay.style.left = sr.left + 'px';
+          selectionOverlay.style.width = sr.width + 'px';
+          selectionOverlay.style.height = sr.height + 'px';
+        }
+        if (hoveredElement && hoverOverlay.style.display !== 'none') {
+          var hr = hoveredElement.getBoundingClientRect();
+          hoverOverlay.style.top = hr.top + 'px';
+          hoverOverlay.style.left = hr.left + 'px';
+          hoverOverlay.style.width = hr.width + 'px';
+          hoverOverlay.style.height = hr.height + 'px';
+        }
       }
-      window.addEventListener('scroll', updateSelectionOverlay, true);
-      window.addEventListener('resize', updateSelectionOverlay, true);
+      window.addEventListener('scroll', updateOverlays, true);
+      window.addEventListener('resize', updateOverlays, true);
 
       // --- Component Detection ---
       var SEMANTIC_COMPONENTS = {
@@ -515,6 +582,16 @@ function getInspectorCode(): string {
             selectionModeEnabled = !!msg.payload.enabled;
             if (!selectionModeEnabled) {
               selectionOverlay.style.display = 'none';
+            }
+            break;
+          }
+          case 'HIDE_SELECTION_OVERLAY': {
+            selectionOverlay.style.display = 'none';
+            break;
+          }
+          case 'SHOW_SELECTION_OVERLAY': {
+            if (selectedElement) {
+              selectionOverlay.style.display = 'block';
             }
             break;
           }

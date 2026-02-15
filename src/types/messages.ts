@@ -225,6 +225,14 @@ export interface RevertTextContentMessage {
   };
 }
 
+export interface HideSelectionOverlayMessage {
+  type: 'HIDE_SELECTION_OVERLAY';
+}
+
+export interface ShowSelectionOverlayMessage {
+  type: 'SHOW_SELECTION_OVERLAY';
+}
+
 // Union types
 export type InspectorToEditorMessage =
   | InspectorReadyMessage
@@ -256,7 +264,9 @@ export type EditorToInspectorMessage =
   | ApplyVariantMessage
   | RevertVariantMessage
   | SetTextContentMessage
-  | RevertTextContentMessage;
+  | RevertTextContentMessage
+  | HideSelectionOverlayMessage
+  | ShowSelectionOverlayMessage;
 
 export type PostMessageType =
   | InspectorToEditorMessage['type']

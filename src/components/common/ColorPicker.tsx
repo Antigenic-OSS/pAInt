@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { sendViaIframe } from '@/hooks/usePostMessage';
 
 // ─── Color Conversion Utilities ─────────────────────────────────
 
@@ -337,6 +338,15 @@ export function ColorPicker({ value, onChange, label }: ColorPickerProps) {
     if (!isOpen) return;
     if (alphaCanvasRef.current) drawAlphaSlider(alphaCanvasRef.current, hsvToRgb(hsv));
   }, [isOpen, hsv]);
+
+  // Hide/show selection overlay when color picker opens/closes
+  useEffect(() => {
+    if (isOpen) {
+      sendViaIframe({ type: 'HIDE_SELECTION_OVERLAY' });
+    } else {
+      sendViaIframe({ type: 'SHOW_SELECTION_OVERLAY' });
+    }
+  }, [isOpen]);
 
   // Click outside
   useEffect(() => {

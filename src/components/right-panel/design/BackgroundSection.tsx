@@ -10,6 +10,8 @@ import { parseGradient, serializeGradient } from '@/lib/gradientParser';
 import { useChangeTracker } from '@/hooks/useChangeTracker';
 import type { GradientData } from '@/types/gradient';
 
+const BACKGROUND_PROPERTIES = ['backgroundColor', 'backgroundImage'];
+
 type BgMode = 'solid' | 'linear' | 'radial' | 'conic';
 
 const DEFAULT_GRADIENT: GradientData = {
@@ -24,7 +26,20 @@ const DEFAULT_GRADIENT: GradientData = {
 export function BackgroundSection() {
   const computedStyles = useEditorStore((state) => state.computedStyles);
   const cssVariableUsages = useEditorStore((state) => state.cssVariableUsages);
-  const { applyChange } = useChangeTracker();
+  const { applyChange, resetProperty } = useChangeTracker();
+
+  const hasChanges = useEditorStore((s) => {
+    const sp = s.selectorPath;
+    if (!sp) return false;
+    return s.styleChanges.some((c) => c.elementSelector === sp && BACKGROUND_PROPERTIES.includes(c.property));
+  });
+
+  const handleResetAll = () => {
+    const { selectorPath, styleChanges } = useEditorStore.getState();
+    if (!selectorPath) return;
+    const matching = styleChanges.filter((c) => c.elementSelector === selectorPath && BACKGROUND_PROPERTIES.includes(c.property));
+    for (const c of matching) resetProperty(c.property);
+  };
 
   const bgImage = computedStyles.backgroundImage || 'none';
   const bgColor = computedStyles.backgroundColor || 'transparent';
@@ -64,6 +79,8 @@ export function BackgroundSection() {
     <SectionHeader
       title="Background"
       defaultOpen={true}
+      hasChanges={hasChanges}
+      onReset={handleResetAll}
       actions={
         <button
           type="button"
