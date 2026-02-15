@@ -87,11 +87,16 @@ function buildElementLogText(opts: {
     lines.push('');
   }
 
-  const styleKeys = ['color', 'background-color', 'font-size', 'font-family', 'display', 'position'];
+  const styleKeys = [
+    'color', 'backgroundColor', 'fontSize', 'fontFamily', 'display', 'position',
+    'flexDirection', 'justifyContent', 'alignItems', 'gap',
+    'gridTemplateColumns', 'gridTemplateRows', 'overflow', 'boxSizing',
+  ];
+  const camelToKebab = (s: string) => s.replace(/[A-Z]/g, c => '-' + c.toLowerCase());
   lines.push('COMPUTED STYLES');
   for (const key of styleKeys) {
     if (opts.computedStyles[key]) {
-      lines.push(`  ${key}: ${opts.computedStyles[key]}`);
+      lines.push(`  ${camelToKebab(key)}: ${opts.computedStyles[key]}`);
     }
   }
   lines.push('');

@@ -64,9 +64,6 @@ export function performRedo() {
  * and auto-persists changes to localStorage.
  */
 export function useChangeTracker() {
-  const selectorPath = useEditorStore((s) => s.selectorPath);
-  const computedStyles = useEditorStore((s) => s.computedStyles);
-  const activeBreakpoint = useEditorStore((s) => s.activeBreakpoint);
   const targetUrl = useEditorStore((s) => s.targetUrl);
   const addStyleChange = useEditorStore((s) => s.addStyleChange);
   const removeStyleChange = useEditorStore((s) => s.removeStyleChange);
@@ -109,6 +106,9 @@ export function useChangeTracker() {
 
   const applyChange = useCallback(
     (property: string, value: string) => {
+      // Read latest state directly to avoid stale closures and
+      // prevent re-creating this callback on every computedStyles change.
+      const { selectorPath, computedStyles, activeBreakpoint } = useEditorStore.getState();
       if (!selectorPath) return;
 
       const originalValue = computedStyles[property] || '';
@@ -168,7 +168,7 @@ export function useChangeTracker() {
         timestamp: Date.now(),
       });
     },
-    [selectorPath, computedStyles, activeBreakpoint, addStyleChange, saveElementSnapshot, sendToInspector, pushUndo]
+    [addStyleChange, saveElementSnapshot, sendToInspector, pushUndo]
   );
 
   const revertChange = useCallback(
