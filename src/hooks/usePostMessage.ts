@@ -45,8 +45,13 @@ function handleMessage(event: MessageEvent) {
   const store = useEditorStore.getState();
 
   switch (msg.type) {
-    case 'INSPECTOR_READY':
+    case 'INSPECTOR_READY': {
       store.setConnectionStatus('connected');
+      // Re-sync selection mode — the fresh inspector defaults to selectionModeEnabled=true,
+      // but if the editor is in preview mode (or selection is toggled off), we need to
+      // tell the inspector immediately so clicks pass through for navigation.
+      const effectiveSelection = store.viewMode ? false : store.selectionMode;
+      sendViaIframe({ type: 'SET_SELECTION_MODE', payload: { enabled: effectiveSelection } });
       sendViaIframe({ type: 'REQUEST_DOM_TREE' });
       sendViaIframe({ type: 'REQUEST_PAGE_LINKS' });
       sendViaIframe({ type: 'REQUEST_CSS_VARIABLES' });
@@ -54,6 +59,7 @@ function handleMessage(event: MessageEvent) {
         sendViaIframe({ type: 'REQUEST_COMPONENTS', payload: {} });
       }, 500);
       break;
+    }
 
     case 'ELEMENT_SELECTED':
       store.selectElement(msg.payload);

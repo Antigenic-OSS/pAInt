@@ -84,61 +84,60 @@ export function TopBar() {
         </>
       )}
 
-      {/* Selection mode toggle */}
+      {/* Select / Preview toggle */}
       {connectionStatus === 'connected' && (
         <>
           <div className="w-px h-5" style={{ background: 'var(--border)' }} />
-          <button
-            onClick={() => {
-              if (viewMode) return;
-              const next = !selectionMode;
-              toggleSelectionMode();
-              sendToInspector({ type: 'SET_SELECTION_MODE', payload: { enabled: next } });
-            }}
-            disabled={viewMode}
-            className="flex items-center gap-1.5 px-2 py-1 text-xs rounded transition-colors"
-            style={{
-              background: selectionMode && !viewMode ? 'var(--accent)' : 'var(--bg-tertiary)',
-              color: selectionMode && !viewMode ? '#fff' : 'var(--text-secondary)',
-              border: selectionMode && !viewMode ? 'none' : '1px solid var(--border)',
-              opacity: viewMode ? 0.5 : 1,
-              cursor: viewMode ? 'not-allowed' : 'pointer',
-            }}
-            title={viewMode ? 'Selection disabled in preview mode' : selectionMode ? 'Selection mode ON — click selects elements' : 'Selection mode OFF — links & buttons work normally'}
+          <div
+            className="flex rounded overflow-hidden"
+            style={{ border: '1px solid var(--border)' }}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z" />
-              <path d="M13 13l6 6" />
-            </svg>
-            Select
-          </button>
-        </>
-      )}
-
-      {/* Preview mode toggle */}
-      {connectionStatus === 'connected' && (
-        <>
-          <div className="w-px h-5" style={{ background: 'var(--border)' }} />
-          <button
-            onClick={() => {
-              const entering = !viewMode;
-              toggleViewMode();
-              sendToInspector({ type: 'SET_SELECTION_MODE', payload: { enabled: !entering } });
-            }}
-            className="flex items-center gap-1.5 px-2 py-1 text-xs rounded transition-colors"
-            style={{
-              background: viewMode ? 'var(--accent)' : 'var(--bg-tertiary)',
-              color: viewMode ? '#fff' : 'var(--text-secondary)',
-              border: viewMode ? 'none' : '1px solid var(--border)',
-            }}
-            title={viewMode ? 'Exit preview — show panels' : 'Preview — navigate & test the site'}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-              <circle cx="12" cy="12" r="3" />
-            </svg>
-            Preview
-          </button>
+            <button
+              onClick={() => {
+                if (!viewMode && selectionMode) return;
+                if (viewMode) {
+                  toggleViewMode();
+                  if (!selectionMode) toggleSelectionMode();
+                  sendToInspector({ type: 'SET_SELECTION_MODE', payload: { enabled: true } });
+                } else {
+                  toggleSelectionMode();
+                  sendToInspector({ type: 'SET_SELECTION_MODE', payload: { enabled: true } });
+                }
+              }}
+              className="flex items-center gap-1.5 px-2.5 py-1 text-xs transition-colors"
+              style={{
+                background: !viewMode && selectionMode ? 'var(--accent)' : 'var(--bg-tertiary)',
+                color: !viewMode && selectionMode ? '#fff' : 'var(--text-secondary)',
+                borderRight: '1px solid var(--border)',
+              }}
+              title={selectionMode && !viewMode ? 'Selection mode ON — click selects elements' : 'Switch to selection mode'}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z" />
+                <path d="M13 13l6 6" />
+              </svg>
+              Select
+            </button>
+            <button
+              onClick={() => {
+                if (viewMode) return;
+                toggleViewMode();
+                sendToInspector({ type: 'SET_SELECTION_MODE', payload: { enabled: false } });
+              }}
+              className="flex items-center gap-1.5 px-2.5 py-1 text-xs transition-colors"
+              style={{
+                background: viewMode ? 'var(--accent)' : 'var(--bg-tertiary)',
+                color: viewMode ? '#fff' : 'var(--text-secondary)',
+              }}
+              title={viewMode ? 'Preview mode — exit to edit' : 'Preview — navigate & test the site'}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+              Preview
+            </button>
+          </div>
         </>
       )}
 
