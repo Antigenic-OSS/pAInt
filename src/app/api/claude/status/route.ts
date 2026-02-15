@@ -1,33 +1,25 @@
 import { NextResponse } from 'next/server';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { getClaudeBin } from '@/lib/claude-bin';
 import type { ClaudeStatusResponse } from '@/types/claude';
+
+const execFileAsync = promisify(execFile);
 
 export async function GET(): Promise<NextResponse<ClaudeStatusResponse>> {
   try {
     const claudeBin = getClaudeBin();
-    const proc = Bun.spawn([claudeBin, '--version'], {
-      stdout: 'pipe',
-      stderr: 'pipe',
-    });
-
-    const exitCode = await proc.exited;
-
-    if (exitCode === 0) {
-      const stdout = await new Response(proc.stdout).text();
-      return NextResponse.json({
-        available: true,
-        version: stdout.trim(),
-      });
-    }
+    const { stdout } = await execFileAsync(claudeBin, ['--version'], { timeout: 10_000 });
 
     return NextResponse.json({
-      available: false,
-      error: 'claude CLI exited with non-zero status',
+      available: true,
+      version: stdout.trim(),
     });
-  } catch {
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
     return NextResponse.json({
       available: false,
-      error: 'claude CLI not found in PATH',
+      error: `claude CLI not found: ${msg.slice(0, 200)}`,
     });
   }
 }

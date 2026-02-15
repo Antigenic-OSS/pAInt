@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { getClaudeBin } from '@/lib/claude-bin';
+import { spawnClaude } from '@/lib/claude-bin';
 import type {
   ClaudeApplyRequest,
   ClaudeApplyResponse,
@@ -144,56 +144,30 @@ export async function POST(request: Request): Promise<NextResponse> {
   const resolvedRoot = path.resolve(projectRoot);
 
   try {
-    const claudeBin = getClaudeBin();
-    const proc = Bun.spawn(
+    const result = await spawnClaude(
       [
-        claudeBin,
         '--resume', sessionId,
         '--allowedTools', 'Read,Edit',
         '--print',
         '-p', 'Apply the changes discussed in the previous analysis. Edit the source files to implement all the visual changes from the changelog.',
       ],
-      {
-        cwd: resolvedRoot,
-        stdout: 'pipe',
-        stderr: 'pipe',
-        env: { ...process.env },
-      },
+      { cwd: resolvedRoot, timeout: TIMEOUT_MS },
     );
 
-    // Race between process completion and timeout
-    const timeoutPromise = new Promise<'timeout'>((resolve) => {
-      setTimeout(() => resolve('timeout'), TIMEOUT_MS);
-    });
-
-    const result = await Promise.race([proc.exited, timeoutPromise]);
-
-    if (result === 'timeout') {
-      proc.kill();
-      return NextResponse.json(
-        { error: 'Claude CLI timed out after 120 seconds' },
-        { status: 504 },
-      );
-    }
-
-    const exitCode = result;
-    const stdout = await new Response(proc.stdout).text();
-    const stderr = await new Response(proc.stderr).text();
-
-    if (exitCode !== 0) {
+    if (result.exitCode !== 0) {
       return NextResponse.json(
         {
           error: 'Claude CLI exited with an error',
-          details: stderr.trim() || 'Unknown CLI error',
+          details: result.stderr.trim() || 'Unknown CLI error',
         },
         { status: 500 },
       );
     }
 
     // Combine stdout and stderr to look for file modification signals
-    const combinedOutput = stdout + '\n' + stderr;
+    const combinedOutput = result.stdout + '\n' + result.stderr;
     const filesModified = extractModifiedFiles(combinedOutput);
-    const summary = buildSummary(stdout, filesModified);
+    const summary = buildSummary(result.stdout, filesModified);
 
     const response: ClaudeApplyResponse = {
       success: true,
@@ -204,6 +178,12 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json(response);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
+    if (message === 'TIMEOUT') {
+      return NextResponse.json(
+        { error: 'Claude CLI timed out after 120 seconds' },
+        { status: 504 },
+      );
+    }
     return NextResponse.json(
       { error: 'Failed to run Claude CLI', details: message },
       { status: 500 },

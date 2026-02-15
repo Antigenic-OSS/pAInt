@@ -28,11 +28,38 @@ export const MESSAGE_TYPES = {
   REVERT_VARIANT: 'REVERT_VARIANT',
 } as const;
 
-export const BREAKPOINTS: Record<Breakpoint, { label: string; width: number }> = {
-  mobile: { label: 'Mobile', width: 375 },
-  tablet: { label: 'Tablet', width: 768 },
-  desktop: { label: 'Desktop', width: 1280 },
+export const BREAKPOINTS: Record<Breakpoint, { label: string; deviceName: string; width: number }> = {
+  mobile: { label: 'Mobile', deviceName: 'iPhone SE', width: 375 },
+  tablet: { label: 'Tablet', deviceName: 'iPad Mini', width: 768 },
+  desktop: { label: 'Desktop', deviceName: 'Laptop', width: 1280 },
 };
+
+/**
+ * Get the breakpoint range string for a given breakpoint.
+ * E.g., tablet (768px) affects down to mobile's max (430px) → "768px > 430px"
+ * Mobile is the lowest, so it just shows "375px".
+ * Desktop has no upper bound, so it shows "1280px+".
+ */
+const LOWER_BOUND_MAP: Record<Breakpoint, number | null> = {
+  desktop: 1024, // affects down to tablet upper range
+  tablet: 430,   // affects down to mobile upper range (iPhone 14 Pro Max)
+  mobile: 0,     // lowest breakpoint
+};
+
+export function getBreakpointRange(bp: Breakpoint): string {
+  const width = BREAKPOINTS[bp].width;
+  const lowerBound = LOWER_BOUND_MAP[bp];
+  if (bp === 'mobile') return `${width}px`;
+  if (lowerBound != null && lowerBound > 0) return `${width}px > ${lowerBound}px`;
+  return `${width}px`;
+}
+
+export function getBreakpointDeviceInfo(bp: Breakpoint): { deviceName: string; range: string } {
+  return {
+    deviceName: BREAKPOINTS[bp].deviceName,
+    range: getBreakpointRange(bp),
+  };
+}
 
 export const CSS_PROPERTIES = {
   size: ['width', 'height', 'min-width', 'min-height', 'max-width', 'max-height', 'overflow', 'box-sizing'],

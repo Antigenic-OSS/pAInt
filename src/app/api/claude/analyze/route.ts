@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { stripControlChars } from '@/lib/utils';
-import { getClaudeBin } from '@/lib/claude-bin';
+import { spawnClaude } from '@/lib/claude-bin';
 import type {
   ClaudeAnalyzeRequest,
   ClaudeAnalyzeResponse,
@@ -220,60 +220,29 @@ export async function POST(request: Request): Promise<NextResponse> {
   ].join('\n');
 
   try {
-    const claudeBin = getClaudeBin();
-    const proc = Bun.spawn(
-      [
-        claudeBin,
-        '--print',
-        '--allowedTools', 'Read',
-        '-p', prompt,
-      ],
-      {
-        cwd: resolvedRoot,
-        stdout: 'pipe',
-        stderr: 'pipe',
-        env: { ...process.env },
-      },
+    const result = await spawnClaude(
+      ['--print', '--allowedTools', 'Read', '-p', prompt],
+      { cwd: resolvedRoot, timeout: TIMEOUT_MS },
     );
 
-    // Race between process completion and timeout
-    const timeoutPromise = new Promise<'timeout'>((resolve) => {
-      setTimeout(() => resolve('timeout'), TIMEOUT_MS);
-    });
-
-    const result = await Promise.race([proc.exited, timeoutPromise]);
-
-    if (result === 'timeout') {
-      proc.kill();
-      return NextResponse.json(
-        { error: 'Claude CLI timed out after 120 seconds' },
-        { status: 504 },
-      );
-    }
-
-    const exitCode = result;
-    const stdout = await new Response(proc.stdout).text();
-    const stderr = await new Response(proc.stderr).text();
-
-    if (exitCode !== 0) {
+    if (result.exitCode !== 0) {
       return NextResponse.json(
         {
           error: 'Claude CLI exited with an error',
-          details: stderr.trim() || 'Unknown CLI error',
+          details: result.stderr.trim() || 'Unknown CLI error',
         },
         { status: 500 },
       );
     }
 
     // Generate a session ID from the output for potential --resume usage
-    // In practice, Claude CLI prints a session ID on stderr or we derive one
-    const sessionIdMatch = stderr.match(/session[:\s]+([a-f0-9-]+)/i);
+    const sessionIdMatch = result.stderr.match(/session[:\s]+([a-f0-9-]+)/i);
     const sessionId = sessionIdMatch
       ? sessionIdMatch[1]
       : crypto.randomUUID();
 
     // Parse diffs from CLI output
-    const diffs = parseDiffs(stdout);
+    const diffs = parseDiffs(result.stdout);
     const summary = buildSummary(diffs);
 
     const response: ClaudeAnalyzeResponse = {
@@ -285,6 +254,12 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json(response);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
+    if (message === 'TIMEOUT') {
+      return NextResponse.json(
+        { error: 'Claude CLI timed out after 120 seconds' },
+        { status: 504 },
+      );
+    }
     return NextResponse.json(
       { error: 'Failed to run Claude CLI', details: message },
       { status: 500 },

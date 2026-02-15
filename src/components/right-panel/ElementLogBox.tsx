@@ -3,7 +3,8 @@
 import { useMemo, useState, useCallback } from 'react';
 import { useEditorStore } from '@/store';
 import { inferSourcePath } from '@/lib/classifyElement';
-import { buildInstructionsFooter, BREAKPOINTS } from '@/lib/constants';
+import { buildInstructionsFooter, BREAKPOINTS, getBreakpointDeviceInfo, getBreakpointRange } from '@/lib/constants';
+import type { Breakpoint } from '@/types/changelog';
 
 function CopyIcon({ size = 14 }: { size?: number }) {
   return (
@@ -32,9 +33,7 @@ function buildElementLogText(opts: {
   computedStyles: Record<string, string>;
   pagePath: string;
   changeScope: 'all' | 'breakpoint-only';
-  activeBreakpoint: string;
-  breakpointLabel: string;
-  breakpointWidth: number;
+  activeBreakpoint: Breakpoint;
   changeCount: number;
 }): string {
   const lines: string[] = [];
@@ -53,6 +52,8 @@ function buildElementLogText(opts: {
     pagePath: opts.pagePath,
   });
 
+  const { deviceName, range } = getBreakpointDeviceInfo(opts.activeBreakpoint);
+
   lines.push('SOURCE');
   lines.push(sourcePath);
   lines.push('');
@@ -62,11 +63,12 @@ function buildElementLogText(opts: {
   lines.push('');
 
   lines.push('DEVICE');
-  lines.push(`${opts.breakpointLabel} (${opts.breakpointWidth}px)`);
+  lines.push(`Device Name: ${deviceName}`);
+  lines.push(`Breakpoint: ${range}`);
   lines.push('');
 
   lines.push('APPLIES TO');
-  lines.push(opts.changeScope === 'all' ? 'All breakpoints' : `${opts.breakpointLabel} only`);
+  lines.push(opts.changeScope === 'all' ? 'All breakpoints' : `${deviceName} (${range})`);
   lines.push('');
 
   if (opts.selectorPath) {
@@ -124,14 +126,11 @@ export function ElementLogBox() {
     return styleChanges.filter((c) => c.elementSelector === selectorPath).length;
   }, [styleChanges, selectorPath]);
 
-  const bp = BREAKPOINTS[activeBreakpoint];
-
   const logText = useMemo(() => buildElementLogText({
     tagName, className, elementId, selectorPath,
     attributes, innerText, computedStyles,
-    pagePath: currentPagePath, changeScope, activeBreakpoint,
-    breakpointLabel: bp.label, breakpointWidth: bp.width, changeCount,
-  }), [tagName, className, elementId, selectorPath, attributes, innerText, computedStyles, currentPagePath, changeScope, activeBreakpoint, bp.label, bp.width, changeCount]);
+    pagePath: currentPagePath, changeScope, activeBreakpoint, changeCount,
+  }), [tagName, className, elementId, selectorPath, attributes, innerText, computedStyles, currentPagePath, changeScope, activeBreakpoint, changeCount]);
 
   const handleCopy = useCallback(async () => {
     if (!logText) return;

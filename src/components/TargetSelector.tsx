@@ -1,56 +1,32 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import { useEditorStore } from '@/store';
-import { isLocalhostUrl, normalizeTargetUrl } from '@/lib/utils';
+import { normalizeTargetUrl } from '@/lib/utils';
 
 export function TargetSelector() {
   const targetUrl = useEditorStore((s) => s.targetUrl);
   const connectionStatus = useEditorStore((s) => s.connectionStatus);
-  const recentUrls = useEditorStore((s) => s.recentUrls);
   const setTargetUrl = useEditorStore((s) => s.setTargetUrl);
   const setConnectionStatus = useEditorStore((s) => s.setConnectionStatus);
   const addRecentUrl = useEditorStore((s) => s.addRecentUrl);
 
-  const [inputValue, setInputValue] = useState(targetUrl || '');
-  const [showRecent, setShowRecent] = useState(false);
+  const portOptions = Array.from({ length: 8 }, (_, i) => 3000 + i);
+  const getPortFromUrl = (url: string | null) => {
+    if (!url) return 3000;
+    const match = url.match(/:(\d+)/);
+    return match ? parseInt(match[1], 10) : 3000;
+  };
+  const [selectedPort, setSelectedPort] = useState(getPortFromUrl(targetUrl));
   const [error, setError] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!targetUrl) inputRef.current?.focus();
-  }, [targetUrl]);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setShowRecent(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   const handleConnect = () => {
     setError(null);
-    const url = inputValue.trim();
-    if (!url) return;
-
-    // Add protocol if missing
-    const fullUrl = url.startsWith('http') ? url : `http://${url}`;
-
-    if (!isLocalhostUrl(fullUrl)) {
-      setError('Only localhost URLs are allowed');
-      return;
-    }
-
-    const normalized = normalizeTargetUrl(fullUrl);
+    const url = `http://localhost:${selectedPort}`;
+    const normalized = normalizeTargetUrl(url);
     setTargetUrl(normalized);
     setConnectionStatus('connecting');
     addRecentUrl(normalized);
-    setInputValue(normalized);
-    setShowRecent(false);
   };
 
   const handleDisconnect = () => {
@@ -59,21 +35,9 @@ export function TargetSelector() {
     setError(null);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      if (connectionStatus === 'connected') {
-        handleDisconnect();
-      } else {
-        handleConnect();
-      }
-    }
-  };
-
-  const handleSelectRecent = (url: string) => {
-    setInputValue(url);
-    setShowRecent(false);
-    setTargetUrl(url);
-    setConnectionStatus('connecting');
+  const handlePortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedPort(parseInt(e.target.value, 10));
+    setError(null);
   };
 
   const statusColor =
@@ -84,7 +48,7 @@ export function TargetSelector() {
         : 'var(--error)';
 
   return (
-    <div className="flex items-center gap-2 relative" ref={dropdownRef}>
+    <div className="flex items-center gap-2 relative">
       {/* Connection status dot */}
       <div
         className="w-2 h-2 rounded-full flex-shrink-0"
@@ -92,24 +56,22 @@ export function TargetSelector() {
         title={connectionStatus}
       />
 
-      {/* URL input */}
-      <input
-        ref={inputRef}
-        type="url"
-        value={inputValue}
-        onChange={(e) => {
-          setInputValue(e.target.value);
-          setError(null);
-        }}
-        onKeyDown={handleKeyDown}
-        onFocus={() => recentUrls.length > 0 && !targetUrl && setShowRecent(true)}
-        placeholder="http://localhost:3000"
-        className="w-56 text-xs"
+      {/* Port dropdown */}
+      <select
+        value={selectedPort}
+        onChange={handlePortChange}
         disabled={connectionStatus === 'connected'}
+        className="w-56 text-xs bg-[var(--bg-secondary)] text-[var(--text-primary)] border border-[var(--border)] rounded px-2 py-1 outline-none focus:border-[var(--accent)]"
         style={{
           opacity: connectionStatus === 'connected' ? 0.7 : 1,
         }}
-      />
+      >
+        {portOptions.map((port) => (
+          <option key={port} value={port}>
+            http://localhost:{port}
+          </option>
+        ))}
+      </select>
 
       {/* Connect / Disconnect button */}
       <button
@@ -134,30 +96,6 @@ export function TargetSelector() {
         </span>
       )}
 
-      {/* Recent URLs dropdown */}
-      {showRecent && recentUrls.length > 0 && (
-        <div
-          className="absolute top-full left-6 mt-1 py-1 rounded shadow-lg z-50 min-w-56"
-          style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border)' }}
-        >
-          <div
-            className="px-3 py-1 text-xs"
-            style={{ color: 'var(--text-muted)' }}
-          >
-            Recent
-          </div>
-          {recentUrls.map((url) => (
-            <button
-              key={url}
-              onClick={() => handleSelectRecent(url)}
-              className="block w-full text-left px-3 py-1.5 text-xs hover:bg-[var(--bg-hover)] transition-colors"
-              style={{ color: 'var(--text-primary)' }}
-            >
-              {url}
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

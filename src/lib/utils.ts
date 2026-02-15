@@ -1,3 +1,5 @@
+import { getBreakpointDeviceInfo } from '@/lib/constants';
+
 /**
  * Generate a CSS selector path for a DOM element.
  */
@@ -122,7 +124,7 @@ export function stripControlChars(str: string): string {
 export function formatChangelog(opts: {
   targetUrl: string;
   pagePath: string;
-  breakpoint: string;
+  breakpoint: import('@/types/changelog').Breakpoint;
   breakpointWidth: number;
   styleChanges: import('@/types/changelog').StyleChange[];
 }): string {
@@ -130,9 +132,10 @@ export function formatChangelog(opts: {
     targetUrl,
     pagePath,
     breakpoint,
-    breakpointWidth,
     styleChanges,
   } = opts;
+
+  const { deviceName, range } = getBreakpointDeviceInfo(breakpoint);
 
   const lines: string[] = [];
   const timestamp = new Date().toISOString();
@@ -140,7 +143,8 @@ export function formatChangelog(opts: {
   lines.push('=== DEV EDITOR CHANGELOG ===');
   lines.push(`Project URL: ${targetUrl}`);
   lines.push(`Page: ${pagePath || '/'}`);
-  lines.push(`Breakpoint: ${breakpoint} (${breakpointWidth}px)`);
+  lines.push(`Device Name: ${deviceName}`);
+  lines.push(`Breakpoint: ${range}`);
   lines.push(`Generated: ${timestamp}`);
   lines.push('');
 

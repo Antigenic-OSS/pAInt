@@ -3,9 +3,9 @@
 import { useMemo, useState, useCallback } from 'react';
 import { useEditorStore } from '@/store';
 import { useChangeTracker } from '@/hooks/useChangeTracker';
-import { BREAKPOINTS, buildInstructionsFooter } from '@/lib/constants';
+import { BREAKPOINTS, buildInstructionsFooter, getBreakpointDeviceInfo, getBreakpointRange } from '@/lib/constants';
 import { inferSourcePath } from '@/lib/classifyElement';
-import type { StyleChange, ElementSnapshot } from '@/types/changelog';
+import type { StyleChange, ElementSnapshot, Breakpoint } from '@/types/changelog';
 
 function truncateText(text: string, maxLen: number): string {
   if (!text) return '(empty)';
@@ -52,8 +52,15 @@ function buildSingleElementLog(snapshot: ElementSnapshot, changes: StyleChange[]
   lines.push('ELEMENT');
   lines.push(tag);
   lines.push('');
+  const changeBp = (changes[0]?.breakpoint || 'mobile') as Breakpoint;
+  const { deviceName, range } = getBreakpointDeviceInfo(changeBp);
+
+  lines.push('DEVICE');
+  lines.push(`Device Name: ${deviceName}`);
+  lines.push(`Breakpoint: ${range}`);
+  lines.push('');
   lines.push('APPLIES TO');
-  lines.push(snapshot.changeScope === 'all' ? 'All breakpoints' : `${changes[0]?.breakpoint || 'mobile'} only`);
+  lines.push(snapshot.changeScope === 'all' ? 'All breakpoints' : `${deviceName} (${range})`);
   lines.push('');
   lines.push('PATH');
   lines.push(snapshot.selectorPath);
@@ -88,7 +95,8 @@ function buildSingleElementLog(snapshot: ElementSnapshot, changes: StyleChange[]
     if (c.property === '__text_content__') {
       lines.push(`  text content: "${c.originalValue}" → "${c.newValue}"`);
     } else {
-      lines.push(`  ${c.property}: "${c.originalValue}" → "${c.newValue}" [${c.breakpoint}]`);
+      const cInfo = getBreakpointDeviceInfo(c.breakpoint);
+      lines.push(`  ${c.property}: "${c.originalValue}" → "${c.newValue}" [${cInfo.deviceName} ${cInfo.range}]`);
     }
   }
   lines.push('');
@@ -101,17 +109,18 @@ function buildGlobalLog(opts: {
   groups: Array<{ snapshot: ElementSnapshot; changes: StyleChange[] }>;
   targetUrl: string | null;
   pagePath: string;
-  breakpoint: string;
-  breakpointWidth: number;
+  breakpoint: Breakpoint;
 }): string {
   const lines: string[] = [];
   const totalChanges = opts.groups.reduce((sum, g) => sum + g.changes.length, 0);
+  const { deviceName, range } = getBreakpointDeviceInfo(opts.breakpoint);
 
   lines.push('=== DEV EDITOR CHANGELOG ===');
   if (opts.targetUrl) {
     lines.push(`Project URL: ${opts.targetUrl}`);
     lines.push(`Page: ${opts.pagePath || '/'}`);
-    lines.push(`Breakpoint: ${opts.breakpoint} (${opts.breakpointWidth}px)`);
+    lines.push(`Device Name: ${deviceName}`);
+    lines.push(`Breakpoint: ${range}`);
   }
   lines.push(`Generated: ${new Date().toISOString()}`);
   lines.push('');
@@ -370,7 +379,6 @@ export function ChangesPanel() {
     targetUrl,
     pagePath: currentPagePath,
     breakpoint: activeBreakpoint,
-    breakpointWidth: BREAKPOINTS[activeBreakpoint].width,
   }), [groups, targetUrl, currentPagePath, activeBreakpoint]);
 
   const handleClearAll = useCallback(() => {

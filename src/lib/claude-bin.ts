@@ -1,38 +1,84 @@
-import { execFileSync } from 'child_process';
+import { existsSync } from 'node:fs';
+import { spawn } from 'node:child_process';
 
 let cached: string | null = null;
 
 /**
  * Resolve the absolute path to the `claude` CLI binary.
  * Next.js server processes may not inherit the user's full shell PATH,
- * so we probe common install locations as a fallback.
+ * so we check common install locations directly on the filesystem.
  */
 export function getClaudeBin(): string {
   if (cached) return cached;
 
-  // Try `which` first (works if PATH includes the install dir)
-  try {
-    cached = execFileSync('which', ['claude'], { encoding: 'utf-8' }).trim();
-    return cached;
-  } catch { /* fall through */ }
-
-  // Probe common locations
   const home = process.env.HOME || '';
   const candidates = [
     `${home}/.local/bin/claude`,
+    `${home}/.claude/local/claude`,
     '/usr/local/bin/claude',
     `${home}/.npm-global/bin/claude`,
     `${home}/.bun/bin/claude`,
+    `${home}/.nvm/versions/node/current/bin/claude`,
   ];
 
   for (const p of candidates) {
-    try {
-      execFileSync(p, ['--version'], { encoding: 'utf-8', timeout: 5000 });
+    if (existsSync(p)) {
       cached = p;
       return cached;
-    } catch { /* next */ }
+    }
   }
 
-  // Last resort — let the caller handle the error
+  // Fall back to bare name — will only work if PATH happens to include it
   return 'claude';
+}
+
+export interface SpawnResult {
+  exitCode: number;
+  stdout: string;
+  stderr: string;
+}
+
+/**
+ * Spawn the claude CLI with given args using Node's child_process.
+ * Works in both Bun and Node runtimes (Next.js Turbopack uses Node).
+ */
+export function spawnClaude(
+  args: string[],
+  options: { cwd?: string; timeout?: number } = {},
+): Promise<SpawnResult> {
+  const claudeBin = getClaudeBin();
+  const { cwd, timeout = 120_000 } = options;
+
+  return new Promise((resolve, reject) => {
+    const proc = spawn(claudeBin, args, {
+      cwd,
+      env: { ...process.env },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+
+    const stdoutChunks: Buffer[] = [];
+    const stderrChunks: Buffer[] = [];
+
+    proc.stdout.on('data', (chunk: Buffer) => stdoutChunks.push(chunk));
+    proc.stderr.on('data', (chunk: Buffer) => stderrChunks.push(chunk));
+
+    const timer = setTimeout(() => {
+      proc.kill('SIGKILL');
+      reject(new Error('TIMEOUT'));
+    }, timeout);
+
+    proc.on('close', (code) => {
+      clearTimeout(timer);
+      resolve({
+        exitCode: code ?? 1,
+        stdout: Buffer.concat(stdoutChunks).toString('utf-8'),
+        stderr: Buffer.concat(stderrChunks).toString('utf-8'),
+      });
+    });
+
+    proc.on('error', (err) => {
+      clearTimeout(timer);
+      reject(err);
+    });
+  });
 }
