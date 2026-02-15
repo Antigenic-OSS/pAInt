@@ -6,8 +6,9 @@ import { createChangeSlice, type ChangeSlice } from './changeSlice';
 import { createClaudeSlice, type ClaudeSlice } from './claudeSlice';
 import { createCSSVariableSlice, type CSSVariableSlice } from './cssVariableSlice';
 import { createComponentSlice, type ComponentSlice } from './componentSlice';
+import { createConsoleSlice, type ConsoleSlice } from './consoleSlice';
 
-export type EditorStore = UISlice & ElementSlice & TreeSlice & ChangeSlice & ClaudeSlice & CSSVariableSlice & ComponentSlice;
+export type EditorStore = UISlice & ElementSlice & TreeSlice & ChangeSlice & ClaudeSlice & CSSVariableSlice & ComponentSlice & ConsoleSlice;
 
 export const useEditorStore = create<EditorStore>()((...a) => ({
   ...createUISlice(...a),
@@ -17,4 +18,5 @@ export const useEditorStore = create<EditorStore>()((...a) => ({
   ...createClaudeSlice(...a),
   ...createCSSVariableSlice(...a),
   ...createComponentSlice(...a),
+  ...createConsoleSlice(...a),
 }));

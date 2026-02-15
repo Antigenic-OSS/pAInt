@@ -30,6 +30,7 @@ export interface UndoRedoAction {
   afterValue: string;
   breakpoint: Breakpoint;
   wasNewChange: boolean;
+  changeScope?: 'all' | 'breakpoint-only';
 }
 
 export const BREAKPOINT_WIDTHS: Record<Breakpoint, number> = {

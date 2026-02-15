@@ -184,6 +184,7 @@ export const createChangeSlice: StateCreator<ChangeSlice, [], [], ChangeSlice> =
             newValue: action.afterValue,
             breakpoint: action.breakpoint,
             timestamp: Date.now(),
+            changeScope: action.changeScope,
           },
         ];
       }

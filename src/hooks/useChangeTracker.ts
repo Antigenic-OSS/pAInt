@@ -122,6 +122,7 @@ export function useChangeTracker() {
       );
 
       // Push undo action
+      const state0 = useEditorStore.getState();
       pushUndo({
         elementSelector: selectorPath,
         property,
@@ -129,6 +130,7 @@ export function useChangeTracker() {
         afterValue: value,
         breakpoint: activeBreakpoint,
         wasNewChange: !existing,
+        changeScope: state0.changeScope,
       });
 
       // Send preview change to inspector

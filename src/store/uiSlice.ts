@@ -11,7 +11,7 @@ export interface UISlice {
   rightPanelOpen: boolean;
   leftPanelWidth: number;
   rightPanelWidth: number;
-  activeRightTab: 'design' | 'changes' | 'claude';
+  activeRightTab: 'design' | 'changes' | 'claude' | 'console';
   changeScope: 'all' | 'breakpoint-only';
   pageLinks: Array<{ href: string; text: string }>;
   currentPagePath: string;
@@ -28,7 +28,7 @@ export interface UISlice {
   toggleRightPanel: () => void;
   setLeftPanelWidth: (width: number) => void;
   setRightPanelWidth: (width: number) => void;
-  setActiveRightTab: (tab: 'design' | 'changes' | 'claude') => void;
+  setActiveRightTab: (tab: 'design' | 'changes' | 'claude' | 'console') => void;
   setChangeScope: (scope: 'all' | 'breakpoint-only') => void;
   setPageLinks: (links: Array<{ href: string; text: string }>) => void;
   setCurrentPagePath: (path: string) => void;
@@ -50,7 +50,7 @@ export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (set, get) 
   leftPanelWidth: PANEL_DEFAULTS.leftWidth,
   rightPanelWidth: PANEL_DEFAULTS.rightWidth,
   activeRightTab: 'design',
-  changeScope: 'all',
+  changeScope: 'breakpoint-only',
   pageLinks: [],
   currentPagePath: '/',
   selectionMode: true,

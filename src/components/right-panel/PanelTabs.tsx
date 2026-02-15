@@ -5,12 +5,15 @@ import { useEditorStore } from '@/store';
 export function PanelTabs() {
   const activeRightTab = useEditorStore((s) => s.activeRightTab);
   const setActiveRightTab = useEditorStore((s) => s.setActiveRightTab);
-  const changeCount = useEditorStore((s) => s.styleChanges.length);
+  const activeBreakpoint = useEditorStore((s) => s.activeBreakpoint);
+  const changeCount = useEditorStore((s) => s.styleChanges.filter((c) => c.breakpoint === activeBreakpoint).length);
+  const consoleErrorCount = useEditorStore((s) => s.consoleErrorCount);
 
-  const tabs: Array<{ id: 'design' | 'changes' | 'claude'; label: string }> = [
+  const tabs: Array<{ id: 'design' | 'changes' | 'claude' | 'console'; label: string }> = [
     { id: 'design', label: 'Design' },
     { id: 'changes', label: 'Changes' },
     { id: 'claude', label: 'Claude' },
+    { id: 'console', label: 'Console' },
   ];
 
   return (
@@ -35,6 +38,14 @@ export function PanelTabs() {
               style={{ background: 'var(--accent)', color: '#fff' }}
             >
               {changeCount}
+            </span>
+          )}
+          {tab.id === 'console' && consoleErrorCount > 0 && (
+            <span
+              className="inline-flex items-center justify-center min-w-4 h-4 px-1 rounded-full text-[10px] font-medium"
+              style={{ background: 'var(--error)', color: '#fff' }}
+            >
+              {consoleErrorCount}
             </span>
           )}
           {activeRightTab === tab.id && (

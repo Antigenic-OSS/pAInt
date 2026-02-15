@@ -33,6 +33,71 @@
       window.parent.postMessage(message, parentOrigin);
     }
 
+    // --- Console Interception ---
+    var originalConsole = {
+      log: console.log,
+      info: console.info,
+      warn: console.warn,
+      error: console.error
+    };
+
+    function serializeArg(arg) {
+      if (arg === null) return 'null';
+      if (arg === undefined) return 'undefined';
+      if (typeof arg === 'string') return arg;
+      if (typeof arg === 'number' || typeof arg === 'boolean') return String(arg);
+      if (arg instanceof Error) return arg.stack || arg.message || String(arg);
+      try { return JSON.stringify(arg); } catch(e) { return String(arg); }
+    }
+
+    function interceptConsole(level) {
+      console[level] = function() {
+        var args = [];
+        for (var i = 0; i < arguments.length; i++) {
+          args.push(serializeArg(arguments[i]));
+        }
+        originalConsole[level].apply(console, arguments);
+        send({
+          type: 'CONSOLE_MESSAGE',
+          payload: { level: level, args: args, timestamp: Date.now() }
+        });
+      };
+    }
+
+    interceptConsole('log');
+    interceptConsole('info');
+    interceptConsole('warn');
+    interceptConsole('error');
+
+    window.onerror = function(message, source, line, column) {
+      send({
+        type: 'CONSOLE_MESSAGE',
+        payload: {
+          level: 'error',
+          args: [String(message)],
+          timestamp: Date.now(),
+          source: source || undefined,
+          line: line || undefined,
+          column: column || undefined
+        }
+      });
+    };
+
+    window.addEventListener('unhandledrejection', function(e) {
+      var reason = e.reason;
+      var msg = reason instanceof Error
+        ? (reason.stack || reason.message || String(reason))
+        : String(reason);
+      send({
+        type: 'CONSOLE_MESSAGE',
+        payload: {
+          level: 'error',
+          args: ['Unhandled Promise Rejection: ' + msg],
+          timestamp: Date.now()
+        }
+      });
+    });
+
     // Convert kebab-case to camelCase: 'padding-top' → 'paddingTop'
     function kebabToCamel(str) {
       return str.replace(/-([a-z])/g, function(m, c) { return c.toUpperCase(); });

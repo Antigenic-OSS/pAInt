@@ -105,6 +105,20 @@ export interface TextChangedMessage {
   };
 }
 
+export type ConsoleLevel = 'log' | 'info' | 'warn' | 'error';
+
+export interface ConsoleMessageMessage {
+  type: 'CONSOLE_MESSAGE';
+  payload: {
+    level: ConsoleLevel;
+    args: string[];
+    timestamp: number;
+    source?: string;
+    line?: number;
+    column?: number;
+  };
+}
+
 // Editor → Inspector messages
 
 export interface SelectElementMessage {
@@ -224,7 +238,8 @@ export type InspectorToEditorMessage =
   | ComponentsDetectedMessage
   | VariantAppliedMessage
   | PageNavigateMessage
-  | TextChangedMessage;
+  | TextChangedMessage
+  | ConsoleMessageMessage;
 
 export type EditorToInspectorMessage =
   | SelectElementMessage

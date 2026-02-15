@@ -5,6 +5,7 @@ import { PanelTabs } from './PanelTabs';
 import { DesignPanel } from './design/DesignPanel';
 import { ChangesPanel } from './changes/ChangesPanel';
 import { ClaudeIntegrationPanel } from './claude/ClaudeIntegrationPanel';
+import { ConsolePanel } from './console/ConsolePanel';
 import { useEditorStore } from '@/store';
 import { PANEL_DEFAULTS } from '@/lib/constants';
 
@@ -30,6 +31,7 @@ export function RightPanel({ width }: RightPanelProps) {
           {activeRightTab === 'design' && <DesignPanel />}
           {activeRightTab === 'changes' && <ChangesPanel />}
           {activeRightTab === 'claude' && <ClaudeIntegrationPanel />}
+          {activeRightTab === 'console' && <ConsolePanel />}
         </div>
       </div>
     </ResizablePanel>

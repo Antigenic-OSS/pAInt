@@ -47,6 +47,7 @@ function handleMessage(event: MessageEvent) {
   switch (msg.type) {
     case 'INSPECTOR_READY': {
       store.setConnectionStatus('connected');
+      store.clearConsole();
       // Re-sync selection mode — the fresh inspector defaults to selectionModeEnabled=true,
       // but if the editor is in preview mode (or selection is toggled off), we need to
       // tell the inspector immediately so clicks pass through for navigation.
@@ -121,6 +122,11 @@ function handleMessage(event: MessageEvent) {
       store.setCurrentPagePath(msg.payload.path);
       store.setConnectionStatus('connecting');
       store.clearComponents();
+      store.clearConsole();
+      break;
+
+    case 'CONSOLE_MESSAGE':
+      store.addConsoleEntry(msg.payload);
       break;
 
     case 'TEXT_CHANGED': {
@@ -140,6 +146,7 @@ function handleMessage(event: MessageEvent) {
         afterValue: newText,
         breakpoint: store.activeBreakpoint,
         wasNewChange: !existingText,
+        changeScope: store.changeScope,
       });
 
       // Save element snapshot
@@ -165,6 +172,7 @@ function handleMessage(event: MessageEvent) {
         newValue: newText,
         breakpoint: store.activeBreakpoint,
         timestamp: Date.now(),
+        changeScope: store.changeScope,
       });
       break;
     }
