@@ -24,6 +24,15 @@ export function performUndo() {
   } else {
     sendViaIframe({ type: 'PREVIEW_CHANGE', payload: { selectorPath: action.elementSelector, property: action.property, value: action.beforeValue } });
   }
+
+  // Update local computedStyles for undo
+  if (action.property !== '__text_content__') {
+    const store = useEditorStore.getState();
+    store.updateComputedStyles({
+      ...store.computedStyles,
+      [action.property]: action.beforeValue,
+    });
+  }
 }
 
 /**
@@ -38,6 +47,15 @@ export function performRedo() {
     sendViaIframe({ type: 'SET_TEXT_CONTENT', payload: { selectorPath: action.elementSelector, text: action.afterValue } });
   } else {
     sendViaIframe({ type: 'PREVIEW_CHANGE', payload: { selectorPath: action.elementSelector, property: action.property, value: action.afterValue } });
+  }
+
+  // Update local computedStyles for redo
+  if (action.property !== '__text_content__') {
+    const store = useEditorStore.getState();
+    store.updateComputedStyles({
+      ...store.computedStyles,
+      [action.property]: action.afterValue,
+    });
   }
 }
 
@@ -117,6 +135,12 @@ export function useChangeTracker() {
       sendToInspector({
         type: 'PREVIEW_CHANGE',
         payload: { selectorPath, property, value },
+      });
+
+      // Update local computedStyles so UI reacts immediately
+      useEditorStore.getState().updateComputedStyles({
+        ...useEditorStore.getState().computedStyles,
+        [property]: value,
       });
 
       // Capture element snapshot at the time of change

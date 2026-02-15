@@ -106,8 +106,10 @@
         'border-bottom-right-radius','border-bottom-left-radius',
         'background-color','background-image','opacity',
         'display','flex-direction','justify-content','align-items',
-        'flex-wrap','gap','grid-template-columns','grid-template-rows',
-        'position','top','right','bottom','left','z-index'
+        'flex-wrap','gap','column-gap','row-gap',
+        'grid-template-columns','grid-template-rows','grid-auto-flow',
+        'justify-items','vertical-align',
+        'position','top','right','bottom','left','z-index','box-sizing'
       ];
       var styles = {};
       for (var i = 0; i < props.length; i++) {
