@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { useEditorStore } from '@/store';
+import { ApplyConfirmModal } from './ApplyConfirmModal';
 
 interface ResultsSummaryProps {
   summary: string;
@@ -12,6 +13,7 @@ export function ResultsSummary({ summary, onApplyAll }: ResultsSummaryProps) {
   const parsedDiffs = useEditorStore((s) => s.parsedDiffs);
   const claudeStatus = useEditorStore((s) => s.claudeStatus);
   const [copied, setCopied] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   const handleCopyDiffs = useCallback(async () => {
     if (parsedDiffs.length === 0) return;
@@ -76,7 +78,7 @@ export function ResultsSummary({ summary, onApplyAll }: ResultsSummaryProps) {
       {/* Action buttons */}
       <div className="flex flex-col gap-2">
         <button
-          onClick={onApplyAll}
+          onClick={() => setShowConfirmModal(true)}
           disabled={isApplying || parsedDiffs.length === 0}
           className="w-full py-1.5 px-3 rounded text-xs font-medium transition-colors disabled:opacity-50"
           style={{
@@ -99,6 +101,16 @@ export function ResultsSummary({ summary, onApplyAll }: ResultsSummaryProps) {
           {copied ? 'Copied!' : 'Copy All Diffs'}
         </button>
       </div>
+
+      {showConfirmModal && (
+        <ApplyConfirmModal
+          onConfirm={() => {
+            setShowConfirmModal(false);
+            onApplyAll();
+          }}
+          onCancel={() => setShowConfirmModal(false)}
+        />
+      )}
     </div>
   );
 }

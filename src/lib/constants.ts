@@ -118,6 +118,7 @@ export const LOCAL_STORAGE_KEYS = {
   PANEL_VISIBILITY: 'dev-editor:panel-visibility',
   CHANGES_PREFIX: 'dev-editor:changes:',
   CLAUDE_PROJECT_ROOT: 'dev-editor:claude:project-root',
+  CLAUDE_PORT_ROOTS: 'dev-editor:claude:port-roots',
   CLAUDE_CLI_AVAILABLE: 'dev-editor:claude:cli-available',
 } as const;
 

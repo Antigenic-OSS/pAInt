@@ -13,7 +13,7 @@ import type { ClaudeAnalyzeResponse, ClaudeApplyResponse } from '@/types/claude'
 
 export function ClaudeIntegrationPanel() {
   const claudeStatus = useEditorStore((s) => s.claudeStatus);
-  const projectRoot = useEditorStore((s) => s.projectRoot);
+  const portRoots = useEditorStore((s) => s.portRoots);
   const cliAvailable = useEditorStore((s) => s.cliAvailable);
   const claudeError = useEditorStore((s) => s.claudeError);
   const sessionId = useEditorStore((s) => s.sessionId);
@@ -34,12 +34,20 @@ export function ClaudeIntegrationPanel() {
   const [appliedFiles, setAppliedFiles] = useState<string[]>([]);
   const [setupComplete, setSetupComplete] = useState(false);
 
+  // Derive projectRoot from per-port mapping
+  const projectRoot = targetUrl ? (portRoots[targetUrl] ?? null) : null;
+
   const totalChanges = styleChanges.length;
 
   // Load persisted state on mount
   useEffect(() => {
     loadPersistedClaude();
   }, [loadPersistedClaude]);
+
+  // Reset setupComplete when targetUrl changes so setup re-shows if needed
+  useEffect(() => {
+    setSetupComplete(false);
+  }, [targetUrl]);
 
   // Check if setup is needed
   const needsSetup = !setupComplete && (cliAvailable === null || cliAvailable === false || !projectRoot);
@@ -105,6 +113,8 @@ export function ClaudeIntegrationPanel() {
     setParsedDiffs,
   ]);
 
+  const showToast = useEditorStore((s) => s.showToast);
+
   const handleApplyAll = useCallback(async () => {
     if (!sessionId || !projectRoot) return;
 
@@ -125,6 +135,7 @@ export function ClaudeIntegrationPanel() {
           code: data.code || 'UNKNOWN',
           message: data.error || `Apply failed with status ${res.status}`,
         });
+        showToast('error', data.error || 'Failed to apply changes');
         return;
       }
 
@@ -132,12 +143,15 @@ export function ClaudeIntegrationPanel() {
       if (data.success) {
         setAppliedFiles(data.filesModified || []);
         setClaudeStatus('applied');
+        const fileCount = data.filesModified?.length || 0;
+        showToast('success', `Changes applied successfully — ${fileCount} file${fileCount !== 1 ? 's' : ''} modified`);
       } else {
         setClaudeStatus('error');
         setClaudeError({
           code: 'UNKNOWN',
           message: data.summary || 'Apply returned unsuccessful',
         });
+        showToast('error', data.summary || 'Apply returned unsuccessful');
       }
     } catch (err) {
       setClaudeStatus('error');
@@ -145,8 +159,9 @@ export function ClaudeIntegrationPanel() {
         code: 'UNKNOWN',
         message: err instanceof Error ? err.message : 'Network error',
       });
+      showToast('error', err instanceof Error ? err.message : 'Network error');
     }
-  }, [sessionId, projectRoot, setClaudeStatus, setClaudeError]);
+  }, [sessionId, projectRoot, setClaudeStatus, setClaudeError, showToast]);
 
   const handleRetry = useCallback(() => {
     resetClaude();
@@ -160,9 +175,29 @@ export function ClaudeIntegrationPanel() {
     setAppliedFiles([]);
   }, [resetClaude]);
 
+  // No target connected — prompt user to connect first
+  if (!targetUrl) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 gap-3 px-4">
+        <div
+          className="text-2xl"
+          style={{ color: 'var(--text-muted)', opacity: 0.5 }}
+        >
+          &#8728;
+        </div>
+        <p
+          className="text-xs text-center"
+          style={{ color: 'var(--text-muted)' }}
+        >
+          Connect to a project first using the URL bar above, then configure Claude Code here.
+        </p>
+      </div>
+    );
+  }
+
   // Setup flow
   if (needsSetup) {
-    return <SetupFlow onComplete={handleSetupComplete} />;
+    return <SetupFlow targetUrl={targetUrl} onComplete={handleSetupComplete} />;
   }
 
   // State machine UI

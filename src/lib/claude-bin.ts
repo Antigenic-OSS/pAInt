@@ -1,27 +1,51 @@
-import { existsSync } from 'node:fs';
-import { spawn } from 'node:child_process';
+import { existsSync, readdirSync } from 'node:fs';
+import { spawn, execFileSync } from 'node:child_process';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 
 let cached: string | null = null;
 
 /**
  * Resolve the absolute path to the `claude` CLI binary.
- * Next.js server processes may not inherit the user's full shell PATH,
- * so we check common install locations directly on the filesystem.
+ * Next.js server processes often lack HOME and have a minimal PATH,
+ * so we use os.homedir() and scan multiple known locations.
  */
 export function getClaudeBin(): string {
   if (cached) return cached;
 
-  const home = process.env.HOME || '';
+  // os.homedir() works even when $HOME is unset (reads /etc/passwd)
+  const home = homedir();
   const candidates = [
     `${home}/.local/bin/claude`,
     `${home}/.claude/local/claude`,
     '/usr/local/bin/claude',
     `${home}/.npm-global/bin/claude`,
     `${home}/.bun/bin/claude`,
-    `${home}/.nvm/versions/node/current/bin/claude`,
+    `${home}/.volta/bin/claude`,
   ];
 
+  // Also check nvm versioned dirs (the "current" symlink may not exist)
+  try {
+    const nvmDir = `${home}/.nvm/versions/node`;
+    if (existsSync(nvmDir)) {
+      for (const ver of readdirSync(nvmDir)) {
+        candidates.push(join(nvmDir, ver, 'bin', 'claude'));
+      }
+    }
+  } catch { /* ignore */ }
+
   for (const p of candidates) {
+    if (existsSync(p)) {
+      cached = p;
+      return cached;
+    }
+  }
+
+  // Scan PATH directories as a last resort
+  const pathDirs = (process.env.PATH || '').split(':');
+  for (const dir of pathDirs) {
+    if (!dir) continue;
+    const p = join(dir, 'claude');
     if (existsSync(p)) {
       cached = p;
       return cached;

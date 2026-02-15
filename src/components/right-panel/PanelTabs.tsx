@@ -12,7 +12,7 @@ export function PanelTabs() {
   const tabs: Array<{ id: 'design' | 'changes' | 'claude' | 'console'; label: string }> = [
     { id: 'design', label: 'Design' },
     { id: 'changes', label: 'Changes' },
-    { id: 'claude', label: 'Claude' },
+    // { id: 'claude', label: 'Claude' },
     { id: 'console', label: 'Console' },
   ];
 

@@ -65,6 +65,7 @@ function handleMessage(event: MessageEvent) {
     case 'ELEMENT_SELECTED':
       store.selectElement(msg.payload);
       store.setCSSVariableUsages(msg.payload.cssVariableUsages || {});
+      store.setActiveRightTab('design');
       break;
 
     case 'CSS_VARIABLES':

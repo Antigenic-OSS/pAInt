@@ -2,6 +2,12 @@ import type { StateCreator } from 'zustand';
 import type { Breakpoint } from '@/types/changelog';
 import { PANEL_DEFAULTS, LOCAL_STORAGE_KEYS, PREVIEW_WIDTH_MIN, PREVIEW_WIDTH_MAX, BREAKPOINTS } from '@/lib/constants';
 
+export interface Toast {
+  id: string;
+  type: 'success' | 'error' | 'info';
+  message: string;
+}
+
 export interface UISlice {
   targetUrl: string | null;
   connectionStatus: 'disconnected' | 'connecting' | 'connected';
@@ -19,6 +25,7 @@ export interface UISlice {
   viewMode: boolean;
   activeLeftTab: 'layers' | 'pages' | 'components';
   previewWidth: number;
+  toasts: Toast[];
 
   setTargetUrl: (url: string | null) => void;
   setConnectionStatus: (status: 'disconnected' | 'connecting' | 'connected') => void;
@@ -37,6 +44,8 @@ export interface UISlice {
   toggleViewMode: () => void;
   setActiveLeftTab: (tab: 'layers' | 'pages' | 'components') => void;
   setPreviewWidth: (width: number) => void;
+  showToast: (type: Toast['type'], message: string) => void;
+  dismissToast: (id: string) => void;
   loadPersistedUI: () => void;
 }
 
@@ -57,6 +66,7 @@ export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (set, get) 
   viewMode: false,
   activeLeftTab: 'layers',
   previewWidth: 1920,
+  toasts: [],
 
   setTargetUrl: (url) => {
     set({ targetUrl: url });
@@ -139,6 +149,18 @@ export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (set, get) 
   },
 
   setActiveLeftTab: (tab) => set({ activeLeftTab: tab }),
+
+  showToast: (type, message) => {
+    const id = Math.random().toString(36).slice(2, 9);
+    set((state) => ({ toasts: [...state.toasts, { id, type, message }] }));
+    setTimeout(() => {
+      set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) }));
+    }, 4000);
+  },
+
+  dismissToast: (id) => {
+    set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) }));
+  },
 
   setPreviewWidth: (width) => {
     const clamped = Math.min(Math.max(width, PREVIEW_WIDTH_MIN), PREVIEW_WIDTH_MAX);

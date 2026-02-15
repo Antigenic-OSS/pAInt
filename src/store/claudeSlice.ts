@@ -5,13 +5,15 @@ import { LOCAL_STORAGE_KEYS } from '@/lib/constants';
 export interface ClaudeSlice {
   claudeStatus: ClaudeStatus;
   projectRoot: string | null;
+  portRoots: Record<string, string>;
   cliAvailable: boolean | null;
   sessionId: string | null;
   parsedDiffs: ParsedDiff[];
   claudeError: ClaudeError | null;
 
   setClaudeStatus: (status: ClaudeStatus) => void;
-  setProjectRoot: (path: string | null) => void;
+  setProjectRoot: (url: string, path: string | null) => void;
+  getProjectRootForUrl: (url: string | null) => string | null;
   setCliAvailable: (available: boolean) => void;
   setSessionId: (id: string | null) => void;
   setParsedDiffs: (diffs: ParsedDiff[]) => void;
@@ -20,9 +22,16 @@ export interface ClaudeSlice {
   loadPersistedClaude: () => void;
 }
 
-export const createClaudeSlice: StateCreator<ClaudeSlice, [], [], ClaudeSlice> = (set) => ({
+function persistPortRoots(portRoots: Record<string, string>) {
+  try {
+    localStorage.setItem(LOCAL_STORAGE_KEYS.CLAUDE_PORT_ROOTS, JSON.stringify(portRoots));
+  } catch {}
+}
+
+export const createClaudeSlice: StateCreator<ClaudeSlice, [], [], ClaudeSlice> = (set, get) => ({
   claudeStatus: 'idle',
   projectRoot: null,
+  portRoots: {},
   cliAvailable: null,
   sessionId: null,
   parsedDiffs: [],
@@ -30,15 +39,20 @@ export const createClaudeSlice: StateCreator<ClaudeSlice, [], [], ClaudeSlice> =
 
   setClaudeStatus: (status) => set({ claudeStatus: status }),
 
-  setProjectRoot: (path) => {
-    set({ projectRoot: path });
-    try {
-      if (path) {
-        localStorage.setItem(LOCAL_STORAGE_KEYS.CLAUDE_PROJECT_ROOT, path);
-      } else {
-        localStorage.removeItem(LOCAL_STORAGE_KEYS.CLAUDE_PROJECT_ROOT);
-      }
-    } catch {}
+  setProjectRoot: (url, path) => {
+    const portRoots = { ...get().portRoots };
+    if (path) {
+      portRoots[url] = path;
+    } else {
+      delete portRoots[url];
+    }
+    set({ portRoots, projectRoot: path });
+    persistPortRoots(portRoots);
+  },
+
+  getProjectRootForUrl: (url) => {
+    if (!url) return null;
+    return get().portRoots[url] ?? null;
   },
 
   setCliAvailable: (available) => {
@@ -63,8 +77,18 @@ export const createClaudeSlice: StateCreator<ClaudeSlice, [], [], ClaudeSlice> =
 
   loadPersistedClaude: () => {
     try {
-      const root = localStorage.getItem(LOCAL_STORAGE_KEYS.CLAUDE_PROJECT_ROOT);
-      if (root) set({ projectRoot: root });
+      // Load port roots map
+      const portRootsJson = localStorage.getItem(LOCAL_STORAGE_KEYS.CLAUDE_PORT_ROOTS);
+      if (portRootsJson) {
+        const portRoots = JSON.parse(portRootsJson) as Record<string, string>;
+        set({ portRoots });
+      }
+
+      // Migrate old single-key value: just remove it (no way to know which port it was for)
+      const oldRoot = localStorage.getItem(LOCAL_STORAGE_KEYS.CLAUDE_PROJECT_ROOT);
+      if (oldRoot) {
+        localStorage.removeItem(LOCAL_STORAGE_KEYS.CLAUDE_PROJECT_ROOT);
+      }
 
       const cli = localStorage.getItem(LOCAL_STORAGE_KEYS.CLAUDE_CLI_AVAILABLE);
       if (cli) set({ cliAvailable: JSON.parse(cli) });

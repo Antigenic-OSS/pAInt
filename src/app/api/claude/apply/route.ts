@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { homedir } from 'node:os';
 import { spawnClaude } from '@/lib/claude-bin';
 import type {
   ClaudeApplyRequest,
@@ -18,13 +19,8 @@ function validateProjectRoot(projectRoot: string): string | null {
     return 'projectRoot must be an absolute path';
   }
 
-  const home = process.env.HOME;
-  if (!home) {
-    return 'HOME environment variable is not set';
-  }
-
+  const resolvedHome = path.resolve(homedir());
   const resolved = path.resolve(projectRoot);
-  const resolvedHome = path.resolve(home);
 
   if (!resolved.startsWith(resolvedHome + path.sep) && resolved !== resolvedHome) {
     return 'projectRoot must be under the user home directory';

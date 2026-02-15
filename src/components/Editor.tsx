@@ -8,6 +8,7 @@ import { LeftPanel } from './left-panel/LeftPanel';
 import { RightPanel } from './right-panel/RightPanel';
 import { PreviewFrame } from './PreviewFrame';
 import { ErrorBoundary } from './common/ErrorBoundary';
+import { ToastContainer } from './common/ToastContainer';
 
 function PanelLoading() {
   return (
@@ -54,6 +55,7 @@ export function Editor() {
           </ErrorBoundary>
         )}
       </div>
+      <ToastContainer />
     </div>
   );
 }
