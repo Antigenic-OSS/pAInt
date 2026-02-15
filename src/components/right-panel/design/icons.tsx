@@ -252,6 +252,67 @@ export function ExpandIcon(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
+export function DecoNoneIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg width={14} height={14} viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path d="M3.5 3.5l7 7M10.5 3.5l-7 7" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function StrikethroughIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg width={14} height={14} viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <text x={3} y={11} fontSize={10} fill="currentColor" fontFamily="sans-serif">S</text>
+      <path d="M2 7h10" stroke="currentColor" strokeWidth={1.2} strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function OverlineIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg width={14} height={14} viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <text x={3} y={12} fontSize={10} fill="currentColor" fontFamily="sans-serif">S</text>
+      <path d="M2 2.5h10" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function UnderlineIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg width={14} height={14} viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <text x={3} y={10} fontSize={10} fill="currentColor" fontFamily="sans-serif">S</text>
+      <path d="M2 12h10" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function ItalicIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg width={14} height={14} viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path d="M6 12h2M6 2h2M8.5 2l-3 10" stroke="currentColor" strokeWidth={1.3} strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function DirectionLTRIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg width={14} height={14} viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path d="M2 4h8M2 7h6M2 10h8" stroke="currentColor" strokeWidth={1.2} strokeLinecap="round" />
+      <path d="M11 3l2 1-2 1" stroke="currentColor" strokeWidth={1.2} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function DirectionRTLIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg width={14} height={14} viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path d="M4 4h8M6 7h6M4 10h8" stroke="currentColor" strokeWidth={1.2} strokeLinecap="round" />
+      <path d="M3 3L1 4l2 1" stroke="currentColor" strokeWidth={1.2} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function InsetIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg width={14} height={14} viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>

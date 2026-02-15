@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { parseCSSValue, formatCSSValue } from '@/lib/utils';
+import { useEditorStore } from '@/store';
 
 interface CompactInputProps {
   label?: string;
@@ -9,6 +10,7 @@ interface CompactInputProps {
   value: string;
   property: string;
   onChange: (property: string, value: string) => void;
+  onReset?: (property: string) => void;
   units?: string[];
   min?: number;
   max?: number;
@@ -22,6 +24,7 @@ export function CompactInput({
   value,
   property,
   onChange,
+  onReset,
   units = ['px', '%', 'em', 'rem', 'auto'],
   min,
   max,
@@ -34,6 +37,22 @@ export function CompactInput({
   );
   const [unit, setUnit] = useState(value === 'auto' ? 'auto' : parsed.unit || 'px');
   const inputRef = useRef<HTMLInputElement>(null);
+  const labelRef = useRef<HTMLSpanElement>(null);
+  const isDragging = useRef(false);
+  const dragStartX = useRef(0);
+  const dragStartValue = useRef(0);
+
+  // Check if this property has a tracked change (modified from original)
+  const hasChange = useEditorStore((s) => {
+    const sp = s.selectorPath;
+    return sp ? s.styleChanges.some((c) => c.elementSelector === sp && c.property === property) : false;
+  });
+
+  const handleDoubleClick = useCallback(() => {
+    if (unit === 'auto') return;
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, [unit]);
 
   useEffect(() => {
     if (value === 'auto') {
@@ -54,6 +73,54 @@ export function CompactInput({
       return clamped;
     },
     [min, max]
+  );
+
+  // --- Figma-style drag-to-scrub on label ---
+  const handleLabelPointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      if (unit === 'auto') return;
+      e.preventDefault();
+      isDragging.current = true;
+      dragStartX.current = e.clientX;
+      dragStartValue.current = parseFloat(localValue || '0');
+
+      const labelEl = labelRef.current;
+      if (labelEl) labelEl.setPointerCapture(e.pointerId);
+
+      document.body.style.cursor = 'ew-resize';
+      document.body.style.userSelect = 'none';
+    },
+    [localValue, unit]
+  );
+
+  const handleLabelPointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (!isDragging.current) return;
+      const delta = e.clientX - dragStartX.current;
+      // Base: 2 per pixel. Shift = 10x, Alt/Option = 0.1x
+      const multiplier = e.shiftKey ? 10 : e.altKey ? 0.1 : 1;
+      const next = clampValue(
+        Math.round((dragStartValue.current + delta * 2 * step * multiplier) * 100) / 100
+      );
+      const nextStr = String(next);
+      setLocalValue(nextStr);
+      onChange(property, formatCSSValue(next, unit));
+    },
+    [step, clampValue, onChange, property, unit]
+  );
+
+  const handleLabelPointerUp = useCallback(
+    (e: React.PointerEvent) => {
+      if (!isDragging.current) return;
+      isDragging.current = false;
+
+      const labelEl = labelRef.current;
+      if (labelEl) labelEl.releasePointerCapture(e.pointerId);
+
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    },
+    []
   );
 
   const commit = useCallback(
@@ -126,13 +193,26 @@ export function CompactInput({
     >
       {label && (
         <span
-          className="flex-shrink-0 flex items-center justify-center w-6 h-full text-[11px] select-none"
+          ref={labelRef}
+          onPointerDown={handleLabelPointerDown}
+          onPointerMove={handleLabelPointerMove}
+          onPointerUp={handleLabelPointerUp}
+          onDoubleClick={handleDoubleClick}
+          className="relative flex-shrink-0 flex items-center justify-center w-6 h-full text-[11px] select-none"
           style={{
-            color: 'var(--text-secondary)',
+            color: hasChange ? 'var(--accent)' : 'var(--text-secondary)',
             borderRight: '1px solid var(--border)',
+            cursor: isAuto ? 'default' : 'ew-resize',
           }}
+          title={hasChange ? 'Double-click to reset' : undefined}
         >
           {label}
+          {hasChange && (
+            <span
+              className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full"
+              style={{ background: 'var(--accent)' }}
+            />
+          )}
         </span>
       )}
 

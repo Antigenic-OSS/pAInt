@@ -216,5 +216,33 @@ export function useChangeTracker() {
     }
   }, [sendToInspector]);
 
-  return { applyChange, revertChange, revertAll, undo: performUndo, redo: performRedo };
+  const resetProperty = useCallback(
+    (property: string) => {
+      const { selectorPath, styleChanges, computedStyles } = useEditorStore.getState();
+      if (!selectorPath) return;
+
+      const change = styleChanges.find(
+        (c) => c.elementSelector === selectorPath && c.property === property
+      );
+      if (!change) return;
+
+      // Revert in iframe
+      sendToInspector({
+        type: 'REVERT_CHANGE',
+        payload: { selectorPath, property },
+      });
+
+      // Remove from tracked changes
+      removeStyleChange(change.id);
+
+      // Restore original computedStyles
+      useEditorStore.getState().updateComputedStyles({
+        ...useEditorStore.getState().computedStyles,
+        [property]: change.originalValue,
+      });
+    },
+    [sendToInspector, removeStyleChange]
+  );
+
+  return { applyChange, revertChange, revertAll, resetProperty, undo: performUndo, redo: performRedo };
 }

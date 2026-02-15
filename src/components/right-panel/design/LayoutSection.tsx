@@ -6,6 +6,7 @@ import { SectionHeader } from '@/components/right-panel/design/inputs/SectionHea
 import { CompactInput } from '@/components/right-panel/design/inputs/CompactInput';
 import { LinkedInputPair } from '@/components/right-panel/design/inputs/LinkedInputPair';
 import { ClipContentIcon, BorderBoxIcon } from '@/components/right-panel/design/icons';
+import { BoxModelPreview } from '@/components/right-panel/design/inputs/BoxModelPreview';
 import { useChangeTracker } from '@/hooks/useChangeTracker';
 import { parseCSSValue, formatCSSValue } from '@/lib/utils';
 
@@ -931,11 +932,15 @@ function InlineControls({
 
 export function LayoutSection() {
   const computedStyles = useEditorStore((state) => state.computedStyles);
-  const { applyChange } = useChangeTracker();
+  const { applyChange, resetProperty } = useChangeTracker();
 
   const handleChange = useCallback((property: string, value: string) => {
     applyChange(property, value);
   }, [applyChange]);
+
+  const handleReset = useCallback((property: string) => {
+    resetProperty(property);
+  }, [resetProperty]);
 
   const rawDisplay = computedStyles.display || 'block';
   const display = resolveDisplay(rawDisplay);
@@ -1014,6 +1019,7 @@ export function LayoutSection() {
             value={computedStyles.width || 'auto'}
             property="width"
             onChange={handleChange}
+            onReset={handleReset}
             units={['px', '%', 'em', 'rem', 'vw', 'auto']}
           />
           <CompactInput
@@ -1021,6 +1027,7 @@ export function LayoutSection() {
             value={computedStyles.height || 'auto'}
             property="height"
             onChange={handleChange}
+            onReset={handleReset}
             units={['px', '%', 'em', 'rem', 'vh', 'auto']}
           />
         </div>
@@ -1044,6 +1051,7 @@ export function LayoutSection() {
               left: 'paddingLeft',
             }}
             onChange={handleChange}
+            onReset={handleReset}
           />
         </div>
       )}
@@ -1065,6 +1073,35 @@ export function LayoutSection() {
             left: 'marginLeft',
           }}
           onChange={handleChange}
+          onReset={handleReset}
+        />
+      )}
+
+      {/* Box Model Preview */}
+      {!isNone && (
+        <BoxModelPreview
+          margin={{
+            top: computedStyles.marginTop || '0px',
+            right: computedStyles.marginRight || '0px',
+            bottom: computedStyles.marginBottom || '0px',
+            left: computedStyles.marginLeft || '0px',
+          }}
+          border={{
+            top: computedStyles.borderTopWidth || '0px',
+            right: computedStyles.borderRightWidth || '0px',
+            bottom: computedStyles.borderBottomWidth || '0px',
+            left: computedStyles.borderLeftWidth || '0px',
+          }}
+          padding={{
+            top: computedStyles.paddingTop || '0px',
+            right: computedStyles.paddingRight || '0px',
+            bottom: computedStyles.paddingBottom || '0px',
+            left: computedStyles.paddingLeft || '0px',
+          }}
+          width={computedStyles.width || 'auto'}
+          height={computedStyles.height || 'auto'}
+          onChange={handleChange}
+          onReset={handleReset}
         />
       )}
 

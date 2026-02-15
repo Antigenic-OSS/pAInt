@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { parseCSSValue } from '@/lib/utils';
 import { CompactInput } from './CompactInput';
 import { LinkIcon, UnlinkIcon } from '@/components/right-panel/design/icons';
@@ -10,6 +10,7 @@ interface LinkedInputPairProps {
   values: { top: string; right: string; bottom: string; left: string };
   properties: { top: string; right: string; bottom: string; left: string };
   onChange: (property: string, value: string) => void;
+  onReset?: (property: string) => void;
   units?: string[];
 }
 
@@ -46,6 +47,7 @@ export function LinkedInputPair({
   values,
   properties,
   onChange,
+  onReset,
   units = ['px', '%', 'em', 'rem'],
 }: LinkedInputPairProps) {
   const [isLinked, setIsLinked] = useState(() => areHVEqual(values));
@@ -65,6 +67,25 @@ export function LinkedInputPair({
     onChange(properties.top, value);
     onChange(properties.bottom, value);
   };
+
+  // When linked, reset both sides together
+  const handleLinkedHReset = useCallback(
+    () => {
+      if (!onReset) return;
+      onReset(properties.left);
+      onReset(properties.right);
+    },
+    [onReset, properties.left, properties.right]
+  );
+
+  const handleLinkedVReset = useCallback(
+    () => {
+      if (!onReset) return;
+      onReset(properties.top);
+      onReset(properties.bottom);
+    },
+    [onReset, properties.top, properties.bottom]
+  );
 
   return (
     <div>
@@ -93,6 +114,7 @@ export function LinkedInputPair({
             value={values.left}
             property={properties.left}
             onChange={handleLinkedHChange}
+            onReset={handleLinkedHReset}
             units={units}
           />
           <CompactInput
@@ -100,6 +122,7 @@ export function LinkedInputPair({
             value={values.top}
             property={properties.top}
             onChange={handleLinkedVChange}
+            onReset={handleLinkedVReset}
             units={units}
           />
         </div>
@@ -110,6 +133,7 @@ export function LinkedInputPair({
             value={values.top}
             property={properties.top}
             onChange={onChange}
+            onReset={onReset}
             units={units}
           />
           <CompactInput
@@ -117,6 +141,7 @@ export function LinkedInputPair({
             value={values.right}
             property={properties.right}
             onChange={onChange}
+            onReset={onReset}
             units={units}
           />
           <CompactInput
@@ -124,6 +149,7 @@ export function LinkedInputPair({
             value={values.bottom}
             property={properties.bottom}
             onChange={onChange}
+            onReset={onReset}
             units={units}
           />
           <CompactInput
@@ -131,6 +157,7 @@ export function LinkedInputPair({
             value={values.left}
             property={properties.left}
             onChange={onChange}
+            onReset={onReset}
             units={units}
           />
         </div>
