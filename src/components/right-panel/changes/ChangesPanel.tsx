@@ -1,10 +1,11 @@
 'use client';
 
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useRef } from 'react';
 import { useEditorStore } from '@/store';
 import { useChangeTracker } from '@/hooks/useChangeTracker';
 import { BREAKPOINTS, buildInstructionsFooter, getBreakpointDeviceInfo, getBreakpointRange } from '@/lib/constants';
 import { inferSourcePath } from '@/lib/classifyElement';
+import { EditablePre } from '@/components/common/EditablePre';
 import type { StyleChange, ElementSnapshot, Breakpoint } from '@/types/changelog';
 
 function truncateText(text: string, maxLen: number): string {
@@ -192,6 +193,15 @@ function GlobalCopyButton({ text }: { text: string }) {
   );
 }
 
+function ClearIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+}
+
 function ElementAccordion({
   snapshot,
   changes,
@@ -202,8 +212,15 @@ function ElementAccordion({
   onRevert: (id: string, selector: string, property: string) => void;
 }) {
   const [open, setOpen] = useState(true);
+  const editedTextRef = useRef<string | null>(null);
 
   const logText = useMemo(() => buildSingleElementLog(snapshot, changes), [snapshot, changes]);
+
+  const copyText = editedTextRef.current ?? logText;
+
+  const handleTextChange = useCallback((edited: string) => {
+    editedTextRef.current = edited === logText ? null : edited;
+  }, [logText]);
 
   const sourcePath = inferSourcePath({
     tagName: snapshot.tagName,
@@ -237,18 +254,32 @@ function ElementAccordion({
           <span style={{ color: 'var(--accent)' }}>{label}</span>
           <span style={{ color: 'var(--text-muted)' }}> · {sourcePath} · {changes.length} change{changes.length !== 1 ? 's' : ''}</span>
         </span>
-        <CopyButton text={logText} />
+        <CopyButton text={copyText} />
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            for (const c of changes) {
+              onRevert(c.id, c.elementSelector, c.property);
+            }
+          }}
+          className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] transition-colors flex-shrink-0 hover:bg-[var(--bg-hover)]"
+          style={{ color: 'var(--text-muted)' }}
+          title="Clear all changes for this element"
+        >
+          <ClearIcon size={11} />
+          Clear
+        </button>
       </div>
 
       {/* Accordion body */}
       {open && (
         <div className="px-3 pb-3">
-          <pre
+          <EditablePre
+            text={logText}
+            onTextChange={handleTextChange}
             className="text-[11px] font-mono whitespace-pre-wrap break-words leading-relaxed mb-2"
             style={{ color: 'var(--text-muted)' }}
-          >
-            {logText}
-          </pre>
+          />
 
           {/* Per-change undo buttons */}
           <div className="space-y-1">

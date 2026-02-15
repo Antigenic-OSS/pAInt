@@ -1,9 +1,10 @@
 'use client';
 
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useRef } from 'react';
 import { useEditorStore } from '@/store';
 import { inferSourcePath } from '@/lib/classifyElement';
 import { buildInstructionsFooter, BREAKPOINTS, getBreakpointDeviceInfo, getBreakpointRange } from '@/lib/constants';
+import { EditablePre } from '@/components/common/EditablePre';
 import type { Breakpoint } from '@/types/changelog';
 
 function CopyIcon({ size = 14 }: { size?: number }) {
@@ -108,6 +109,7 @@ function buildElementLogText(opts: {
 
 export function ElementLogBox() {
   const [copied, setCopied] = useState(false);
+  const editedTextRef = useRef<string | null>(null);
 
   const tagName = useEditorStore((s) => s.tagName);
   const className = useEditorStore((s) => s.className);
@@ -132,13 +134,18 @@ export function ElementLogBox() {
     pagePath: currentPagePath, changeScope, activeBreakpoint, changeCount,
   }), [tagName, className, elementId, selectorPath, attributes, innerText, computedStyles, currentPagePath, changeScope, activeBreakpoint, changeCount]);
 
+  const handleTextChange = useCallback((edited: string) => {
+    editedTextRef.current = edited === logText ? null : edited;
+  }, [logText]);
+
   const handleCopy = useCallback(async () => {
-    if (!logText) return;
+    const textToCopy = editedTextRef.current ?? logText;
+    if (!textToCopy) return;
     try {
-      await navigator.clipboard.writeText(logText);
+      await navigator.clipboard.writeText(textToCopy);
     } catch {
       const textarea = document.createElement('textarea');
-      textarea.value = logText;
+      textarea.value = textToCopy;
       textarea.style.position = 'fixed';
       textarea.style.opacity = '0';
       document.body.appendChild(textarea);
@@ -172,12 +179,12 @@ export function ElementLogBox() {
         </button>
       </div>
       <div className="px-3 pb-3">
-        <pre
+        <EditablePre
+          text={logText}
+          onTextChange={handleTextChange}
           className="text-[11px] font-mono whitespace-pre-wrap break-words leading-relaxed"
           style={{ color: 'var(--text-muted)' }}
-        >
-          {logText}
-        </pre>
+        />
       </div>
     </div>
   );

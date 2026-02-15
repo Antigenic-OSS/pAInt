@@ -56,7 +56,7 @@ export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (set, get) 
   selectionMode: true,
   viewMode: false,
   activeLeftTab: 'layers',
-  previewWidth: 1280,
+  previewWidth: 1920,
 
   setTargetUrl: (url) => {
     set({ targetUrl: url });
