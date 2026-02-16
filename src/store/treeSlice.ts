@@ -1,6 +1,15 @@
 import type { StateCreator } from 'zustand';
 import type { TreeNode } from '@/types/tree';
 
+// Collect all node IDs that have children for full expansion
+function collectAllIds(node: TreeNode, ids: Set<string>) {
+  if (node.children.length === 0) return;
+  ids.add(node.id);
+  for (const child of node.children) {
+    collectAllIds(child, ids);
+  }
+}
+
 export interface TreeSlice {
   rootNode: TreeNode | null;
   expandedNodeIds: Set<string>;
@@ -20,7 +29,12 @@ export const createTreeSlice: StateCreator<TreeSlice, [], [], TreeSlice> = (set,
   searchQuery: '',
   highlightedNodeId: null,
 
-  setRootNode: (node) => set({ rootNode: node }),
+  setRootNode: (node) => {
+    // Expand all layers by default
+    const ids = new Set<string>();
+    if (node) collectAllIds(node, ids);
+    set({ rootNode: node, expandedNodeIds: ids });
+  },
   setSearchQuery: (query) => set({ searchQuery: query }),
   setHighlightedNodeId: (id) => set({ highlightedNodeId: id }),
 
@@ -36,23 +50,16 @@ export const createTreeSlice: StateCreator<TreeSlice, [], [], TreeSlice> = (set,
   },
 
   expandToNode: (nodeId) => {
-    const { expandedNodeIds } = get();
-    // Parse ancestor IDs from selector path: "body > div.foo > section > p"
-    // Ancestors are progressively longer prefixes: "body", "body > div.foo", etc.
+    // Collapse all other branches — only expand ancestors + selected node itself
     const parts = nodeId.split(' > ');
-    if (parts.length <= 1) return;
 
-    const next = new Set(expandedNodeIds);
-    let changed = false;
+    const next = new Set<string>();
+    // Expand all ancestors
     for (let i = 1; i < parts.length; i++) {
-      const ancestorId = parts.slice(0, i).join(' > ');
-      if (!next.has(ancestorId)) {
-        next.add(ancestorId);
-        changed = true;
-      }
+      next.add(parts.slice(0, i).join(' > '));
     }
-    if (changed) {
-      set({ expandedNodeIds: next });
-    }
+    // Also expand the selected node itself (so its children are visible)
+    next.add(nodeId);
+    set({ expandedNodeIds: next });
   },
 });

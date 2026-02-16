@@ -221,13 +221,14 @@ function LayerNodeInner({ node, depth, searchQuery, changedSelectors }: LayerNod
   const IconComponent = ICON_MAP[category];
   const label = getDisplayLabel(node);
 
-  // Auto-expand ancestors and scroll selected layer into view
+  // Auto-expand ancestors (collapse others) and scroll selected layer into view
   useEffect(() => {
     if (isSelected) {
       expandToNode(node.id);
-      if (rowRef.current) {
-        rowRef.current.scrollIntoView({ block: 'center', behavior: 'instant' });
-      }
+      // Wait for DOM to re-render after expansion before scrolling
+      requestAnimationFrame(() => {
+        rowRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      });
     }
   }, [isSelected, node.id, expandToNode]);
 
