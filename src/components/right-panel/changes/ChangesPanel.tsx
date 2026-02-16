@@ -4,7 +4,7 @@ import { useMemo, useState, useCallback, useRef } from 'react';
 import { useEditorStore } from '@/store';
 import { useChangeTracker } from '@/hooks/useChangeTracker';
 import { buildInstructionsFooter, getBreakpointDeviceInfo } from '@/lib/constants';
-import { inferSourcePath } from '@/lib/classifyElement';
+import { getSourcePath } from '@/lib/classifyElement';
 import { EditablePre } from '@/components/common/EditablePre';
 import type { StyleChange, ElementSnapshot, Breakpoint } from '@/types/changelog';
 
@@ -51,11 +51,8 @@ function CheckIcon({ size = 14 }: { size?: number }) {
 function buildSingleElementLog(snapshot: ElementSnapshot, changes: StyleChange[]): string {
   const lines: string[] = [];
 
-  const sourcePath = inferSourcePath({
+  const sourcePath = getSourcePath({
     tagName: snapshot.tagName,
-    className: snapshot.className,
-    id: snapshot.elementId,
-    selectorPath: snapshot.selectorPath,
     pagePath: snapshot.pagePath,
   });
 
@@ -81,6 +78,12 @@ function buildSingleElementLog(snapshot: ElementSnapshot, changes: StyleChange[]
   lines.push('SOURCE');
   lines.push(sourcePath);
   lines.push('');
+
+  if (snapshot.componentPath) {
+    lines.push('COMPONENT');
+    lines.push(snapshot.componentPath);
+    lines.push('');
+  }
   lines.push('ELEMENT');
   lines.push(tag);
   lines.push('');
@@ -133,11 +136,8 @@ function buildSingleElementLog(snapshot: ElementSnapshot, changes: StyleChange[]
 function buildElementSection(snapshot: ElementSnapshot, changes: StyleChange[]): string {
   const lines: string[] = [];
 
-  const sourcePath = inferSourcePath({
+  const sourcePath = getSourcePath({
     tagName: snapshot.tagName,
-    className: snapshot.className,
-    id: snapshot.elementId,
-    selectorPath: snapshot.selectorPath,
     pagePath: snapshot.pagePath,
   });
 
@@ -163,6 +163,12 @@ function buildElementSection(snapshot: ElementSnapshot, changes: StyleChange[]):
   lines.push('SOURCE');
   lines.push(sourcePath);
   lines.push('');
+
+  if (snapshot.componentPath) {
+    lines.push('COMPONENT');
+    lines.push(snapshot.componentPath);
+    lines.push('');
+  }
   lines.push('ELEMENT');
   lines.push(tag);
   lines.push('');
@@ -311,11 +317,8 @@ function ElementAccordion({
     editedTextRef.current = edited === logText ? null : edited;
   }, [logText]);
 
-  const sourcePath = inferSourcePath({
+  const sourcePath = getSourcePath({
     tagName: snapshot.tagName,
-    className: snapshot.className,
-    id: snapshot.elementId,
-    selectorPath: snapshot.selectorPath,
     pagePath: snapshot.pagePath,
   });
 

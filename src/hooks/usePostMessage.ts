@@ -162,6 +162,7 @@ function handleMessage(event: MessageEvent) {
         computedStyles: textEl?.computedStyles ? { ...textEl.computedStyles } : {},
         pagePath: store.currentPagePath,
         changeScope: store.changeScope,
+        componentPath: textEl?.componentPath ?? null,
       });
 
       // Add style change with sentinel property

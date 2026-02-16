@@ -10,6 +10,7 @@ export interface ElementSlice {
   innerText: string | null;
   computedStyles: Record<string, string>;
   boundingRect: BoundingRect | null;
+  componentPath: string | null;
 
   selectElement: (data: {
     selectorPath: string;
@@ -20,6 +21,7 @@ export interface ElementSlice {
     innerText: string | null;
     computedStyles: Record<string, string>;
     boundingRect: BoundingRect;
+    componentPath?: string | null;
   }) => void;
   clearSelection: () => void;
   updateComputedStyles: (styles: Record<string, string>) => void;
@@ -34,6 +36,7 @@ export const createElementSlice: StateCreator<ElementSlice, [], [], ElementSlice
   innerText: null,
   computedStyles: {},
   boundingRect: null,
+  componentPath: null,
 
   selectElement: (data) => {
     set({
@@ -45,6 +48,7 @@ export const createElementSlice: StateCreator<ElementSlice, [], [], ElementSlice
       innerText: data.innerText,
       computedStyles: data.computedStyles,
       boundingRect: data.boundingRect,
+      componentPath: data.componentPath ?? null,
     });
   },
 
@@ -58,6 +62,7 @@ export const createElementSlice: StateCreator<ElementSlice, [], [], ElementSlice
       innerText: null,
       computedStyles: {},
       boundingRect: null,
+      componentPath: null,
     });
   },
 

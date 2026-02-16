@@ -19,6 +19,7 @@ export interface ElementSelectedMessage {
     innerText: string | null;
     computedStyles: Record<string, string>;
     cssVariableUsages?: Record<string, string>;
+    componentPath?: string | null;
     boundingRect: {
       x: number;
       y: number;
@@ -233,6 +234,10 @@ export interface ShowSelectionOverlayMessage {
   type: 'SHOW_SELECTION_OVERLAY';
 }
 
+export interface HideHoverMessage {
+  type: 'HIDE_HOVER';
+}
+
 // Union types
 export type InspectorToEditorMessage =
   | InspectorReadyMessage
@@ -266,7 +271,8 @@ export type EditorToInspectorMessage =
   | SetTextContentMessage
   | RevertTextContentMessage
   | HideSelectionOverlayMessage
-  | ShowSelectionOverlayMessage;
+  | ShowSelectionOverlayMessage
+  | HideHoverMessage;
 
 export type PostMessageType =
   | InspectorToEditorMessage['type']

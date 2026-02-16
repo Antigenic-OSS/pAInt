@@ -21,6 +21,7 @@ export interface ElementSnapshot {
   computedStyles: Record<string, string>;
   pagePath: string;
   changeScope: 'all' | 'breakpoint-only';
+  componentPath?: string | null;
 }
 
 export interface UndoRedoAction {

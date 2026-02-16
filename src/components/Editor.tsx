@@ -1,8 +1,9 @@
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, useCallback } from 'react';
 import { useEditorStore } from '@/store';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { usePostMessage } from '@/hooks/usePostMessage';
 import { TopBar } from './TopBar';
 import { LeftPanel } from './left-panel/LeftPanel';
 import { RightPanel } from './right-panel/RightPanel';
@@ -28,19 +29,31 @@ export function Editor() {
   const rightPanelOpen = useEditorStore((s) => s.rightPanelOpen);
   const leftPanelWidth = useEditorStore((s) => s.leftPanelWidth);
   const rightPanelWidth = useEditorStore((s) => s.rightPanelWidth);
+  const { sendToInspector } = usePostMessage();
 
   useKeyboardShortcuts();
 
+  // Hide iframe hover overlay when interacting with any panel outside the canvas
+  const hideHover = useCallback(() => {
+    sendToInspector({ type: 'HIDE_HOVER' });
+  }, [sendToInspector]);
+
   return (
     <div className="flex flex-col h-screen" style={{ background: 'var(--bg-primary)' }}>
-      <TopBar />
+      {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
+      <div onMouseDown={hideHover} onMouseEnter={hideHover}>
+        <TopBar />
+      </div>
       <div className="flex flex-1 overflow-hidden">
         {leftPanelOpen && (
-          <ErrorBoundary panelName="Layers panel">
-            <Suspense fallback={<PanelLoading />}>
-              <LeftPanel width={leftPanelWidth} />
-            </Suspense>
-          </ErrorBoundary>
+          // eslint-disable-next-line jsx-a11y/no-static-element-interactions
+          <div onMouseDown={hideHover} onMouseEnter={hideHover} className="flex">
+            <ErrorBoundary panelName="Layers panel">
+              <Suspense fallback={<PanelLoading />}>
+                <LeftPanel width={leftPanelWidth} />
+              </Suspense>
+            </ErrorBoundary>
+          </div>
         )}
         <div className="flex-1 min-w-0 relative">
           <ErrorBoundary panelName="Preview">
@@ -48,11 +61,14 @@ export function Editor() {
           </ErrorBoundary>
         </div>
         {rightPanelOpen && (
-          <ErrorBoundary panelName="Design panel">
-            <Suspense fallback={<PanelLoading />}>
-              <RightPanel width={rightPanelWidth} />
-            </Suspense>
-          </ErrorBoundary>
+          // eslint-disable-next-line jsx-a11y/no-static-element-interactions
+          <div onMouseDown={hideHover} onMouseEnter={hideHover} className="flex">
+            <ErrorBoundary panelName="Design panel">
+              <Suspense fallback={<PanelLoading />}>
+                <RightPanel width={rightPanelWidth} />
+              </Suspense>
+            </ErrorBoundary>
+          </div>
         )}
       </div>
       <ToastContainer />

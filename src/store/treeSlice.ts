@@ -3,6 +3,7 @@ import type { TreeNode } from '@/types/tree';
 
 export interface TreeSlice {
   rootNode: TreeNode | null;
+  expandedNodeIds: Set<string>;
   searchQuery: string;
   highlightedNodeId: string | null;
 
@@ -13,35 +14,9 @@ export interface TreeSlice {
   expandToNode: (nodeId: string) => void;
 }
 
-function toggleExpanded(node: TreeNode, targetId: string): TreeNode {
-  if (node.id === targetId) {
-    return { ...node, isExpanded: !node.isExpanded };
-  }
-  return {
-    ...node,
-    children: node.children.map((child) => toggleExpanded(child, targetId)),
-  };
-}
-
-// Expand all ancestor nodes on the path to targetId so it becomes visible.
-function expandAncestors(node: TreeNode, targetId: string): { node: TreeNode; found: boolean } {
-  if (node.id === targetId) {
-    return { node, found: true };
-  }
-  let anyFound = false;
-  const newChildren = node.children.map((child) => {
-    const result = expandAncestors(child, targetId);
-    if (result.found) anyFound = true;
-    return result.found ? result.node : child;
-  });
-  if (anyFound) {
-    return { node: { ...node, children: newChildren, isExpanded: true }, found: true };
-  }
-  return { node, found: false };
-}
-
 export const createTreeSlice: StateCreator<TreeSlice, [], [], TreeSlice> = (set, get) => ({
   rootNode: null,
+  expandedNodeIds: new Set<string>(),
   searchQuery: '',
   highlightedNodeId: null,
 
@@ -50,17 +25,34 @@ export const createTreeSlice: StateCreator<TreeSlice, [], [], TreeSlice> = (set,
   setHighlightedNodeId: (id) => set({ highlightedNodeId: id }),
 
   toggleNodeExpanded: (nodeId) => {
-    const { rootNode } = get();
-    if (!rootNode) return;
-    set({ rootNode: toggleExpanded(rootNode, nodeId) });
+    const { expandedNodeIds } = get();
+    const next = new Set(expandedNodeIds);
+    if (next.has(nodeId)) {
+      next.delete(nodeId);
+    } else {
+      next.add(nodeId);
+    }
+    set({ expandedNodeIds: next });
   },
 
   expandToNode: (nodeId) => {
-    const { rootNode } = get();
-    if (!rootNode) return;
-    const result = expandAncestors(rootNode, nodeId);
-    if (result.found) {
-      set({ rootNode: result.node });
+    const { expandedNodeIds } = get();
+    // Parse ancestor IDs from selector path: "body > div.foo > section > p"
+    // Ancestors are progressively longer prefixes: "body", "body > div.foo", etc.
+    const parts = nodeId.split(' > ');
+    if (parts.length <= 1) return;
+
+    const next = new Set(expandedNodeIds);
+    let changed = false;
+    for (let i = 1; i < parts.length; i++) {
+      const ancestorId = parts.slice(0, i).join(' > ');
+      if (!next.has(ancestorId)) {
+        next.add(ancestorId);
+        changed = true;
+      }
+    }
+    if (changed) {
+      set({ expandedNodeIds: next });
     }
   },
 });

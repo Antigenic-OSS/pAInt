@@ -63,5 +63,6 @@ export function serializeTree(element: Element): TreeNode | null {
     className: element.className && typeof element.className === 'string' ? element.className : null,
     elementId: element.id || null,
     children,
+    imgSrc: tagName === 'img' ? (element.getAttribute('src') || null) : null,
   };
 }

@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useCallback, useRef } from 'react';
 import { useEditorStore } from '@/store';
-import { inferSourcePath } from '@/lib/classifyElement';
+import { getSourcePath } from '@/lib/classifyElement';
 import { buildInstructionsFooter, BREAKPOINTS, getBreakpointDeviceInfo, getBreakpointRange } from '@/lib/constants';
 import { EditablePre } from '@/components/common/EditablePre';
 import type { Breakpoint } from '@/types/changelog';
@@ -36,6 +36,7 @@ function buildElementLogText(opts: {
   changeScope: 'all' | 'breakpoint-only';
   activeBreakpoint: Breakpoint;
   changeCount: number;
+  componentPath: string | null;
 }): string {
   const lines: string[] = [];
   if (!opts.tagName) return '';
@@ -45,11 +46,8 @@ function buildElementLogText(opts: {
   if (opts.className) attrParts.push(`class="${opts.className}"`);
   const tag = `<${opts.tagName}${attrParts.length ? ' ' + attrParts.join(' ') : ''}>`;
 
-  const sourcePath = inferSourcePath({
+  const sourcePath = getSourcePath({
     tagName: opts.tagName,
-    className: opts.className,
-    id: opts.elementId,
-    selectorPath: opts.selectorPath,
     pagePath: opts.pagePath,
   });
 
@@ -58,6 +56,12 @@ function buildElementLogText(opts: {
   lines.push('SOURCE');
   lines.push(sourcePath);
   lines.push('');
+
+  if (opts.componentPath) {
+    lines.push('COMPONENT');
+    lines.push(opts.componentPath);
+    lines.push('');
+  }
 
   lines.push('ELEMENT');
   lines.push(tag);
@@ -127,6 +131,7 @@ export function ElementLogBox() {
   const changeScope = useEditorStore((s) => s.changeScope);
   const activeBreakpoint = useEditorStore((s) => s.activeBreakpoint);
   const styleChanges = useEditorStore((s) => s.styleChanges);
+  const componentPath = useEditorStore((s) => s.componentPath);
 
   const changeCount = useMemo(() => {
     if (!selectorPath) return 0;
@@ -136,8 +141,8 @@ export function ElementLogBox() {
   const logText = useMemo(() => buildElementLogText({
     tagName, className, elementId, selectorPath,
     attributes, innerText, computedStyles,
-    pagePath: currentPagePath, changeScope, activeBreakpoint, changeCount,
-  }), [tagName, className, elementId, selectorPath, attributes, innerText, computedStyles, currentPagePath, changeScope, activeBreakpoint, changeCount]);
+    pagePath: currentPagePath, changeScope, activeBreakpoint, changeCount, componentPath,
+  }), [tagName, className, elementId, selectorPath, attributes, innerText, computedStyles, currentPagePath, changeScope, activeBreakpoint, changeCount, componentPath]);
 
   const handleTextChange = useCallback((edited: string) => {
     editedTextRef.current = edited === logText ? null : edited;

@@ -43,6 +43,34 @@ export function PreviewFrame() {
     };
   }, [targetUrl, connectionStatus, currentPagePath, iframeRef, setConnectionStatus]);
 
+  // Hide hover highlight when mouse leaves iframe.
+  // Parent document receives mousemove only when the mouse is NOT inside the iframe,
+  // so any parent mousemove means the mouse has left the canvas area.
+  const hoverVisibleRef = useRef(false);
+
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+
+    const handleParentMouseMove = () => {
+      if (hoverVisibleRef.current) {
+        hoverVisibleRef.current = false;
+        sendToInspector({ type: 'HIDE_HOVER' });
+      }
+    };
+
+    const handleIframeEnter = () => {
+      hoverVisibleRef.current = true;
+    };
+
+    document.addEventListener('mousemove', handleParentMouseMove);
+    iframe.addEventListener('mouseenter', handleIframeEnter);
+    return () => {
+      document.removeEventListener('mousemove', handleParentMouseMove);
+      iframe.removeEventListener('mouseenter', handleIframeEnter);
+    };
+  }, [iframeRef, sendToInspector]);
+
   // Drag resize logic — symmetric from center
   const dragStateRef = useRef<{ startX: number; startWidth: number; side: 'left' | 'right' } | null>(null);
 

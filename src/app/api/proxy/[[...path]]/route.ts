@@ -238,6 +238,74 @@ function getInspectorCode(): string {
         selectElement(el);
       }, true);
 
+      // --- Component source path detection ---
+      // Extracts the React component file path from fiber _debugSource or data attributes.
+      // Returns null when source info is unavailable (e.g. proxy mode with scripts stripped).
+
+      function cleanFileName(fileName) {
+        // Skip node_modules / React internals
+        if (fileName.indexOf('node_modules') >= 0) return null;
+        // Extract relative path from src/
+        var srcIndex = fileName.indexOf('src/');
+        if (srcIndex >= 0) return fileName.substring(srcIndex);
+        // Try app/ as fallback
+        var appIndex = fileName.indexOf('app/');
+        if (appIndex >= 0) return 'src/' + fileName.substring(appIndex);
+        // Try components/ as fallback
+        var compIndex = fileName.indexOf('components/');
+        if (compIndex >= 0) return 'src/' + fileName.substring(compIndex);
+        return fileName;
+      }
+
+      function getSourceFromFiber(domEl) {
+        var fiber = null;
+        var keys = Object.keys(domEl);
+        for (var ki = 0; ki < keys.length; ki++) {
+          if (keys[ki].indexOf('__reactFiber$') === 0 || keys[ki].indexOf('__reactInternalInstance$') === 0) {
+            fiber = domEl[keys[ki]];
+            break;
+          }
+        }
+        if (!fiber) return null;
+
+        // Walk up the fiber tree to find the nearest user-defined component with _debugSource
+        var current = fiber;
+        while (current) {
+          if (current._debugSource && current._debugSource.fileName) {
+            var cleaned = cleanFileName(current._debugSource.fileName);
+            if (cleaned) return cleaned;
+          }
+          current = current.return;
+        }
+        return null;
+      }
+
+      function getComponentPath(el) {
+        // Strategy 1: Explicit data-source-file attribute on element or ancestors
+        var dom = el;
+        while (dom && dom !== document.documentElement) {
+          if (dom.getAttribute) {
+            var ds = dom.getAttribute('data-source-file') || dom.getAttribute('data-component-source');
+            if (ds) return ds;
+          }
+          dom = dom.parentElement;
+        }
+
+        // Strategy 2: React fiber _debugSource on the element itself
+        var path = getSourceFromFiber(el);
+        if (path) return path;
+
+        // Strategy 3: Walk up DOM ancestors checking each for fiber source info
+        dom = el.parentElement;
+        while (dom && dom !== document.documentElement) {
+          path = getSourceFromFiber(dom);
+          if (path) return path;
+          dom = dom.parentElement;
+        }
+
+        return null;
+      }
+
       function selectElement(el) {
         selectedElement = el;
         // Hide hover overlay when selecting
@@ -263,6 +331,9 @@ function getInspectorCode(): string {
         var varUsages = detectCSSVariablesOnElement(el);
         console.log('[DevEditor] CSS variable usages for', el.tagName, el.className, varUsages);
 
+        // Get the component file path from React fiber or data attributes
+        var componentPath = getComponentPath(el);
+
         send({
           type: 'ELEMENT_SELECTED',
           payload: {
@@ -274,6 +345,7 @@ function getInspectorCode(): string {
             innerText: text,
             computedStyles: getComputedStylesForElement(el),
             cssVariableUsages: varUsages,
+            componentPath: componentPath,
             boundingRect: {
               x: rect.x, y: rect.y,
               width: rect.width, height: rect.height,
@@ -595,6 +667,11 @@ function getInspectorCode(): string {
             if (selectedElement) {
               selectionOverlay.style.display = 'block';
             }
+            break;
+          }
+          case 'HIDE_HOVER': {
+            hoverOverlay.style.display = 'none';
+            hoveredElement = null;
             break;
           }
           case 'SET_BREAKPOINT': {

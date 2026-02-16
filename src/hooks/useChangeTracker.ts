@@ -203,6 +203,7 @@ export function useChangeTracker() {
         computedStyles: { ...state.computedStyles },
         pagePath: state.currentPagePath,
         changeScope: state.changeScope,
+        componentPath: state.componentPath,
       });
 
       // Track the change (addStyleChange auto-removes if newValue === originalValue)
