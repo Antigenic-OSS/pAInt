@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useEditorStore } from '@/store';
+import { sendViaIframe } from '@/hooks/usePostMessage';
 
 export function PageSelector() {
   const [isOpen, setIsOpen] = useState(false);
@@ -28,10 +29,10 @@ export function PageSelector() {
     (path: string) => {
       if (!targetUrl) return;
       setCurrentPagePath(path);
-      setConnectionStatus('connecting');
+      sendViaIframe({ type: 'NAVIGATE_TO', payload: { path } });
       setIsOpen(false);
     },
-    [targetUrl, setCurrentPagePath, setConnectionStatus]
+    [targetUrl, setCurrentPagePath]
   );
 
   const handleRefresh = useCallback(() => {

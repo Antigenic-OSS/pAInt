@@ -120,6 +120,7 @@ export const LOCAL_STORAGE_KEYS = {
   CLAUDE_PROJECT_ROOT: 'dev-editor:claude:project-root',
   CLAUDE_PORT_ROOTS: 'dev-editor:claude:port-roots',
   CLAUDE_CLI_AVAILABLE: 'dev-editor:claude:cli-available',
+  CLAUDE_PROJECT_SCANS: 'dev-editor:claude:project-scans',
 } as const;
 
 export const PROXY_HEADER = 'x-dev-editor-target';

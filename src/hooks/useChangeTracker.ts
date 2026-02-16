@@ -76,7 +76,8 @@ export function performRedo() {
  * Reverts text changes, clears the store, and reloads the iframe.
  */
 export function performRevertAll() {
-  const textChanges = useEditorStore.getState().styleChanges.filter(
+  const state = useEditorStore.getState();
+  const textChanges = state.styleChanges.filter(
     (c) => c.property === '__text_content__'
   );
   for (const tc of textChanges) {
@@ -86,7 +87,13 @@ export function performRevertAll() {
     });
   }
 
-  useEditorStore.getState().clearAllChanges();
+  state.clearAllChanges();
+
+  // Clear persisted changes from localStorage so they don't come back on refresh
+  if (state.targetUrl) {
+    state.persistChanges(state.targetUrl);
+  }
+
   // Force-reload the iframe to guarantee a clean state
   const iframe = document.querySelector<HTMLIFrameElement>('iframe[title="Preview"]');
   if (iframe?.src) {
@@ -106,15 +113,16 @@ export function useChangeTracker() {
   const pushUndo = useEditorStore((s) => s.pushUndo);
   const { sendToInspector } = usePostMessage();
 
-  // Auto-persist changes when they update
+  // Auto-persist changes when they update (count OR content)
   const persistTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const prevCountRef = useRef(0);
+  const prevChangesRef = useRef<unknown>(null);
 
   useEffect(() => {
     const unsubscribe = useEditorStore.subscribe((state) => {
-      const count = state.styleChanges.length;
-      if (count === prevCountRef.current) return;
-      prevCountRef.current = count;
+      // Trigger on any styleChanges or elementSnapshots reference change
+      const ref = state.styleChanges;
+      if (ref === prevChangesRef.current) return;
+      prevChangesRef.current = ref;
 
       const url = state.targetUrl;
       if (!url) return;
@@ -146,15 +154,19 @@ export function useChangeTracker() {
       const { selectorPath, computedStyles, activeBreakpoint } = useEditorStore.getState();
       if (!selectorPath) return;
 
-      const originalValue = computedStyles[property] || '';
-
-      // Don't track if value hasn't changed
-      if (originalValue === value) return;
-
       // Check if a change already exists for this element+property
       const existing = useEditorStore.getState().styleChanges.find(
         (c) => c.elementSelector === selectorPath && c.property === property
       );
+
+      // When an existing change exists, compare against its newValue (exact format)
+      // rather than computedStyles which may have been reformatted by the browser
+      // (e.g., hex → rgb). This ensures rapid color picks always record the latest value.
+      const currentValue = existing ? existing.newValue : (computedStyles[property] || '');
+      const originalValue = computedStyles[property] || '';
+
+      // Don't track if value hasn't changed
+      if (currentValue === value) return;
 
       // Detect auto-reset: value returning to the true original
       const isAutoReset = existing && value === existing.originalValue;

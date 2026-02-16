@@ -233,6 +233,13 @@ export interface ShowSelectionOverlayMessage {
   type: 'SHOW_SELECTION_OVERLAY';
 }
 
+export interface NavigateToMessage {
+  type: 'NAVIGATE_TO';
+  payload: {
+    path: string;
+  };
+}
+
 // Union types
 export type InspectorToEditorMessage =
   | InspectorReadyMessage
@@ -266,7 +273,8 @@ export type EditorToInspectorMessage =
   | SetTextContentMessage
   | RevertTextContentMessage
   | HideSelectionOverlayMessage
-  | ShowSelectionOverlayMessage;
+  | ShowSelectionOverlayMessage
+  | NavigateToMessage;
 
 export type PostMessageType =
   | InspectorToEditorMessage['type']

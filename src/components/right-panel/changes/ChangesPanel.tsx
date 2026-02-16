@@ -5,6 +5,7 @@ import { useEditorStore } from '@/store';
 import { useChangeTracker } from '@/hooks/useChangeTracker';
 import { buildInstructionsFooter, getBreakpointDeviceInfo } from '@/lib/constants';
 import { inferSourcePath } from '@/lib/classifyElement';
+import { camelToKebab } from '@/lib/utils';
 import { EditablePre } from '@/components/common/EditablePre';
 import type { StyleChange, ElementSnapshot, Breakpoint } from '@/types/changelog';
 
@@ -73,7 +74,7 @@ function buildSingleElementLog(snapshot: ElementSnapshot, changes: StyleChange[]
       lines.push(`  text content: "${c.originalValue}" → "${c.newValue}"`);
     } else {
       const cInfo = getBreakpointDeviceInfo(c.breakpoint);
-      lines.push(`  ${c.property}: "${c.originalValue}" → "${c.newValue}" [${cInfo.deviceName} ${cInfo.range}]`);
+      lines.push(`  ${camelToKebab(c.property)}: "${c.originalValue}" → "${c.newValue}" [${cInfo.deviceName} ${cInfo.range}]`);
     }
   }
   lines.push('');
@@ -110,7 +111,6 @@ function buildSingleElementLog(snapshot: ElementSnapshot, changes: StyleChange[]
     'flexDirection', 'justifyContent', 'alignItems', 'gap',
     'gridTemplateColumns', 'gridTemplateRows', 'overflow', 'boxSizing',
   ];
-  const camelToKebab = (s: string) => s.replace(/[A-Z]/g, c => '-' + c.toLowerCase());
   lines.push('COMPUTED STYLES');
   for (const key of styleKeys) {
     if (snapshot.computedStyles[key]) {
@@ -155,7 +155,7 @@ function buildElementSection(snapshot: ElementSnapshot, changes: StyleChange[]):
       lines.push(`  text content: "${c.originalValue}" → "${c.newValue}"`);
     } else {
       const cInfo = getBreakpointDeviceInfo(c.breakpoint);
-      lines.push(`  ${c.property}: "${c.originalValue}" → "${c.newValue}" [${cInfo.deviceName} ${cInfo.range}]`);
+      lines.push(`  ${camelToKebab(c.property)}: "${c.originalValue}" → "${c.newValue}" [${cInfo.deviceName} ${cInfo.range}]`);
     }
   }
   lines.push('');
@@ -187,7 +187,6 @@ function buildElementSection(snapshot: ElementSnapshot, changes: StyleChange[]):
     'flexDirection', 'justifyContent', 'alignItems', 'gap',
     'gridTemplateColumns', 'gridTemplateRows', 'overflow', 'boxSizing',
   ];
-  const camelToKebab = (s: string) => s.replace(/[A-Z]/g, c => '-' + c.toLowerCase());
   lines.push('COMPUTED STYLES');
   for (const key of styleKeys) {
     if (snapshot.computedStyles[key]) {
@@ -295,10 +294,13 @@ function ElementAccordion({
   snapshot,
   changes,
   onRevert,
+  liveStyles,
 }: {
   snapshot: ElementSnapshot;
   changes: StyleChange[];
   onRevert: (id: string, selector: string, property: string) => void;
+  /** When provided (current element), use these as display values instead of change.newValue. */
+  liveStyles?: Record<string, string>;
 }) {
   const [open, setOpen] = useState(false);
   const editedTextRef = useRef<string | null>(null);
@@ -372,7 +374,11 @@ function ElementAccordion({
 
           {/* Per-change undo buttons */}
           <div className="space-y-1">
-            {changes.map((change) => (
+            {changes.map((change) => {
+              const displayVal = (liveStyles && change.property !== '__text_content__')
+                ? (liveStyles[change.property] ?? change.newValue)
+                : change.newValue;
+              return (
               <div key={change.id} className="flex items-center justify-between text-xs">
                 <span className="truncate" style={{ color: 'var(--text-muted)' }}>
                   {change.property === '__text_content__' ? (
@@ -383,7 +389,7 @@ function ElementAccordion({
                     </>
                   ) : (
                     <>
-                      {change.property}: <span style={{ color: 'var(--success)' }}>{change.newValue}</span>
+                      {camelToKebab(change.property)}: <span style={{ color: 'var(--success)' }}>{displayVal}</span>
                     </>
                   )}
                 </span>
@@ -399,7 +405,8 @@ function ElementAccordion({
                   Undo
                 </button>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -421,6 +428,8 @@ function BreakpointGroupAccordion({
   breakpoint,
   onRevert,
   isActiveBreakpoint,
+  selectorPath,
+  computedStyles,
 }: {
   group: BreakpointGroupData;
   targetUrl: string | null;
@@ -428,6 +437,8 @@ function BreakpointGroupAccordion({
   breakpoint: Breakpoint;
   onRevert: (id: string, selector: string, property: string) => void;
   isActiveBreakpoint: boolean;
+  selectorPath?: string | null;
+  computedStyles?: Record<string, string>;
 }) {
   const [open, setOpen] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -526,6 +537,7 @@ function BreakpointGroupAccordion({
                 snapshot={snapshot}
                 changes={changes}
                 onRevert={onRevert}
+                liveStyles={selector === selectorPath ? computedStyles : undefined}
               />
             ))
           )}
@@ -672,6 +684,8 @@ export function ChangesPanel() {
   const targetUrl = useEditorStore((s) => s.targetUrl);
   const activeBreakpoint = useEditorStore((s) => s.activeBreakpoint);
   const currentPagePath = useEditorStore((s) => s.currentPagePath);
+  const selectorPath = useEditorStore((s) => s.selectorPath);
+  const computedStyles = useEditorStore((s) => s.computedStyles);
   const { revertChange } = useChangeTracker();
   const [showClearConfirm, setShowClearConfirm] = useState(false);
 
@@ -824,6 +838,7 @@ export function ChangesPanel() {
             snapshot={snapshot}
             changes={changes}
             onRevert={revertChange}
+            liveStyles={selector === selectorPath ? computedStyles : undefined}
           />
         ))}
       </div>

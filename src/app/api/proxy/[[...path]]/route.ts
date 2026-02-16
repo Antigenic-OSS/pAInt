@@ -71,27 +71,44 @@ function getInspectorCode(): string {
         };
       }
 
+      function toCC(s) {
+        if (s.charAt(0) === '-') s = s.substring(1);
+        return s.replace(/-([a-z])/g, function(_, c) { return c.toUpperCase(); });
+      }
+      function toKC(s) {
+        var k = s.replace(/[A-Z]/g, function(c) { return '-' + c.toLowerCase(); });
+        if (/^(webkit|moz|ms)-/.test(k)) k = '-' + k;
+        return k;
+      }
+
       function getComputedStylesForElement(el) {
         var computed = window.getComputedStyle(el);
         var props = [
-          'width','height','min-width','min-height','max-width','max-height','overflow',
+          'width','height','min-width','min-height','max-width','max-height',
+          'overflow','overflow-x','overflow-y','box-sizing',
           'margin-top','margin-right','margin-bottom','margin-left',
           'padding-top','padding-right','padding-bottom','padding-left',
-          'font-family','font-size','font-weight','line-height','letter-spacing',
-          'text-align','text-decoration','text-transform','color',
+          'font-family','font-size','font-weight','font-style','line-height','letter-spacing',
+          'text-align','text-decoration','text-transform','text-indent','text-overflow','text-shadow','color',
+          'direction','word-break','line-break','white-space','column-count',
+          '-webkit-text-stroke-width','-webkit-text-stroke-color',
           'border-width','border-style','border-color','border-radius',
+          'border-top-width','border-right-width','border-bottom-width','border-left-width',
           'border-top-left-radius','border-top-right-radius',
           'border-bottom-right-radius','border-bottom-left-radius',
           'background-color','background-image',
           'background-size','background-position','background-repeat','background-attachment','background-clip',
-          'opacity',
+          'opacity','visibility','cursor','mix-blend-mode','pointer-events',
           'display','flex-direction','justify-content','align-items',
-          'flex-wrap','gap','grid-template-columns','grid-template-rows',
-          'position','top','right','bottom','left','z-index'
+          'flex-wrap','gap','column-gap','row-gap',
+          'grid-template-columns','grid-template-rows','grid-auto-flow','justify-items',
+          'vertical-align',
+          'position','top','right','bottom','left','z-index','float','clear',
+          'box-shadow','filter'
         ];
         var styles = {};
         for (var i = 0; i < props.length; i++) {
-          styles[props[i]] = computed.getPropertyValue(props[i]);
+          styles[toCC(props[i])] = computed.getPropertyValue(props[i]);
         }
         return styles;
       }
@@ -561,8 +578,9 @@ function getInspectorCode(): string {
             try {
               var target = document.querySelector(msg.payload.selectorPath);
               if (target) {
+                var cssProp = toKC(msg.payload.property);
                 requestAnimationFrame(function() {
-                  target.style.setProperty(msg.payload.property, msg.payload.value, 'important');
+                  target.style.setProperty(cssProp, msg.payload.value, 'important');
                 });
               }
             } catch(err) {}
@@ -571,7 +589,7 @@ function getInspectorCode(): string {
           case 'REVERT_CHANGE': {
             try {
               var target2 = document.querySelector(msg.payload.selectorPath);
-              if (target2) target2.style.removeProperty(msg.payload.property);
+              if (target2) target2.style.removeProperty(toKC(msg.payload.property));
             } catch(err) {}
             break;
           }
@@ -712,6 +730,12 @@ function getInspectorCode(): string {
           }
           case 'HEARTBEAT': {
             send({ type: 'HEARTBEAT_RESPONSE' });
+            break;
+          }
+          case 'NAVIGATE_TO': {
+            var navPath = msg.payload.path || '/';
+            var navSep = (navPath.indexOf('?') >= 0) ? '&' : '?';
+            window.location.href = '/api/proxy' + navPath + navSep + pH + '=' + eT;
             break;
           }
         }
@@ -1010,8 +1034,13 @@ async function handleProxy(
         if (e.canIntercept) {
           e.intercept({
             handler: function() {
+              // Notify parent of page change (UI update only — no iframe reload)
               window.parent.postMessage({type:'PAGE_NAVIGATE', payload:{path:d.pathname}}, window.location.origin);
-              return Promise.resolve();
+              // Navigate within the iframe to the proxy URL instead of
+              // letting the editor set iframe.src (which causes a full reload)
+              var sep = d.search ? '&' : '?';
+              window.location.replace('/api/proxy' + d.pathname + d.search + sep + pH + '=' + eT);
+              return new Promise(function() {});
             }
           });
         }

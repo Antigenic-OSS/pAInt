@@ -4,6 +4,7 @@ import { useMemo, useState, useCallback, useRef } from 'react';
 import { useEditorStore } from '@/store';
 import { inferSourcePath } from '@/lib/classifyElement';
 import { buildInstructionsFooter, BREAKPOINTS, getBreakpointDeviceInfo, getBreakpointRange } from '@/lib/constants';
+import { camelToKebab } from '@/lib/utils';
 import { EditablePre } from '@/components/common/EditablePre';
 import type { Breakpoint } from '@/types/changelog';
 
@@ -92,7 +93,6 @@ function buildElementLogText(opts: {
     'flexDirection', 'justifyContent', 'alignItems', 'gap',
     'gridTemplateColumns', 'gridTemplateRows', 'overflow', 'boxSizing',
   ];
-  const camelToKebab = (s: string) => s.replace(/[A-Z]/g, c => '-' + c.toLowerCase());
   lines.push('COMPUTED STYLES');
   for (const key of styleKeys) {
     if (opts.computedStyles[key]) {

@@ -62,3 +62,11 @@ export interface ClaudeStatusResponse {
   version?: string;
   error?: string;
 }
+
+export interface ProjectScanResult {
+  framework: string | null;
+  cssStrategy: string[];
+  cssFiles: string[];
+  srcDirs: string[];
+  packageName: string | null;
+}

@@ -364,14 +364,31 @@ export function ColorPicker({ value, onChange, onSelectVariable, label }: ColorP
     if (alphaCanvasRef.current) drawAlphaSlider(alphaCanvasRef.current, hsvToRgb(hsv));
   }, [isOpen, hsv]);
 
-  // Hide/show selection overlay when color picker opens/closes
+  // When the popover closes, commit any pending hex input that hasn't
+  // been emitted yet (e.g., user typed a hex value and clicked outside
+  // before blur fired). Also hide/show the selection overlay.
+  const prevOpenRef = useRef(isOpen);
   useEffect(() => {
     if (isOpen) {
       sendViaIframe({ type: 'HIDE_SELECTION_OVERLAY' });
     } else {
       sendViaIframe({ type: 'SHOW_SELECTION_OVERLAY' });
+      // Commit pending hex input on close
+      if (prevOpenRef.current) {
+        const currentHex = rgbToHex(hsvToRgb(hsv));
+        const pendingHex = '#' + hexInput;
+        if (pendingHex !== currentHex) {
+          const rgb = hexToRgb(pendingHex);
+          if (rgb) {
+            const next = rgbToHsv(rgb);
+            setHsv(next);
+            emit(next, alpha);
+          }
+        }
+      }
     }
-  }, [isOpen]);
+    prevOpenRef.current = isOpen;
+  }, [isOpen, hsv, hexInput, alpha, emit]);
 
   // Click outside
   useEffect(() => {
@@ -524,8 +541,18 @@ export function ColorPicker({ value, onChange, onSelectVariable, label }: ColorP
           type="text"
           value={displayHex}
           onChange={(e) => {
-            const v = e.target.value;
-            setHexInput(v.replace('#', ''));
+            const v = e.target.value.replace('#', '');
+            setHexInput(v);
+            // Emit immediately when a valid 6-char hex is entered
+            const clean = v.replace(/[^0-9a-fA-F]/g, '');
+            if (clean.length === 6) {
+              const rgb = hexToRgb('#' + clean);
+              if (rgb) {
+                const next = rgbToHsv(rgb);
+                setHsv(next);
+                emit(next, alpha);
+              }
+            }
           }}
           onBlur={() => {
             const rgb = hexToRgb('#' + hexInput);

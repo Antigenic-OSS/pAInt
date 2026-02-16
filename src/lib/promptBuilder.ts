@@ -5,6 +5,31 @@
  * buildApplyPrompt     — resume session to apply edits (--allowedTools Read,Edit)
  */
 
+import type { ProjectScanResult } from '@/types/claude';
+
+/**
+ * Build a "## Project Context" section from scan results.
+ */
+function buildProjectContextSection(scan: ProjectScanResult): string {
+  const lines: string[] = ['', '## Project Context', ''];
+  if (scan.framework) {
+    lines.push(`- Framework: ${scan.framework}`);
+  }
+  if (scan.cssStrategy.length > 0) {
+    lines.push(`- CSS: ${scan.cssStrategy.join(', ')}`);
+  }
+  if (scan.cssFiles.length > 0) {
+    lines.push(`- Key CSS files: ${scan.cssFiles.join(', ')}`);
+  }
+  if (scan.srcDirs.length > 0) {
+    lines.push(`- Source directories: ${scan.srcDirs.join(', ')}`);
+  }
+  if (scan.packageName) {
+    lines.push(`- Package: ${scan.packageName}`);
+  }
+  return lines.join('\n');
+}
+
 /**
  * Construct an analysis prompt from a changelog and project root.
  *
@@ -12,12 +37,16 @@
  * 1. Read the relevant source files in the project.
  * 2. Analyse the visual changelog entries.
  * 3. Produce unified diffs that implement every change.
+ *
+ * If a ProjectScanResult is provided, a "Project Context" section is appended
+ * so Claude has immediate knowledge of the project's framework and CSS approach.
  */
 export function buildAnalysisPrompt(
   changelog: string,
   projectRoot: string,
+  scan?: ProjectScanResult | null,
 ): string {
-  return [
+  const prompt = [
     'You are a front-end code assistant. A user has made visual edits to their',
     'web application via a design editor. Your job is to translate those visual',
     'changes into concrete source-code modifications.',
@@ -65,6 +94,11 @@ export function buildAnalysisPrompt(
     'diff can be applied unambiguously. If multiple hunks affect the same',
     'file, combine them under a single --- / +++ header.',
   ].join('\n');
+
+  if (scan) {
+    return prompt + buildProjectContextSection(scan);
+  }
+  return prompt;
 }
 
 /**

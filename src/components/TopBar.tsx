@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { TargetSelector } from './TargetSelector';
 import { BreakpointTabs } from './BreakpointTabs';
-import { SetupInstructions } from './SetupInstructions';
 import { ChangeSummaryModal } from './ChangeSummaryModal';
 import { useEditorStore } from '@/store';
 import { usePostMessage } from '@/hooks/usePostMessage';
@@ -218,7 +217,6 @@ export function TopBar() {
         ☰
       </button>
     </div>
-    <SetupInstructions />
     {showSummary && (
       <ChangeSummaryModal onClose={() => setShowSummary(false)} />
     )}

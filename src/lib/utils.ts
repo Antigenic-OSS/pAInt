@@ -1,6 +1,16 @@
 import { getBreakpointDeviceInfo } from '@/lib/constants';
 
 /**
+ * Convert a camelCase CSS property name to kebab-case.
+ * Handles vendor prefixes: webkitTextStroke → -webkit-text-stroke
+ */
+export function camelToKebab(s: string): string {
+  const k = s.replace(/[A-Z]/g, (c) => '-' + c.toLowerCase());
+  if (/^(webkit|moz|ms)-/.test(k)) return '-' + k;
+  return k;
+}
+
+/**
  * Generate a CSS selector path for a DOM element.
  */
 export function generateSelectorPath(element: Element): string {
