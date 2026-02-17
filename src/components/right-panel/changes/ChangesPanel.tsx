@@ -50,8 +50,9 @@ function CheckIcon({ size = 14 }: { size?: number }) {
   );
 }
 
-function buildSingleElementLog(snapshot: ElementSnapshot, changes: StyleChange[], fileMap?: FileMap | null, projectRoot?: string | null): string {
+function buildSingleElementLog(snapshot: ElementSnapshot, changes: StyleChange[], fileMap?: FileMap | null, projectRoot?: string | null, framework?: string | null): string {
   const lines: string[] = [];
+  const isMobileApp = framework === 'flutter' || framework === 'react-native';
 
   const attrParts: string[] = [];
   if (snapshot.elementId) attrParts.push(`id="${snapshot.elementId}"`);
@@ -80,16 +81,15 @@ function buildSingleElementLog(snapshot: ElementSnapshot, changes: StyleChange[]
   lines.push(tag);
   lines.push('');
 
-  lines.push('DEVICE');
-  lines.push(`Device Name: ${deviceName}`);
-  lines.push(`Breakpoint: ${range}`);
-  lines.push('');
-  lines.push('APPLIES TO');
-  lines.push(snapshot.changeScope === 'all' ? 'All breakpoints' : `${deviceName} (${range})`);
-  lines.push('');
-  lines.push('PATH');
-  lines.push(snapshot.selectorPath);
-  lines.push('');
+  if (!isMobileApp) {
+    lines.push('DEVICE');
+    lines.push(`Device Name: ${deviceName}`);
+    lines.push(`Breakpoint: ${range}`);
+    lines.push('');
+    lines.push('APPLIES TO');
+    lines.push(snapshot.changeScope === 'all' ? 'All breakpoints' : `${deviceName} (${range})`);
+    lines.push('');
+  }
 
   const attrEntries = Object.entries(snapshot.attributes);
   if (attrEntries.length > 0) {
@@ -99,19 +99,6 @@ function buildSingleElementLog(snapshot: ElementSnapshot, changes: StyleChange[]
     }
     lines.push('');
   }
-
-  const styleKeys = [
-    'color', 'backgroundColor', 'fontSize', 'fontFamily', 'display', 'position',
-    'flexDirection', 'justifyContent', 'alignItems', 'gap',
-    'gridTemplateColumns', 'gridTemplateRows', 'overflow', 'boxSizing',
-  ];
-  lines.push('COMPUTED STYLES');
-  for (const key of styleKeys) {
-    if (snapshot.computedStyles[key]) {
-      lines.push(`  ${camelToKebab(key)}: ${snapshot.computedStyles[key]}`);
-    }
-  }
-  lines.push('');
 
   if (snapshot.innerText) {
     lines.push('INNER TEXT');
@@ -124,8 +111,9 @@ function buildSingleElementLog(snapshot: ElementSnapshot, changes: StyleChange[]
   return lines.join('\n').trim();
 }
 
-function buildElementSection(snapshot: ElementSnapshot, changes: StyleChange[], fileMap?: FileMap | null, projectRoot?: string | null): string {
+function buildElementSection(snapshot: ElementSnapshot, changes: StyleChange[], fileMap?: FileMap | null, projectRoot?: string | null, framework?: string | null): string {
   const lines: string[] = [];
+  const isMobileApp = framework === 'flutter' || framework === 'react-native';
 
   const attrParts: string[] = [];
   if (snapshot.elementId) attrParts.push(`id="${snapshot.elementId}"`);
@@ -153,12 +141,12 @@ function buildElementSection(snapshot: ElementSnapshot, changes: StyleChange[], 
   lines.push('ELEMENT');
   lines.push(tag);
   lines.push('');
-  lines.push('APPLIES TO');
-  lines.push(snapshot.changeScope === 'all' ? 'All breakpoints' : `${elDevice} (${elRange})`);
-  lines.push('');
-  lines.push('PATH');
-  lines.push(snapshot.selectorPath);
-  lines.push('');
+
+  if (!isMobileApp) {
+    lines.push('APPLIES TO');
+    lines.push(snapshot.changeScope === 'all' ? 'All breakpoints' : `${elDevice} (${elRange})`);
+    lines.push('');
+  }
 
   const attrEntries = Object.entries(snapshot.attributes);
   if (attrEntries.length > 0) {
@@ -168,19 +156,6 @@ function buildElementSection(snapshot: ElementSnapshot, changes: StyleChange[], 
     }
     lines.push('');
   }
-
-  const styleKeys = [
-    'color', 'backgroundColor', 'fontSize', 'fontFamily', 'display', 'position',
-    'flexDirection', 'justifyContent', 'alignItems', 'gap',
-    'gridTemplateColumns', 'gridTemplateRows', 'overflow', 'boxSizing',
-  ];
-  lines.push('COMPUTED STYLES');
-  for (const key of styleKeys) {
-    if (snapshot.computedStyles[key]) {
-      lines.push(`  ${camelToKebab(key)}: ${snapshot.computedStyles[key]}`);
-    }
-  }
-  lines.push('');
 
   if (snapshot.innerText) {
     lines.push('INNER TEXT');
@@ -199,8 +174,10 @@ function buildGroupLog(opts: {
   breakpoint: Breakpoint;
   fileMap?: FileMap | null;
   projectRoot?: string | null;
+  framework?: string | null;
 }): string {
   const lines: string[] = [];
+  const isMobileApp = opts.framework === 'flutter' || opts.framework === 'react-native';
   const totalChanges = opts.elements.reduce((sum, g) => sum + g.changes.length, 0);
   const { deviceName, range } = getBreakpointDeviceInfo(opts.breakpoint);
 
@@ -209,15 +186,17 @@ function buildGroupLog(opts: {
   if (opts.targetUrl) {
     lines.push(`Project URL: ${opts.targetUrl}`);
     lines.push(`Page: ${opts.pagePath || '/'}`);
-    lines.push(`Device Name: ${deviceName}`);
-    lines.push(`Breakpoint: ${range}`);
+    if (!isMobileApp) {
+      lines.push(`Device Name: ${deviceName}`);
+      lines.push(`Breakpoint: ${range}`);
+    }
   }
   lines.push(`Generated: ${new Date().toISOString()}`);
   lines.push('');
 
   for (let i = 0; i < opts.elements.length; i++) {
     const { snapshot, changes } = opts.elements[i];
-    lines.push(buildElementSection(snapshot, changes, opts.fileMap, opts.projectRoot));
+    lines.push(buildElementSection(snapshot, changes, opts.fileMap, opts.projectRoot, opts.framework));
     if (i < opts.elements.length - 1) {
       lines.push('');
       lines.push('---');
@@ -286,6 +265,7 @@ function ElementAccordion({
   liveStyles,
   fileMap,
   projectRoot,
+  framework,
 }: {
   snapshot: ElementSnapshot;
   changes: StyleChange[];
@@ -294,11 +274,12 @@ function ElementAccordion({
   liveStyles?: Record<string, string>;
   fileMap?: FileMap | null;
   projectRoot?: string | null;
+  framework?: string | null;
 }) {
   const [open, setOpen] = useState(false);
   const editedTextRef = useRef<string | null>(null);
 
-  const logText = useMemo(() => buildSingleElementLog(snapshot, changes, fileMap, projectRoot), [snapshot, changes, fileMap, projectRoot]);
+  const logText = useMemo(() => buildSingleElementLog(snapshot, changes, fileMap, projectRoot, framework), [snapshot, changes, fileMap, projectRoot, framework]);
 
   const copyText = editedTextRef.current ?? logText;
 
@@ -428,6 +409,7 @@ function BreakpointGroupAccordion({
   computedStyles,
   fileMap,
   projectRoot,
+  framework,
 }: {
   group: BreakpointGroupData;
   targetUrl: string | null;
@@ -439,6 +421,7 @@ function BreakpointGroupAccordion({
   computedStyles?: Record<string, string>;
   fileMap?: FileMap | null;
   projectRoot?: string | null;
+  framework?: string | null;
 }) {
   const [open, setOpen] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -451,7 +434,8 @@ function BreakpointGroupAccordion({
     breakpoint,
     fileMap,
     projectRoot,
-  }), [group, targetUrl, pagePath, breakpoint, fileMap, projectRoot]);
+    framework,
+  }), [group, targetUrl, pagePath, breakpoint, fileMap, projectRoot, framework]);
 
   const totalChanges = group.allChanges.length;
   const isEmpty = group.elements.length === 0;
@@ -542,6 +526,7 @@ function BreakpointGroupAccordion({
                 liveStyles={selector === selectorPath ? computedStyles : undefined}
                 fileMap={fileMap}
                 projectRoot={projectRoot}
+                framework={framework}
               />
             ))
           )}
@@ -695,10 +680,12 @@ export function ChangesPanel() {
   const { revertChange } = useChangeTracker();
   const [showClearConfirm, setShowClearConfirm] = useState(false);
 
-  const fileMap = useMemo(() => {
-    const scan = getProjectScanForUrl(targetUrl);
-    return scan?.fileMap ?? null;
+  const projectScan = useMemo(() => {
+    return getProjectScanForUrl(targetUrl);
   }, [targetUrl, getProjectScanForUrl]);
+
+  const fileMap = projectScan?.fileMap ?? null;
+  const framework = projectScan?.framework ?? null;
 
   const projectRoot = useMemo(() => {
     return getProjectRootForUrl(targetUrl);
@@ -753,8 +740,9 @@ export function ChangesPanel() {
       breakpoint: activeBreakpoint,
       fileMap,
       projectRoot,
+      framework,
     });
-  }, [elementGroups, targetUrl, currentPagePath, activeBreakpoint, fileMap, projectRoot]);
+  }, [elementGroups, targetUrl, currentPagePath, activeBreakpoint, fileMap, projectRoot, framework]);
 
   const handleClearAll = useCallback(() => {
     for (const { changes } of elementGroups) {
@@ -858,6 +846,7 @@ export function ChangesPanel() {
             liveStyles={selector === selectorPath ? computedStyles : undefined}
             fileMap={fileMap}
             projectRoot={projectRoot}
+            framework={framework}
           />
         ))}
       </div>

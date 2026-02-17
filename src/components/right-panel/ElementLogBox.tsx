@@ -3,7 +3,6 @@
 import { useMemo, useState, useCallback, useRef } from 'react';
 import { useEditorStore } from '@/store';
 import { buildInstructionsFooter, BREAKPOINTS, getBreakpointDeviceInfo, getBreakpointRange } from '@/lib/constants';
-import { camelToKebab } from '@/lib/utils';
 import { EditablePre } from '@/components/common/EditablePre';
 import type { Breakpoint } from '@/types/changelog';
 
@@ -36,6 +35,7 @@ function buildElementLogText(opts: {
   changeScope: 'all' | 'breakpoint-only';
   activeBreakpoint: Breakpoint;
   changeCount: number;
+  framework?: string | null;
 }): string {
   const lines: string[] = [];
   if (!opts.tagName) return '';
@@ -45,6 +45,7 @@ function buildElementLogText(opts: {
   if (opts.className) attrParts.push(`class="${opts.className}"`);
   const tag = `<${opts.tagName}${attrParts.length ? ' ' + attrParts.join(' ') : ''}>`;
 
+  const isMobileApp = opts.framework === 'flutter' || opts.framework === 'react-native';
   const { deviceName, range } = getBreakpointDeviceInfo(opts.activeBreakpoint);
 
   lines.push('PAGE NAME');
@@ -55,18 +56,14 @@ function buildElementLogText(opts: {
   lines.push(tag);
   lines.push('');
 
-  lines.push('DEVICE');
-  lines.push(`Device Name: ${deviceName}`);
-  lines.push(`Breakpoint: ${range}`);
-  lines.push('');
+  if (!isMobileApp) {
+    lines.push('DEVICE');
+    lines.push(`Device Name: ${deviceName}`);
+    lines.push(`Breakpoint: ${range}`);
+    lines.push('');
 
-  lines.push('APPLIES TO');
-  lines.push(opts.changeScope === 'all' ? 'All breakpoints' : `${deviceName} (${range})`);
-  lines.push('');
-
-  if (opts.selectorPath) {
-    lines.push('PATH');
-    lines.push(opts.selectorPath);
+    lines.push('APPLIES TO');
+    lines.push(opts.changeScope === 'all' ? 'All breakpoints' : `${deviceName} (${range})`);
     lines.push('');
   }
 
@@ -78,19 +75,6 @@ function buildElementLogText(opts: {
     }
     lines.push('');
   }
-
-  const styleKeys = [
-    'color', 'backgroundColor', 'fontSize', 'fontFamily', 'display', 'position',
-    'flexDirection', 'justifyContent', 'alignItems', 'gap',
-    'gridTemplateColumns', 'gridTemplateRows', 'overflow', 'boxSizing',
-  ];
-  lines.push('COMPUTED STYLES');
-  for (const key of styleKeys) {
-    if (opts.computedStyles[key]) {
-      lines.push(`  ${camelToKebab(key)}: ${opts.computedStyles[key]}`);
-    }
-  }
-  lines.push('');
 
   if (opts.innerText) {
     lines.push('INNER TEXT');
@@ -118,6 +102,14 @@ export function ElementLogBox() {
   const changeScope = useEditorStore((s) => s.changeScope);
   const activeBreakpoint = useEditorStore((s) => s.activeBreakpoint);
   const styleChanges = useEditorStore((s) => s.styleChanges);
+  const targetUrl = useEditorStore((s) => s.targetUrl);
+  const getProjectScanForUrl = useEditorStore((s) => s.getProjectScanForUrl);
+
+  const framework = useMemo(() => {
+    const scan = getProjectScanForUrl(targetUrl);
+    return scan?.framework ?? null;
+  }, [targetUrl, getProjectScanForUrl]);
+
   const changeCount = useMemo(() => {
     if (!selectorPath) return 0;
     return styleChanges.filter((c) => c.elementSelector === selectorPath).length;
@@ -126,8 +118,8 @@ export function ElementLogBox() {
   const logText = useMemo(() => buildElementLogText({
     tagName, className, elementId, selectorPath,
     attributes, innerText, computedStyles,
-    pagePath: currentPagePath, changeScope, activeBreakpoint, changeCount,
-  }), [tagName, className, elementId, selectorPath, attributes, innerText, computedStyles, currentPagePath, changeScope, activeBreakpoint, changeCount]);
+    pagePath: currentPagePath, changeScope, activeBreakpoint, changeCount, framework,
+  }), [tagName, className, elementId, selectorPath, attributes, innerText, computedStyles, currentPagePath, changeScope, activeBreakpoint, changeCount, framework]);
 
   const handleTextChange = useCallback((edited: string) => {
     editedTextRef.current = edited === logText ? null : edited;
