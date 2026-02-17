@@ -8,8 +8,11 @@ import { PagesPanel } from './PagesPanel';
 import { PANEL_DEFAULTS } from '@/lib/constants';
 
 const ComponentsPanel = React.lazy(() => import('./ComponentsPanel'));
+const TerminalPanel = React.lazy(() =>
+  import('./terminal/TerminalPanel').then((m) => ({ default: m.TerminalPanel })),
+);
 
-type LeftTab = 'layers' | 'pages' | 'components';
+type LeftTab = 'layers' | 'pages' | 'components' | 'terminal';
 
 interface LeftPanelProps {
   width: number;
@@ -25,7 +28,11 @@ export function LeftPanel({ width }: LeftPanelProps) {
     { id: 'layers', label: 'Navigator' },
     { id: 'pages', label: 'Pages' },
     { id: 'components', label: 'Comps' },
+    { id: 'terminal', label: 'Terminal' },
   ];
+
+  const isInspectorTab = activeTab !== 'terminal';
+  const showNotConnected = isInspectorTab && connectionStatus !== 'connected';
 
   return (
     <ResizablePanel
@@ -57,29 +64,37 @@ export function LeftPanel({ width }: LeftPanelProps) {
         </div>
 
         {/* Tab content */}
-        {connectionStatus === 'connected' ? (
-          activeTab === 'layers' ? (
-            <LayersPanel />
-          ) : activeTab === 'pages' ? (
-            <PagesPanel />
-          ) : (
-            <Suspense
-              fallback={
-                <div style={{ color: 'var(--text-muted)', padding: '8px', fontSize: '11px' }}>
-                  Loading...
-                </div>
-              }
-            >
-              <ComponentsPanel />
-            </Suspense>
-          )
-        ) : (
+        {activeTab === 'terminal' ? (
+          <Suspense
+            fallback={
+              <div style={{ color: 'var(--text-muted)', padding: '8px', fontSize: '11px' }}>
+                Loading terminal...
+              </div>
+            }
+          >
+            <TerminalPanel />
+          </Suspense>
+        ) : showNotConnected ? (
           <div
             className="flex items-center justify-center flex-1 text-xs"
             style={{ color: 'var(--text-muted)' }}
           >
             Connect to inspect
           </div>
+        ) : activeTab === 'layers' ? (
+          <LayersPanel />
+        ) : activeTab === 'pages' ? (
+          <PagesPanel />
+        ) : (
+          <Suspense
+            fallback={
+              <div style={{ color: 'var(--text-muted)', padding: '8px', fontSize: '11px' }}>
+                Loading...
+              </div>
+            }
+          >
+            <ComponentsPanel />
+          </Suspense>
         )}
       </div>
     </ResizablePanel>
