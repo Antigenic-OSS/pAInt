@@ -440,23 +440,6 @@ export function ConnectModal() {
                 color: 'var(--text-secondary)',
               }}
             >
-              {/* Quick Start */}
-              <div>
-                <h4
-                  className="text-[11px] font-semibold uppercase tracking-wide mb-2"
-                  style={{ color: 'var(--text-primary)' }}
-                >
-                  Quick Start
-                </h4>
-                <ol className="list-decimal list-inside flex flex-col gap-1" style={{ color: 'var(--text-secondary)' }}>
-                  <li>Start the Dev Editor: <code className="px-1 rounded" style={{ background: 'var(--bg-tertiary)', color: 'var(--accent)' }}>bun dev</code></li>
-                  <li>Start your target project&apos;s dev server</li>
-                  <li>Open the Dev Editor in your browser</li>
-                  <li>Select a port and click <strong style={{ color: 'var(--text-primary)' }}>Connect</strong></li>
-                  <li>Start inspecting and editing elements</li>
-                </ol>
-              </div>
-
               {/* Connection Methods */}
               <div>
                 <h4
@@ -471,6 +454,32 @@ export function ConnectModal() {
                   </div>
                   <div>
                     <span style={{ color: 'var(--warning)' }}>Manual (Script Tag)</span> — If auto-connect takes longer than 5s, add the provided script tag to your project&apos;s HTML layout.
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--accent)' }}>React Native / Expo Web</span> — Add the inspector script dynamically in your root layout:
+                    <pre
+                      className="mt-1.5 px-3 py-2.5 rounded text-[11px] leading-relaxed overflow-x-auto whitespace-pre"
+                      style={{
+                        background: 'var(--bg-tertiary)',
+                        color: 'var(--text-primary)',
+                        border: '1px solid var(--border)',
+                      }}
+                    >{`useEffect(() => {
+  if (Platform.OS === 'web') {
+    const script1 = document.createElement('script');
+    script1.src = 'http://localhost:4000/dev-editor-inspector.js';
+    document.body.appendChild(script1);
+
+    const script2 = document.createElement('script');
+    script2.src = 'https://dev-editor-flow.vercel.app/dev-editor-inspector.js';
+    document.body.appendChild(script2);
+
+    return () => {
+      document.body.removeChild(script1);
+      document.body.removeChild(script2);
+    };
+  }
+}`}</pre>
                   </div>
                 </div>
               </div>
