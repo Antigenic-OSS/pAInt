@@ -912,9 +912,24 @@ async function handleProxy(
     clearTimeout(timeout);
 
     const contentType = response.headers.get('content-type') || '';
+    // Headers to strip from proxied responses:
+    // - content-encoding/transfer-encoding: proxy re-encodes the body
+    // - COEP/COOP/CORP: block inspector script and iframe embedding
+    // - CSP: may restrict inline scripts (inspector) and postMessage
+    // - X-Frame-Options: prevents iframe embedding of proxied pages
+    const STRIP_HEADERS = new Set([
+      'content-encoding',
+      'transfer-encoding',
+      'cross-origin-embedder-policy',
+      'cross-origin-opener-policy',
+      'cross-origin-resource-policy',
+      'content-security-policy',
+      'content-security-policy-report-only',
+      'x-frame-options',
+    ]);
     const responseHeaders = new Headers();
     response.headers.forEach((value, key) => {
-      if (key !== 'content-encoding' && key !== 'transfer-encoding') {
+      if (!STRIP_HEADERS.has(key)) {
         responseHeaders.set(key, value);
       }
     });
@@ -1228,12 +1243,15 @@ async function handleProxy(
 })();
 </script>`;
 
-      // Inject navigation blocker + cookie setter at the top of <head>
+      // Inject navigation blocker + cookie setter at the top of <head>.
+      // IMPORTANT: Use function replacements to prevent $ characters in the
+      // injected scripts from being interpreted as special replacement patterns
+      // ($' = text after match, $& = matched text, etc.).
       const headInjection = navigationBlockerScript + urlInterceptorScript;
       if (html.includes('<head>')) {
-        html = html.replace('<head>', '<head>' + headInjection);
+        html = html.replace('<head>', () => '<head>' + headInjection);
       } else if (html.includes('<head ')) {
-        html = html.replace(/<head\s[^>]*>/, '$&' + headInjection);
+        html = html.replace(/<head\s[^>]*>/, (match) => match + headInjection);
       } else {
         html = headInjection + html;
       }
@@ -1243,7 +1261,7 @@ async function handleProxy(
 
       // Inject inspector script before </body>
       if (html.includes('</body>')) {
-        html = html.replace('</body>', INSPECTOR_SCRIPT + '</body>');
+        html = html.replace('</body>', () => INSPECTOR_SCRIPT + '</body>');
       } else {
         html += INSPECTOR_SCRIPT;
       }

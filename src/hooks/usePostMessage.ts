@@ -5,10 +5,18 @@ import { useEditorStore } from '@/store';
 import type { InspectorToEditorMessage, EditorToInspectorMessage } from '@/types/messages';
 import { generateId } from '@/lib/utils';
 
-function isLocalhostOrigin(origin: string): boolean {
+function isAllowedOrigin(origin: string): boolean {
   try {
     const url = new URL(origin);
-    return url.hostname === 'localhost' || url.hostname === '127.0.0.1';
+    // Always allow localhost/127.0.0.1 (primary use case)
+    if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') return true;
+    // Also allow if origin matches the current target URL (for live site editing)
+    const targetUrl = useEditorStore.getState().targetUrl;
+    if (targetUrl) {
+      const targetOrigin = new URL(targetUrl).origin;
+      if (origin === targetOrigin) return true;
+    }
+    return false;
   } catch {
     return false;
   }
@@ -29,16 +37,13 @@ let componentRescanTimer: ReturnType<typeof setTimeout> | null = null;
 export function sendViaIframe(message: EditorToInspectorMessage) {
   const iframe = sharedIframeRef.current;
   if (!iframe?.contentWindow) return;
-  const targetUrl = useEditorStore.getState().targetUrl;
-  let origin = '*';
-  try {
-    if (targetUrl) origin = new URL(targetUrl).origin;
-  } catch { /* fallback to wildcard */ }
-  iframe.contentWindow.postMessage(message, origin);
+  // The iframe loads through the proxy (/api/proxy/...) so it's same-origin.
+  // Use window.location.origin to match the proxy-served page's origin.
+  iframe.contentWindow.postMessage(message, window.location.origin);
 }
 
 function handleMessage(event: MessageEvent) {
-  if (!isLocalhostOrigin(event.origin)) return;
+  if (!isAllowedOrigin(event.origin)) return;
   const msg = event.data as InspectorToEditorMessage;
   if (!msg || !msg.type) return;
 

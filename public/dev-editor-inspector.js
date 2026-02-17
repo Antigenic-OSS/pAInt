@@ -1,109 +1,126 @@
 /**
  * Dev Editor Inspector — Standalone Script
  *
- * Add this script to your project to enable Dev Editor inspection:
- *   <script src="http://localhost:4000/dev-editor-inspector.js"></script>
+ * Add this script to your project to enable Dev Editor inspection.
+ * Works with both local and Vercel-hosted editors automatically.
  *
- * The script auto-detects the editor origin from its own src attribute.
+ * Next.js App Router:
+ *   <script src="http://localhost:4000/dev-editor-inspector.js" />
+ *   (place inside <body> in layout.tsx, after all other content)
+ *
+ * Plain HTML:
+ *   <script src="http://localhost:4000/dev-editor-inspector.js"></script>
+ *   (place before </body>)
+ *
+ * The script auto-detects the editor origin from its src attribute.
+ * If detection fails, it discovers the editor via handshake.
  * It does nothing when the page is not loaded inside an iframe.
  */
 (function() {
   // Iframe guard — script does nothing if not loaded inside an iframe
   if (window.parent === window) return;
 
-  // Auto-detect editor origin from this script's src attribute.
-  // document.currentScript is null when the script is inserted dynamically
-  // (e.g., by React/Next.js hydration), so we fall back to querying the DOM.
+  // --- Origin Detection ---
+  // Try to detect editor origin from this script's src attribute.
+  // Falls back to '*' (wildcard) and locks in the real origin after handshake.
   var scriptSrc = document.currentScript && document.currentScript.src;
   if (!scriptSrc) {
     var scripts = document.querySelectorAll('script[src*="dev-editor-inspector"]');
     if (scripts.length > 0) scriptSrc = scripts[scripts.length - 1].src;
   }
-  var parentOrigin;
+  var parentOrigin = '*';
   try {
-    parentOrigin = new URL(scriptSrc).origin;
+    if (scriptSrc) parentOrigin = new URL(scriptSrc).origin;
   } catch(e) {
-    // Fallback: cannot determine editor origin, abort
-    return;
+    // Could not parse script src — will discover origin via handshake
   }
 
-  var DEV_EDITOR_INSPECTOR = (function() {
+  // Track whether the editor has acknowledged our connection
+  var connected = false;
 
-    function send(message) {
+  function send(message) {
+    try {
       window.parent.postMessage(message, parentOrigin);
+    } catch(e) {
+      // If specific origin fails, retry with wildcard
+      if (parentOrigin !== '*') {
+        try { window.parent.postMessage(message, '*'); } catch(e2) {}
+      }
     }
+  }
 
-    // --- Console Interception ---
-    var originalConsole = {
-      log: console.log,
-      info: console.info,
-      warn: console.warn,
-      error: console.error
-    };
+  // --- Console Interception (no DOM dependency, runs immediately) ---
+  var originalConsole = {
+    log: console.log,
+    info: console.info,
+    warn: console.warn,
+    error: console.error
+  };
 
-    function serializeArg(arg) {
-      if (arg === null) return 'null';
-      if (arg === undefined) return 'undefined';
-      if (typeof arg === 'string') return arg;
-      if (typeof arg === 'number' || typeof arg === 'boolean') return String(arg);
-      if (arg instanceof Error) return arg.stack || arg.message || String(arg);
-      try { return JSON.stringify(arg); } catch(e) { return String(arg); }
-    }
+  function serializeArg(arg) {
+    if (arg === null) return 'null';
+    if (arg === undefined) return 'undefined';
+    if (typeof arg === 'string') return arg;
+    if (typeof arg === 'number' || typeof arg === 'boolean') return String(arg);
+    if (arg instanceof Error) return arg.stack || arg.message || String(arg);
+    try { return JSON.stringify(arg); } catch(e) { return String(arg); }
+  }
 
-    function interceptConsole(level) {
-      console[level] = function() {
-        var args = [];
-        for (var i = 0; i < arguments.length; i++) {
-          args.push(serializeArg(arguments[i]));
-        }
-        originalConsole[level].apply(console, arguments);
-        send({
-          type: 'CONSOLE_MESSAGE',
-          payload: { level: level, args: args, timestamp: Date.now() }
-        });
-      };
-    }
-
-    interceptConsole('log');
-    interceptConsole('info');
-    interceptConsole('warn');
-    interceptConsole('error');
-
-    window.onerror = function(message, source, line, column) {
+  function interceptConsole(level) {
+    console[level] = function() {
+      var args = [];
+      for (var i = 0; i < arguments.length; i++) {
+        args.push(serializeArg(arguments[i]));
+      }
+      originalConsole[level].apply(console, arguments);
       send({
         type: 'CONSOLE_MESSAGE',
-        payload: {
-          level: 'error',
-          args: [String(message)],
-          timestamp: Date.now(),
-          source: source || undefined,
-          line: line || undefined,
-          column: column || undefined
-        }
+        payload: { level: level, args: args, timestamp: Date.now() }
       });
     };
+  }
 
-    window.addEventListener('unhandledrejection', function(e) {
-      var reason = e.reason;
-      var msg = reason instanceof Error
-        ? (reason.stack || reason.message || String(reason))
-        : String(reason);
-      send({
-        type: 'CONSOLE_MESSAGE',
-        payload: {
-          level: 'error',
-          args: ['Unhandled Promise Rejection: ' + msg],
-          timestamp: Date.now()
-        }
-      });
+  interceptConsole('log');
+  interceptConsole('info');
+  interceptConsole('warn');
+  interceptConsole('error');
+
+  window.onerror = function(message, source, line, column) {
+    send({
+      type: 'CONSOLE_MESSAGE',
+      payload: {
+        level: 'error',
+        args: [String(message)],
+        timestamp: Date.now(),
+        source: source || undefined,
+        line: line || undefined,
+        column: column || undefined
+      }
     });
+  };
 
-    // Convert kebab-case to camelCase: 'padding-top' → 'paddingTop'
+  window.addEventListener('unhandledrejection', function(e) {
+    var reason = e.reason;
+    var msg = reason instanceof Error
+      ? (reason.stack || reason.message || String(reason))
+      : String(reason);
+    send({
+      type: 'CONSOLE_MESSAGE',
+      payload: {
+        level: 'error',
+        args: ['Unhandled Promise Rejection: ' + msg],
+        timestamp: Date.now()
+      }
+    });
+  });
+
+  // --- Inspector initialization (requires document.body) ---
+  function initInspector() {
+
     function kebabToCamel(str) {
       return str.replace(/-([a-z])/g, function(m, c) { return c.toUpperCase(); });
     }
 
-    // Convert camelCase to kebab-case: 'paddingTop' → 'padding-top'
     function camelToKebab(str) {
       return str.replace(/[A-Z]/g, function(c) { return '-' + c.toLowerCase(); });
     }
@@ -213,7 +230,6 @@
 
     function detectCSSVariablesOnElement(el) {
       var usages = {};
-      // Check inline style for var() references
       if (el.style) {
         for (var si = 0; si < el.style.length; si++) {
           var inlineProp = el.style[si];
@@ -223,7 +239,6 @@
           }
         }
       }
-      // Check stylesheet rules that match this element
       for (var shi = 0; shi < document.styleSheets.length; shi++) {
         var sheet = document.styleSheets[shi];
         var rules;
@@ -239,7 +254,6 @@
             var prop = rule.style[pi];
             var val = rule.style.getPropertyValue(prop);
             if (val && val.indexOf('var(') >= 0) {
-              // Don't overwrite inline style usages (higher specificity)
               if (!usages[prop]) {
                 usages[prop] = val.trim();
               }
@@ -338,16 +352,13 @@
       selectionOverlay.style.width = rect.width + 'px';
       selectionOverlay.style.height = rect.height + 'px';
 
-      // Collect all attributes
       var attrs = {};
       for (var ai = 0; ai < el.attributes.length; ai++) {
         var attr = el.attributes[ai];
         attrs[attr.name] = attr.value;
       }
 
-      // Collect truncated inner text
       var text = (el.innerText || '').substring(0, 500) || null;
-
       var varUsages = detectCSSVariablesOnElement(el);
 
       send({
@@ -376,7 +387,6 @@
       selectionOverlay.style.display = 'none';
     }
 
-    // Update selection overlay on scroll so it follows the selected element
     function updateSelectionOverlay() {
       if (!selectedElement || selectionOverlay.style.display === 'none') return;
       var rect = selectedElement.getBoundingClientRect();
@@ -400,7 +410,6 @@
       var el = textEditTarget;
       var selectorPath = generateSelectorPath(el);
 
-      // Clean up editing state
       el.contentEditable = 'false';
       el.style.removeProperty('outline');
       el.style.removeProperty('outline-offset');
@@ -408,14 +417,11 @@
       textEditingActive = false;
       textEditTarget = null;
 
-      // Reconnect observer
       observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'id', 'style'] });
 
-      // Re-show selection overlay
       selectionOverlay.style.display = 'block';
       updateSelectionOverlay();
 
-      // Send change if text actually changed
       if (newText !== originalTextContent) {
         send({
           type: 'TEXT_CHANGED',
@@ -431,7 +437,6 @@
 
     function cancelTextEdit() {
       if (!textEditingActive || !textEditTarget) return;
-      // Restore original text
       textEditTarget.textContent = originalTextContent;
       textEditTarget.contentEditable = 'false';
       textEditTarget.style.removeProperty('outline');
@@ -441,10 +446,8 @@
       textEditTarget = null;
       originalTextContent = null;
 
-      // Reconnect observer
       observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'id', 'style'] });
 
-      // Re-show selection overlay
       selectionOverlay.style.display = 'block';
       updateSelectionOverlay();
     }
@@ -457,33 +460,25 @@
       var el = document.elementFromPoint(e.clientX, e.clientY);
       if (!el || el === selectionOverlay) return;
 
-      // Only leaf elements (no child elements)
       if (el.children.length > 0) return;
-      // Skip form elements and media
       if (SKIP_TEXT_EDIT_TAGS[el.tagName]) return;
-      // Must have some text content
       var text = el.textContent;
       if (text === null || text === undefined) return;
 
-      // Enter text editing mode
       textEditingActive = true;
       textEditTarget = el;
       originalTextContent = text;
 
-      // Disconnect MutationObserver to prevent DOM_UPDATED during typing
       observer.disconnect();
 
-      // Hide selection overlay during editing
       selectionOverlay.style.display = 'none';
 
-      // Make element editable
       el.contentEditable = 'true';
       el.style.setProperty('outline', '2px solid #4a9eff', 'important');
       el.style.setProperty('outline-offset', '2px', 'important');
       el.style.setProperty('min-width', '20px', 'important');
       el.focus();
 
-      // Select all text
       var range = document.createRange();
       range.selectNodeContents(el);
       var sel = window.getSelection();
@@ -491,7 +486,6 @@
       sel.addRange(range);
     }, true);
 
-    // Keydown handler for text editing
     document.addEventListener('keydown', function(e) {
       if (!textEditingActive) return;
       e.stopPropagation();
@@ -527,17 +521,12 @@
 
     function detectSingleComponent(el) {
       var tag = el.tagName.toLowerCase();
-      // Priority 1: data-component attribute
       var dataComp = el.getAttribute('data-component');
       if (dataComp) return { name: dataComp, method: 'data-attribute' };
-      // Priority 2: custom element (tag with hyphen)
       if (tag.indexOf('-') >= 0) return { name: tag, method: 'custom-element' };
-      // Priority 3: semantic HTML
       if (SEMANTIC_COMPONENTS[tag]) return { name: SEMANTIC_COMPONENTS[tag], method: 'semantic-html' };
-      // Priority 4: ARIA role
       var role = el.getAttribute('role');
       if (role && ARIA_ROLE_MAP[role]) return { name: ARIA_ROLE_MAP[role], method: 'aria-role' };
-      // Priority 5: class pattern
       var cls = el.className;
       if (cls && typeof cls === 'string') {
         for (var pi = 0; pi < CLASS_PATTERNS.length; pi++) {
@@ -556,7 +545,6 @@
       var cls = el.className;
       if (!cls || typeof cls !== 'string') return groups;
       var classes = cls.trim().split(/\s+/).filter(Boolean);
-      // Extract base prefixes (e.g., "btn" from "btn-primary")
       var prefixes = {};
       for (var ci = 0; ci < classes.length; ci++) {
         var parts = classes[ci].split('-');
@@ -566,12 +554,10 @@
           if (!prefixes[base]) prefixes[base] = { currentClass: classes[ci], suffix: suffix };
         }
       }
-      // Scan stylesheets for matching classes
       for (var base in prefixes) {
         if (!prefixes.hasOwnProperty(base)) continue;
         var sizeOpts = [], colorOpts = [], stateOpts = [];
         var currentClass = prefixes[base].currentClass;
-        // Scan all accessible stylesheets
         for (var si = 0; si < document.styleSheets.length; si++) {
           var sheet = document.styleSheets[si];
           var rules;
@@ -585,19 +571,17 @@
             if (!match) continue;
             var foundSuffix = match[1];
             var foundClass = base + '-' + foundSuffix;
-            if (foundClass === currentClass) continue; // skip current
+            if (foundClass === currentClass) continue;
             var opt = { label: foundSuffix, className: foundClass, removeClassNames: [currentClass], pseudoState: null, pseudoStyles: null };
             if (SIZE_SUFFIXES.indexOf(foundSuffix) >= 0) { sizeOpts.push(opt); }
             else if (COLOR_SUFFIXES.indexOf(foundSuffix) >= 0) { colorOpts.push(opt); }
             else if (STATE_SUFFIXES.indexOf(foundSuffix) >= 0) { stateOpts.push(opt); }
           }
         }
-        // Build groups (need 2+ options including current)
         var currentSuffix = prefixes[base].suffix;
         var currentOpt = { label: currentSuffix, className: currentClass, removeClassNames: [], pseudoState: null, pseudoStyles: null };
         if (sizeOpts.length > 0) {
           sizeOpts.unshift(currentOpt);
-          // Deduplicate
           var seen = {};
           sizeOpts = sizeOpts.filter(function(o) { if (seen[o.className]) return false; seen[o.className] = true; return true; });
           if (sizeOpts.length >= 2) {
@@ -678,7 +662,6 @@
           if (detection) {
             var rect = el.getBoundingClientRect();
             var text = (el.innerText || '').substring(0, 50) || null;
-            // Count child components
             var childCount = 0;
             var childEls = el.querySelectorAll('*');
             for (var ci = 0; ci < childEls.length; ci++) {
@@ -712,7 +695,7 @@
       }
     }
 
-    // MutationObserver for DOM changes — throttled to at most once per animation frame
+    // MutationObserver for DOM changes
     var mutationPending = false;
     var previousTreeJSON = '';
     var observer = new MutationObserver(function() {
@@ -722,7 +705,6 @@
         mutationPending = false;
         var tree = serializeTree(document.body);
         if (!tree) return;
-        // Skip sending if tree hasn't changed (avoids redundant postMessages)
         var treeJSON = JSON.stringify(tree);
         if (treeJSON === previousTreeJSON) return;
         previousTreeJSON = treeJSON;
@@ -736,11 +718,23 @@
     });
     observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'id', 'style'] });
 
-    // Handle messages from editor
+    // --- Handle messages from editor ---
     window.addEventListener('message', function(e) {
-      if (e.origin !== parentOrigin) return;
+      // Accept messages from detected parentOrigin, or any origin if using wildcard
+      if (parentOrigin !== '*' && e.origin !== parentOrigin) return;
+
       var msg = e.data;
       if (!msg || !msg.type) return;
+
+      // Lock in the parent origin from first valid editor message
+      if (parentOrigin === '*' && msg.type) {
+        parentOrigin = e.origin;
+      }
+
+      // Mark as connected (stops INSPECTOR_READY retries)
+      if (!connected) {
+        connected = true;
+      }
 
       switch (msg.type) {
         case 'SELECT_ELEMENT': {
@@ -802,7 +796,6 @@
           break;
         }
         case 'SET_BREAKPOINT': {
-          // Viewport controller handled externally
           break;
         }
         case 'REQUEST_DOM_TREE': {
@@ -817,15 +810,11 @@
           for (var ai = 0; ai < anchors.length; ai++) {
             var rawHref = anchors[ai].getAttribute('href') || '';
             var linkText = (anchors[ai].textContent || '').trim();
-            // Resolve to absolute URL
             var resolved;
             try { resolved = new URL(rawHref, window.location.origin); } catch(e) { continue; }
-            // Only same-origin links
             if (resolved.origin !== window.location.origin) continue;
             var linkPath = resolved.pathname;
-            // Skip API routes and empty paths
             if (linkPath.indexOf('/api/') === 0 || linkPath === '') continue;
-            // Skip anchors, mailto, etc.
             if (!linkPath.startsWith('/')) continue;
             if (seen[linkPath]) continue;
             seen[linkPath] = true;
@@ -931,7 +920,6 @@
     });
 
     // --- SPA Navigation Detection ---
-    // Detect client-side navigation and notify the editor
     var lastPathname = window.location.pathname;
 
     function notifyNavigationIfChanged() {
@@ -942,23 +930,35 @@
       }
     }
 
-    // popstate fires on back/forward navigation
     window.addEventListener('popstate', notifyNavigationIfChanged);
 
-    // Navigation API (Chrome 102+) — fires on all navigation types
     if (window.navigation) {
       window.navigation.addEventListener('navigatesuccess', notifyNavigationIfChanged);
     }
 
-    // Signal ready
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', function() {
-        send({ type: 'INSPECTOR_READY' });
-      });
-    } else {
+    // --- Signal ready with retry ---
+    // Send INSPECTOR_READY immediately, then retry every second until editor responds.
+    // This handles race conditions where the editor isn't listening yet.
+    send({ type: 'INSPECTOR_READY' });
+    var readyRetryCount = 0;
+    var readyInterval = setInterval(function() {
+      if (connected) {
+        clearInterval(readyInterval);
+        return;
+      }
+      readyRetryCount++;
+      if (readyRetryCount >= 30) {
+        clearInterval(readyInterval);
+        return;
+      }
       send({ type: 'INSPECTOR_READY' });
-    }
+    }, 1000);
+  }
 
-    return { selectElement: selectElement, clearSelection: clearSelection };
-  })();
+  // --- Bootstrap: wait for document.body before initializing ---
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initInspector);
+  } else {
+    initInspector();
+  }
 })();

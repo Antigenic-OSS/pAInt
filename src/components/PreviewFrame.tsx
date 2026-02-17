@@ -3,8 +3,19 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { useEditorStore } from '@/store';
 import { usePostMessage } from '@/hooks/usePostMessage';
-import { PREVIEW_WIDTH_MIN, PREVIEW_WIDTH_MAX } from '@/lib/constants';
+import { PREVIEW_WIDTH_MIN, PREVIEW_WIDTH_MAX, PROXY_HEADER } from '@/lib/constants';
 import { ResponsiveToolbar } from './ResponsiveToolbar';
+
+/**
+ * Build the proxy URL for the iframe. Routes through /api/proxy/
+ * so the proxy can inject the inspector script and strip security
+ * headers (COEP, CSP, X-Frame-Options) that would block the editor.
+ */
+function buildProxyUrl(targetUrl: string, pagePath: string): string {
+  const path = pagePath === '/' ? '' : pagePath;
+  const encoded = encodeURIComponent(targetUrl);
+  return `/api/proxy${path}?${PROXY_HEADER}=${encoded}`;
+}
 
 export function PreviewFrame() {
   const targetUrl = useEditorStore((s) => s.targetUrl);
@@ -18,15 +29,14 @@ export function PreviewFrame() {
   const lastSrcRef = useRef<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  // Handle initial connection
+  // Handle initial connection — load through proxy
   useEffect(() => {
     if (!targetUrl || connectionStatus !== 'connecting') return;
 
     const iframe = iframeRef.current;
     if (!iframe) return;
 
-    const pagePath = currentPagePath === '/' ? '' : currentPagePath;
-    const newSrc = `${targetUrl}${pagePath}`;
+    const newSrc = buildProxyUrl(targetUrl, currentPagePath);
 
     if (lastSrcRef.current !== newSrc) {
       lastSrcRef.current = newSrc;
@@ -51,8 +61,7 @@ export function PreviewFrame() {
     const iframe = iframeRef.current;
     if (!iframe) return;
 
-    const pagePath = currentPagePath === '/' ? '' : currentPagePath;
-    const newSrc = `${targetUrl}${pagePath}`;
+    const newSrc = buildProxyUrl(targetUrl, currentPagePath);
 
     if (lastSrcRef.current !== newSrc) {
       lastSrcRef.current = newSrc;
