@@ -215,6 +215,7 @@ export function useChangeTracker() {
         computedStyles: { ...state.computedStyles },
         pagePath: state.currentPagePath,
         changeScope: state.changeScope,
+        sourceInfo: state.sourceInfo,
       });
 
       // Track the change (addStyleChange auto-removes if newValue === originalValue)

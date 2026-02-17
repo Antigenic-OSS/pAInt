@@ -8,6 +8,7 @@ import { inferSourcePath } from '@/lib/classifyElement';
 import { camelToKebab } from '@/lib/utils';
 import { EditablePre } from '@/components/common/EditablePre';
 import type { StyleChange, ElementSnapshot, Breakpoint } from '@/types/changelog';
+import type { FileMap, SourceInfo } from '@/types/claude';
 
 type BreakpointGroupKey = 'all' | 'desktop-only' | 'tablet-only' | 'mobile-only';
 
@@ -49,16 +50,8 @@ function CheckIcon({ size = 14 }: { size?: number }) {
   );
 }
 
-function buildSingleElementLog(snapshot: ElementSnapshot, changes: StyleChange[]): string {
+function buildSingleElementLog(snapshot: ElementSnapshot, changes: StyleChange[], fileMap?: FileMap | null, projectRoot?: string | null): string {
   const lines: string[] = [];
-
-  const sourcePath = inferSourcePath({
-    tagName: snapshot.tagName,
-    className: snapshot.className,
-    id: snapshot.elementId,
-    selectorPath: snapshot.selectorPath,
-    pagePath: snapshot.pagePath,
-  });
 
   const attrParts: string[] = [];
   if (snapshot.elementId) attrParts.push(`id="${snapshot.elementId}"`);
@@ -79,9 +72,10 @@ function buildSingleElementLog(snapshot: ElementSnapshot, changes: StyleChange[]
   }
   lines.push('');
 
-  lines.push('SOURCE');
-  lines.push(sourcePath);
+  lines.push('PAGE NAME');
+  lines.push(snapshot.pagePath || '/');
   lines.push('');
+
   lines.push('ELEMENT');
   lines.push(tag);
   lines.push('');
@@ -130,16 +124,8 @@ function buildSingleElementLog(snapshot: ElementSnapshot, changes: StyleChange[]
   return lines.join('\n').trim();
 }
 
-function buildElementSection(snapshot: ElementSnapshot, changes: StyleChange[]): string {
+function buildElementSection(snapshot: ElementSnapshot, changes: StyleChange[], fileMap?: FileMap | null, projectRoot?: string | null): string {
   const lines: string[] = [];
-
-  const sourcePath = inferSourcePath({
-    tagName: snapshot.tagName,
-    className: snapshot.className,
-    id: snapshot.elementId,
-    selectorPath: snapshot.selectorPath,
-    pagePath: snapshot.pagePath,
-  });
 
   const attrParts: string[] = [];
   if (snapshot.elementId) attrParts.push(`id="${snapshot.elementId}"`);
@@ -160,9 +146,10 @@ function buildElementSection(snapshot: ElementSnapshot, changes: StyleChange[]):
   }
   lines.push('');
 
-  lines.push('SOURCE');
-  lines.push(sourcePath);
+  lines.push('PAGE NAME');
+  lines.push(snapshot.pagePath || '/');
   lines.push('');
+
   lines.push('ELEMENT');
   lines.push(tag);
   lines.push('');
@@ -210,6 +197,8 @@ function buildGroupLog(opts: {
   targetUrl: string | null;
   pagePath: string;
   breakpoint: Breakpoint;
+  fileMap?: FileMap | null;
+  projectRoot?: string | null;
 }): string {
   const lines: string[] = [];
   const totalChanges = opts.elements.reduce((sum, g) => sum + g.changes.length, 0);
@@ -228,7 +217,7 @@ function buildGroupLog(opts: {
 
   for (let i = 0; i < opts.elements.length; i++) {
     const { snapshot, changes } = opts.elements[i];
-    lines.push(buildElementSection(snapshot, changes));
+    lines.push(buildElementSection(snapshot, changes, opts.fileMap, opts.projectRoot));
     if (i < opts.elements.length - 1) {
       lines.push('');
       lines.push('---');
@@ -295,17 +284,21 @@ function ElementAccordion({
   changes,
   onRevert,
   liveStyles,
+  fileMap,
+  projectRoot,
 }: {
   snapshot: ElementSnapshot;
   changes: StyleChange[];
   onRevert: (id: string, selector: string, property: string) => void;
   /** When provided (current element), use these as display values instead of change.newValue. */
   liveStyles?: Record<string, string>;
+  fileMap?: FileMap | null;
+  projectRoot?: string | null;
 }) {
   const [open, setOpen] = useState(false);
   const editedTextRef = useRef<string | null>(null);
 
-  const logText = useMemo(() => buildSingleElementLog(snapshot, changes), [snapshot, changes]);
+  const logText = useMemo(() => buildSingleElementLog(snapshot, changes, fileMap, projectRoot), [snapshot, changes, fileMap, projectRoot]);
 
   const copyText = editedTextRef.current ?? logText;
 
@@ -319,6 +312,9 @@ function ElementAccordion({
     id: snapshot.elementId,
     selectorPath: snapshot.selectorPath,
     pagePath: snapshot.pagePath,
+    fileMap,
+    sourceInfo: snapshot.sourceInfo,
+    projectRoot,
   });
 
   const label = snapshot.elementId
@@ -430,6 +426,8 @@ function BreakpointGroupAccordion({
   isActiveBreakpoint,
   selectorPath,
   computedStyles,
+  fileMap,
+  projectRoot,
 }: {
   group: BreakpointGroupData;
   targetUrl: string | null;
@@ -439,6 +437,8 @@ function BreakpointGroupAccordion({
   isActiveBreakpoint: boolean;
   selectorPath?: string | null;
   computedStyles?: Record<string, string>;
+  fileMap?: FileMap | null;
+  projectRoot?: string | null;
 }) {
   const [open, setOpen] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -449,7 +449,9 @@ function BreakpointGroupAccordion({
     targetUrl,
     pagePath,
     breakpoint,
-  }), [group, targetUrl, pagePath, breakpoint]);
+    fileMap,
+    projectRoot,
+  }), [group, targetUrl, pagePath, breakpoint, fileMap, projectRoot]);
 
   const totalChanges = group.allChanges.length;
   const isEmpty = group.elements.length === 0;
@@ -538,6 +540,8 @@ function BreakpointGroupAccordion({
                 changes={changes}
                 onRevert={onRevert}
                 liveStyles={selector === selectorPath ? computedStyles : undefined}
+                fileMap={fileMap}
+                projectRoot={projectRoot}
               />
             ))
           )}
@@ -686,8 +690,19 @@ export function ChangesPanel() {
   const currentPagePath = useEditorStore((s) => s.currentPagePath);
   const selectorPath = useEditorStore((s) => s.selectorPath);
   const computedStyles = useEditorStore((s) => s.computedStyles);
+  const getProjectScanForUrl = useEditorStore((s) => s.getProjectScanForUrl);
+  const getProjectRootForUrl = useEditorStore((s) => s.getProjectRootForUrl);
   const { revertChange } = useChangeTracker();
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+
+  const fileMap = useMemo(() => {
+    const scan = getProjectScanForUrl(targetUrl);
+    return scan?.fileMap ?? null;
+  }, [targetUrl, getProjectScanForUrl]);
+
+  const projectRoot = useMemo(() => {
+    return getProjectRootForUrl(targetUrl);
+  }, [targetUrl, getProjectRootForUrl]);
 
   // Separate component extractions from regular changes
   const { componentExtractions, regularChanges } = useMemo(() => {
@@ -736,8 +751,10 @@ export function ChangesPanel() {
       targetUrl,
       pagePath: currentPagePath,
       breakpoint: activeBreakpoint,
+      fileMap,
+      projectRoot,
     });
-  }, [elementGroups, targetUrl, currentPagePath, activeBreakpoint]);
+  }, [elementGroups, targetUrl, currentPagePath, activeBreakpoint, fileMap, projectRoot]);
 
   const handleClearAll = useCallback(() => {
     for (const { changes } of elementGroups) {
@@ -839,6 +856,8 @@ export function ChangesPanel() {
             changes={changes}
             onRevert={revertChange}
             liveStyles={selector === selectorPath ? computedStyles : undefined}
+            fileMap={fileMap}
+            projectRoot={projectRoot}
           />
         ))}
       </div>

@@ -27,6 +27,44 @@ function buildProjectContextSection(scan: ProjectScanResult): string {
   if (scan.packageName) {
     lines.push(`- Package: ${scan.packageName}`);
   }
+
+  // File map summary
+  if (scan.fileMap) {
+    const { routes, components } = scan.fileMap;
+
+    if (routes.length > 0) {
+      const pageRoutes = routes.filter((r) => r.type === 'page');
+      const layoutRoutes = routes.filter((r) => r.type === 'layout');
+      lines.push('');
+      lines.push('### Route Files');
+      for (const r of pageRoutes) {
+        lines.push(`- ${r.urlPattern} → ${r.filePath}`);
+      }
+      for (const r of layoutRoutes) {
+        lines.push(`- ${r.urlPattern} (layout) → ${r.filePath}`);
+      }
+    }
+
+    if (components.length > 0) {
+      // Group by category and list directory with counts
+      const dirCounts = new Map<string, { count: number; category: string }>();
+      for (const comp of components) {
+        const dir = comp.filePath.substring(0, comp.filePath.lastIndexOf('/')) || '.';
+        const existing = dirCounts.get(dir);
+        if (existing) {
+          existing.count++;
+        } else {
+          dirCounts.set(dir, { count: 1, category: comp.category });
+        }
+      }
+      lines.push('');
+      lines.push('### Source Files');
+      for (const [dir, { count, category }] of dirCounts) {
+        lines.push(`- ${dir}/ (${count} ${category}${count !== 1 ? 's' : ''})`);
+      }
+    }
+  }
+
   return lines.join('\n');
 }
 

@@ -2,7 +2,6 @@
 
 import { useMemo, useState, useCallback, useRef } from 'react';
 import { useEditorStore } from '@/store';
-import { inferSourcePath } from '@/lib/classifyElement';
 import { buildInstructionsFooter, BREAKPOINTS, getBreakpointDeviceInfo, getBreakpointRange } from '@/lib/constants';
 import { camelToKebab } from '@/lib/utils';
 import { EditablePre } from '@/components/common/EditablePre';
@@ -46,18 +45,10 @@ function buildElementLogText(opts: {
   if (opts.className) attrParts.push(`class="${opts.className}"`);
   const tag = `<${opts.tagName}${attrParts.length ? ' ' + attrParts.join(' ') : ''}>`;
 
-  const sourcePath = inferSourcePath({
-    tagName: opts.tagName,
-    className: opts.className,
-    id: opts.elementId,
-    selectorPath: opts.selectorPath,
-    pagePath: opts.pagePath,
-  });
-
   const { deviceName, range } = getBreakpointDeviceInfo(opts.activeBreakpoint);
 
-  lines.push('SOURCE');
-  lines.push(sourcePath);
+  lines.push('PAGE NAME');
+  lines.push(opts.pagePath || '/');
   lines.push('');
 
   lines.push('ELEMENT');
@@ -127,7 +118,6 @@ export function ElementLogBox() {
   const changeScope = useEditorStore((s) => s.changeScope);
   const activeBreakpoint = useEditorStore((s) => s.activeBreakpoint);
   const styleChanges = useEditorStore((s) => s.styleChanges);
-
   const changeCount = useMemo(() => {
     if (!selectorPath) return 0;
     return styleChanges.filter((c) => c.elementSelector === selectorPath).length;

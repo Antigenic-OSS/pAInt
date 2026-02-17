@@ -241,6 +241,60 @@ function getInspectorCode(): string {
         hoveredElement = null;
       });
 
+      function getReactSourceInfo(element) {
+        // Find React fiber key on DOM element
+        var fiberKey = null;
+        var keys = Object.keys(element);
+        for (var i = 0; i < keys.length; i++) {
+          if (keys[i].indexOf('__reactFiber$') === 0 || keys[i].indexOf('__reactInternalInstance$') === 0) {
+            fiberKey = keys[i]; break;
+          }
+        }
+        if (!fiberKey) return null;
+
+        var fiber = element[fiberKey];
+        var source = null;
+        var componentName = null;
+        var componentChain = [];
+        var visited = 0;
+
+        while (fiber && visited < 50) {
+          visited++;
+          if (!source && fiber._debugSource) {
+            source = {
+              fileName: fiber._debugSource.fileName || '',
+              lineNumber: fiber._debugSource.lineNumber || 0,
+              columnNumber: fiber._debugSource.columnNumber
+            };
+          }
+          // Collect component names (function/class components, forwardRef)
+          var type = fiber.type;
+          if (type) {
+            var name = null;
+            if (typeof type === 'function') {
+              name = type.displayName || type.name;
+            } else if (type.$$typeof && (type.render || type.type)) {
+              var inner = type.render || type.type;
+              if (typeof inner === 'function') name = inner.displayName || inner.name;
+            }
+            if (name && name !== 'Anonymous' && name.length > 1) {
+              if (!componentName) componentName = name;
+              componentChain.push(name);
+            }
+          }
+          if (source && componentChain.length >= 10) break;
+          fiber = fiber.return;
+        }
+        if (!source) return null;
+        return {
+          fileName: source.fileName,
+          lineNumber: source.lineNumber,
+          columnNumber: source.columnNumber,
+          componentName: componentName,
+          componentChain: componentChain
+        };
+      }
+
       var selectedElement = null;
       var selectionModeEnabled = true;
 
@@ -280,6 +334,11 @@ function getInspectorCode(): string {
         var varUsages = detectCSSVariablesOnElement(el);
         console.log('[DevEditor] CSS variable usages for', el.tagName, el.className, varUsages);
 
+        var sourceInfo = getReactSourceInfo(el);
+        if (sourceInfo) {
+          console.log('[DevEditor] sourceInfo:', sourceInfo.fileName + ':' + sourceInfo.lineNumber, 'component:', sourceInfo.componentName, 'chain:', sourceInfo.componentChain.join(' > '));
+        }
+
         send({
           type: 'ELEMENT_SELECTED',
           payload: {
@@ -291,6 +350,7 @@ function getInspectorCode(): string {
             innerText: text,
             computedStyles: getComputedStylesForElement(el),
             cssVariableUsages: varUsages,
+            sourceInfo: sourceInfo,
             boundingRect: {
               x: rect.x, y: rect.y,
               width: rect.width, height: rect.height,

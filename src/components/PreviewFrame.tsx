@@ -18,6 +18,7 @@ export function PreviewFrame() {
   const lastSrcRef = useRef<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
+  // Handle initial connection
   useEffect(() => {
     if (!targetUrl || connectionStatus !== 'connecting') return;
 
@@ -42,6 +43,22 @@ export function PreviewFrame() {
       iframe.removeEventListener('error', handleError);
     };
   }, [targetUrl, connectionStatus, currentPagePath, iframeRef, setConnectionStatus]);
+
+  // Handle page navigation when already connected
+  useEffect(() => {
+    if (!targetUrl || connectionStatus !== 'connected') return;
+
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+
+    const pagePath = currentPagePath === '/' ? '' : currentPagePath;
+    const newSrc = `${targetUrl}${pagePath}`;
+
+    if (lastSrcRef.current !== newSrc) {
+      lastSrcRef.current = newSrc;
+      iframe.src = newSrc;
+    }
+  }, [targetUrl, connectionStatus, currentPagePath, iframeRef]);
 
   // Drag resize logic — symmetric from center
   const dragStateRef = useRef<{ startX: number; startWidth: number; side: 'left' | 'right' } | null>(null);

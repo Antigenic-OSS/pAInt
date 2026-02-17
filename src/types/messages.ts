@@ -1,6 +1,7 @@
 import type { TreeNode } from './tree';
 import type { CSSVariableDefinition } from './cssVariables';
 import type { DetectedComponent } from './component';
+import type { SourceInfo } from './claude';
 
 // Inspector → Editor messages
 
@@ -19,6 +20,7 @@ export interface ElementSelectedMessage {
     innerText: string | null;
     computedStyles: Record<string, string>;
     cssVariableUsages?: Record<string, string>;
+    sourceInfo?: SourceInfo | null;
     boundingRect: {
       x: number;
       y: number;
