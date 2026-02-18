@@ -191,7 +191,8 @@
         'flex-wrap','gap','column-gap','row-gap',
         'grid-template-columns','grid-template-rows','grid-auto-flow',
         'justify-items','vertical-align',
-        'position','top','right','bottom','left','z-index','box-sizing'
+        'position','top','right','bottom','left','z-index','box-sizing',
+        'fill','stroke'
       ];
       var styles = {};
       for (var i = 0; i < props.length; i++) {
@@ -203,13 +204,16 @@
     function scanCSSVariableDefinitions() {
       var definitions = {};
       var rootStyles = window.getComputedStyle(document.documentElement);
-      for (var si = 0; si < document.styleSheets.length; si++) {
-        var sheet = document.styleSheets[si];
-        var rules;
-        try { rules = sheet.cssRules || sheet.rules; } catch(e) { continue; }
-        if (!rules) continue;
+      var FRAMEWORK_PREFIXES = ['--tw-', '--next-', '--radix-', '--chakra-', '--mantine-', '--mui-', '--framer-', '--sb-'];
+
+      function extractFromRules(rules) {
         for (var ri = 0; ri < rules.length; ri++) {
           var rule = rules[ri];
+          // Recurse into @media and other grouping rules
+          if (rule.cssRules) {
+            extractFromRules(rule.cssRules);
+            continue;
+          }
           if (!rule.style) continue;
           for (var pi = 0; pi < rule.style.length; pi++) {
             var prop = rule.style[pi];
@@ -225,7 +229,70 @@
           }
         }
       }
-      return definitions;
+
+      // Primary: check for <style data-design-tokens> or <link data-design-tokens>
+      var taggedSheets = [];
+      for (var si = 0; si < document.styleSheets.length; si++) {
+        var sheet = document.styleSheets[si];
+        if (sheet.ownerNode && sheet.ownerNode.hasAttribute && sheet.ownerNode.hasAttribute('data-design-tokens')) {
+          taggedSheets.push(sheet);
+        }
+      }
+
+      if (taggedSheets.length > 0) {
+        // Explicit mode: scan only tagged sheets
+        for (var ti = 0; ti < taggedSheets.length; ti++) {
+          var taggedRules;
+          try { taggedRules = taggedSheets[ti].cssRules || taggedSheets[ti].rules; } catch(e) { continue; }
+          if (taggedRules) extractFromRules(taggedRules);
+        }
+        return { definitions: definitions, isExplicit: true };
+      }
+
+      // Fallback: scan all sheets
+      for (var fi = 0; fi < document.styleSheets.length; fi++) {
+        var fallbackSheet = document.styleSheets[fi];
+        var fallbackRules;
+        try { fallbackRules = fallbackSheet.cssRules || fallbackSheet.rules; } catch(e) { continue; }
+        if (fallbackRules) extractFromRules(fallbackRules);
+      }
+
+      // Check for <meta name="design-tokens-prefix"> allowlist
+      var metaEl = document.querySelector('meta[name="design-tokens-prefix"]');
+      var metaPrefixes = null;
+      if (metaEl) {
+        var content = metaEl.getAttribute('content');
+        if (content) {
+          metaPrefixes = content.split(',');
+          for (var mpi = 0; mpi < metaPrefixes.length; mpi++) {
+            metaPrefixes[mpi] = metaPrefixes[mpi].trim();
+          }
+        }
+      }
+
+      // Filter definitions
+      var filtered = {};
+      var keys = Object.keys(definitions);
+      for (var ki = 0; ki < keys.length; ki++) {
+        var key = keys[ki];
+        if (metaPrefixes) {
+          // Meta allowlist mode: only keep variables matching specified prefixes
+          var allowed = false;
+          for (var api = 0; api < metaPrefixes.length; api++) {
+            if (key.indexOf(metaPrefixes[api]) === 0) { allowed = true; break; }
+          }
+          if (allowed) filtered[key] = definitions[key];
+        } else {
+          // Default fallback: filter out known framework prefixes
+          var isFramework = false;
+          for (var fpi = 0; fpi < FRAMEWORK_PREFIXES.length; fpi++) {
+            if (key.indexOf(FRAMEWORK_PREFIXES[fpi]) === 0) { isFramework = true; break; }
+          }
+          if (!isFramework) filtered[key] = definitions[key];
+        }
+      }
+
+      return { definitions: filtered, isExplicit: false };
     }
 
     function detectCSSVariablesOnElement(el) {
@@ -285,8 +352,12 @@
       if (el.id) return tag + '#' + el.id;
       var cls = el.className;
       if (cls && typeof cls === 'string') {
-        var first = cls.trim().split(/\s+/)[0];
-        if (first) return tag + '.' + first;
+        var classes = cls.trim().split(/\s+/);
+        // Prefer c- prefixed class for the label
+        for (var i = 0; i < classes.length; i++) {
+          if (classes[i].indexOf('c-') === 0) return tag + '.' + classes[i];
+        }
+        if (classes[0]) return tag + '.' + classes[0];
       }
       return tag;
     }
@@ -519,10 +590,30 @@
       [/\bnav\b/i, 'Navigation'], [/\balert\b/i, 'Alert'], [/\btabs?\b/i, 'Tab']
     ];
 
+    function detectCPrefixComponent(el) {
+      var cls = el.className;
+      if (!cls || typeof cls !== 'string') return null;
+      var classes = cls.trim().split(/\s+/);
+      for (var i = 0; i < classes.length; i++) {
+        if (classes[i].indexOf('c-') === 0 && classes[i].length > 2) {
+          var raw = classes[i].substring(2);
+          // Convert kebab-case to Title Case (e.g. "nav-bar" → "Nav Bar")
+          var name = raw.split('-').map(function(part) {
+            return part.charAt(0).toUpperCase() + part.slice(1);
+          }).join(' ');
+          return { name: name, method: 'c-prefix' };
+        }
+      }
+      return null;
+    }
+
     function detectSingleComponent(el) {
       var tag = el.tagName.toLowerCase();
       var dataComp = el.getAttribute('data-component');
       if (dataComp) return { name: dataComp, method: 'data-attribute' };
+      // Detect c- prefixed class identifiers (e.g. "c-header" → "Header")
+      var cPrefix = detectCPrefixComponent(el);
+      if (cPrefix) return cPrefix;
       if (tag.indexOf('-') >= 0) return { name: tag, method: 'custom-element' };
       if (SEMANTIC_COMPONENTS[tag]) return { name: SEMANTIC_COMPONENTS[tag], method: 'semantic-html' };
       var role = el.getAttribute('role');
@@ -824,8 +915,8 @@
           break;
         }
         case 'REQUEST_CSS_VARIABLES': {
-          var defs = scanCSSVariableDefinitions();
-          send({ type: 'CSS_VARIABLES', payload: { definitions: defs } });
+          var result = scanCSSVariableDefinitions();
+          send({ type: 'CSS_VARIABLES', payload: { definitions: result.definitions, isExplicit: result.isExplicit } });
           break;
         }
         case 'REQUEST_COMPONENTS': {

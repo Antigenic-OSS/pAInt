@@ -158,9 +158,10 @@ export function formatChangelog(opts: {
   lines.push(`Generated: ${timestamp}`);
   lines.push('');
 
-  // Separate component extractions from regular style changes
+  // Separate special entries from regular style changes
   const componentExtractions = styleChanges.filter((c) => c.property === '__component_creation__');
-  const regularChanges = styleChanges.filter((c) => c.property !== '__component_creation__');
+  const variableDefinitions = styleChanges.filter((c) => c.elementSelector === ':root' && c.property.startsWith('--'));
+  const regularChanges = styleChanges.filter((c) => c.property !== '__component_creation__' && !(c.elementSelector === ':root' && c.property.startsWith('--')));
 
   // Component Extractions section
   if (componentExtractions.length > 0) {
@@ -191,6 +192,24 @@ export function formatChangelog(opts: {
         // Skip malformed extraction entries
       }
     }
+  }
+
+  // CSS Variable Definitions section
+  if (variableDefinitions.length > 0) {
+    lines.push('## CSS Variable Definitions');
+    lines.push('');
+    lines.push('Add these CSS custom properties to the project\'s root stylesheet (`:root` or `html` selector):');
+    lines.push('');
+    for (const v of variableDefinitions) {
+      // Find which element property references this variable
+      const varRef = `var(${v.property})`;
+      const referencing = regularChanges.filter((c) => c.newValue === varRef);
+      lines.push(`- \`${v.property}: ${v.newValue}\``);
+      for (const ref of referencing) {
+        lines.push(`  - Used by: \`${ref.elementSelector}\` → ${ref.property}: var(${v.property})`);
+      }
+    }
+    lines.push('');
   }
 
   // Group regular style changes by element selector
@@ -236,6 +255,14 @@ export function formatChangelog(opts: {
   lines.push('- display: flex → flex, display: grid → grid');
   lines.push('- border-radius → rounded-{size} (rounded, rounded-lg, rounded-full)');
   lines.push('- gap → gap-{n} (gap-4, gap-x-2, etc.)');
+  if (variableDefinitions.length > 0) {
+    lines.push('');
+    lines.push('### CSS Variable Guidance');
+    lines.push('When the changelog includes CSS Variable Definitions, create the custom');
+    lines.push('properties in the project\'s root stylesheet or theme file. Then update');
+    lines.push('the referencing elements to use var(--name) instead of hardcoded values.');
+    lines.push('If using Tailwind, consider adding the variables to the theme config.');
+  }
   lines.push('=== END CHANGELOG ===');
 
   const result = lines.join('\n');

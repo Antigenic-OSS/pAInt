@@ -90,6 +90,7 @@ export const CSS_PROPERTIES = {
   'flex-item': ['flex-grow', 'flex-shrink', 'flex-basis', 'align-self', 'order'],
   transform: ['transform'],
   filter: ['filter'],
+  svg: ['fill', 'stroke'],
 } as const;
 
 export const ALL_EDITABLE_PROPERTIES = Object.values(CSS_PROPERTIES).flat();
