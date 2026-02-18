@@ -117,7 +117,7 @@ function handleMessage(event: MessageEvent) {
     }
 
     case 'CSS_VARIABLES':
-      store.setCSSVariableDefinitions(msg.payload.definitions);
+      store.setCSSVariableDefinitions(msg.payload.definitions, msg.payload.isExplicit);
       break;
 
     case 'ELEMENT_HOVERED':

@@ -256,7 +256,8 @@ export function useChangeTracker() {
 
   const revertAll = useCallback(() => {
     // Revert text changes before clearing (iframe reload handles style changes)
-    const textChanges = useEditorStore.getState().styleChanges.filter(
+    const state = useEditorStore.getState();
+    const textChanges = state.styleChanges.filter(
       (c) => c.property === '__text_content__'
     );
     for (const tc of textChanges) {
@@ -266,7 +267,13 @@ export function useChangeTracker() {
       });
     }
 
-    useEditorStore.getState().clearAllChanges();
+    state.clearAllChanges();
+
+    // Persist empty state to localStorage so changes don't reappear on reconnect
+    if (state.targetUrl) {
+      state.persistChanges(state.targetUrl);
+    }
+
     // Force-reload the iframe to guarantee a clean state — removing
     // inline styles via REVERT_ALL can leave layout artifacts.
     const iframe = document.querySelector<HTMLIFrameElement>('iframe[title="Preview"]');

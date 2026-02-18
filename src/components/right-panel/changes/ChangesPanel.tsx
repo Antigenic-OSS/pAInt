@@ -33,6 +33,14 @@ function truncateText(text: string, maxLen: number): string {
   return `"${text.substring(0, maxLen)}..."`;
 }
 
+/** Extract component name from c- prefixed class (e.g. "c-header" → "Header", "c-nav-bar" → "Nav Bar") */
+function getComponentName(className: string | null | undefined): string | null {
+  if (!className) return null;
+  const match = className.split(/\s+/).find((cls) => cls.startsWith('c-') && cls.length > 2);
+  if (!match) return null;
+  return match.substring(2).split('-').map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
+}
+
 function CopyIcon({ size = 14 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -61,6 +69,13 @@ function buildSingleElementLog(snapshot: ElementSnapshot, changes: StyleChange[]
 
   const changeBp = (changes[0]?.breakpoint || 'mobile') as Breakpoint;
   const { deviceName, range } = getBreakpointDeviceInfo(changeBp);
+
+  const compName = getComponentName(snapshot.className);
+  if (compName) {
+    lines.push('COMPONENT NAME');
+    lines.push(compName);
+    lines.push('');
+  }
 
   lines.push('CHANGES');
   for (const c of changes) {
@@ -122,6 +137,13 @@ function buildElementSection(snapshot: ElementSnapshot, changes: StyleChange[], 
 
   const changeBp = (changes[0]?.breakpoint || 'mobile') as Breakpoint;
   const { deviceName: elDevice, range: elRange } = getBreakpointDeviceInfo(changeBp);
+
+  const compName = getComponentName(snapshot.className);
+  if (compName) {
+    lines.push('COMPONENT NAME');
+    lines.push(compName);
+    lines.push('');
+  }
 
   lines.push('CHANGES');
   for (const c of changes) {
@@ -298,9 +320,12 @@ function ElementAccordion({
     projectRoot,
   });
 
-  const label = snapshot.elementId
-    ? `${snapshot.tagName}#${snapshot.elementId}`
-    : snapshot.tagName;
+  const compName = getComponentName(snapshot.className);
+  const label = compName
+    ? compName
+    : snapshot.elementId
+      ? `${snapshot.tagName}#${snapshot.elementId}`
+      : snapshot.tagName;
 
   return (
     <div style={{ borderBottom: '1px solid var(--border)' }}>
@@ -319,7 +344,8 @@ function ElementAccordion({
           ▼
         </span>
         <span className="flex-1 text-left truncate" style={{ color: 'var(--text-secondary)' }}>
-          <span style={{ color: 'var(--accent)' }}>{label}</span>
+          <span style={{ color: compName ? '#4ade80' : 'var(--accent)' }}>{label}</span>
+          {compName && <span style={{ color: 'var(--text-muted)' }}> ({snapshot.tagName})</span>}
           <span style={{ color: 'var(--text-muted)' }}> · {sourcePath} · {changes.length} change{changes.length !== 1 ? 's' : ''}</span>
         </span>
         <CopyButton text={copyText} />

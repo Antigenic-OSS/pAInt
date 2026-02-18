@@ -571,6 +571,19 @@ export function ConnectModal() {
           >
             {isConnecting ? 'Connecting...' : 'Connect'}
           </button>
+          <div className="mt-3 text-center">
+            <a
+              href="/docs"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs no-underline transition-colors"
+              style={{ color: 'var(--text-muted)' }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--accent)')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+            >
+              Setup Guide & Docs
+            </a>
+          </div>
         </div>
       </div>
     </div>

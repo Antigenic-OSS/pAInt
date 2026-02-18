@@ -71,6 +71,7 @@ export interface CSSVariablesMessage {
   type: 'CSS_VARIABLES';
   payload: {
     definitions: Record<string, CSSVariableDefinition>;
+    isExplicit: boolean;
   };
 }
 

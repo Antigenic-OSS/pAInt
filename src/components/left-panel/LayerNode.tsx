@@ -33,8 +33,14 @@ const LINK_TAGS = new Set(['a']);
 
 type NodeCategory = 'body' | 'component' | 'section' | 'image' | 'text' | 'form' | 'list' | 'link' | 'div';
 
-function categorize(tag: string): NodeCategory {
+function hasCPrefix(className: string | null | undefined): boolean {
+  if (!className) return false;
+  return className.split(/\s+/).some((cls) => cls.startsWith('c-') && cls.length > 2);
+}
+
+function categorize(tag: string, className?: string | null): NodeCategory {
   if (tag === 'body') return 'body';
+  if (hasCPrefix(className)) return 'component';
   if (COMPONENT_TAGS.has(tag)) return 'component';
   if (SECTION_TAGS.has(tag)) return 'section';
   if (IMAGE_TAGS.has(tag)) return 'image';
@@ -156,9 +162,18 @@ const GREEN_CATEGORIES = new Set<NodeCategory>(['component', 'section']);
 
 // --- Display label ---
 
+function getCPrefixClass(className: string | null | undefined): string | null {
+  if (!className) return null;
+  const match = className.split(/\s+/).find((cls) => cls.startsWith('c-') && cls.length > 2);
+  return match || null;
+}
+
 function getDisplayLabel(node: TreeNode): string {
   if (node.tagName === 'body') return 'Body';
-  // Prefer id
+  // Prefer c- prefixed class (component identifier)
+  const cClass = getCPrefixClass(node.className);
+  if (cClass) return cClass;
+  // Then id
   if (node.elementId) return node.elementId;
   // Then first meaningful class
   if (node.className) {
@@ -196,7 +211,7 @@ export function LayerNode({ node, depth, searchQuery }: LayerNodeProps) {
   const isExpanded = node.isExpanded !== false;
   const hasChildren = node.children.length > 0;
 
-  const category = categorize(node.tagName);
+  const category = categorize(node.tagName, node.className);
   const isGreen = GREEN_CATEGORIES.has(category);
   const IconComponent = ICON_MAP[category];
   const label = getDisplayLabel(node);

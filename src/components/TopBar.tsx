@@ -207,6 +207,18 @@ export function TopBar() {
         </>
       )}
 
+      {/* Docs link */}
+      <a
+        href="/docs"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="px-2 py-1 text-xs rounded hover:bg-[var(--bg-hover)] transition-colors no-underline"
+        style={{ color: 'var(--text-secondary)' }}
+        title="Setup guide & docs"
+      >
+        Docs
+      </a>
+
       {/* Right panel toggle */}
       <button
         onClick={toggleRightPanel}

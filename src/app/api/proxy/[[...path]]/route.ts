@@ -116,13 +116,15 @@ function getInspectorCode(): string {
       function scanCSSVariableDefinitions() {
         var definitions = {};
         var rootStyles = window.getComputedStyle(document.documentElement);
-        for (var si = 0; si < document.styleSheets.length; si++) {
-          var sheet = document.styleSheets[si];
-          var rules;
-          try { rules = sheet.cssRules || sheet.rules; } catch(e) { continue; }
-          if (!rules) continue;
+        var FRAMEWORK_PREFIXES = ['--tw-', '--next-', '--radix-', '--chakra-', '--mantine-', '--mui-', '--framer-', '--sb-'];
+
+        function extractFromRules(rules) {
           for (var ri = 0; ri < rules.length; ri++) {
             var rule = rules[ri];
+            if (rule.cssRules) {
+              extractFromRules(rule.cssRules);
+              continue;
+            }
             if (!rule.style) continue;
             for (var pi = 0; pi < rule.style.length; pi++) {
               var prop = rule.style[pi];
@@ -138,7 +140,63 @@ function getInspectorCode(): string {
             }
           }
         }
-        return definitions;
+
+        var taggedSheets = [];
+        for (var si = 0; si < document.styleSheets.length; si++) {
+          var sheet = document.styleSheets[si];
+          if (sheet.ownerNode && sheet.ownerNode.hasAttribute && sheet.ownerNode.hasAttribute('data-design-tokens')) {
+            taggedSheets.push(sheet);
+          }
+        }
+
+        if (taggedSheets.length > 0) {
+          for (var ti = 0; ti < taggedSheets.length; ti++) {
+            var taggedRules;
+            try { taggedRules = taggedSheets[ti].cssRules || taggedSheets[ti].rules; } catch(e) { continue; }
+            if (taggedRules) extractFromRules(taggedRules);
+          }
+          return { definitions: definitions, isExplicit: true };
+        }
+
+        for (var fi = 0; fi < document.styleSheets.length; fi++) {
+          var fallbackSheet = document.styleSheets[fi];
+          var fallbackRules;
+          try { fallbackRules = fallbackSheet.cssRules || fallbackSheet.rules; } catch(e) { continue; }
+          if (fallbackRules) extractFromRules(fallbackRules);
+        }
+
+        var metaEl = document.querySelector('meta[name="design-tokens-prefix"]');
+        var metaPrefixes = null;
+        if (metaEl) {
+          var content = metaEl.getAttribute('content');
+          if (content) {
+            metaPrefixes = content.split(',');
+            for (var mpi = 0; mpi < metaPrefixes.length; mpi++) {
+              metaPrefixes[mpi] = metaPrefixes[mpi].trim();
+            }
+          }
+        }
+
+        var filtered = {};
+        var keys = Object.keys(definitions);
+        for (var ki = 0; ki < keys.length; ki++) {
+          var key = keys[ki];
+          if (metaPrefixes) {
+            var allowed = false;
+            for (var api = 0; api < metaPrefixes.length; api++) {
+              if (key.indexOf(metaPrefixes[api]) === 0) { allowed = true; break; }
+            }
+            if (allowed) filtered[key] = definitions[key];
+          } else {
+            var isFramework = false;
+            for (var fpi = 0; fpi < FRAMEWORK_PREFIXES.length; fpi++) {
+              if (key.indexOf(FRAMEWORK_PREFIXES[fpi]) === 0) { isFramework = true; break; }
+            }
+            if (!isFramework) filtered[key] = definitions[key];
+          }
+        }
+
+        return { definitions: filtered, isExplicit: false };
       }
 
       function detectCSSVariablesOnElement(el) {
@@ -662,6 +720,8 @@ function getInspectorCode(): string {
             selectionModeEnabled = !!msg.payload.enabled;
             if (!selectionModeEnabled) {
               selectionOverlay.style.display = 'none';
+              hoverOverlay.style.display = 'none';
+              hoveredElement = null;
             }
             break;
           }
@@ -713,9 +773,9 @@ function getInspectorCode(): string {
             break;
           }
           case 'REQUEST_CSS_VARIABLES': {
-            var defs = scanCSSVariableDefinitions();
-            console.log('[DevEditor] CSS variable definitions found:', Object.keys(defs).length, defs);
-            send({ type: 'CSS_VARIABLES', payload: { definitions: defs } });
+            var result = scanCSSVariableDefinitions();
+            console.log('[DevEditor] CSS variable definitions found:', Object.keys(result.definitions).length, result.definitions);
+            send({ type: 'CSS_VARIABLES', payload: { definitions: result.definitions, isExplicit: result.isExplicit } });
             break;
           }
           case 'REQUEST_COMPONENTS': {
@@ -938,6 +998,11 @@ async function handleProxy(
     if (contentType.includes('text/html')) {
       let html = await response.text();
 
+      // Strip any existing Dev Editor inspector scripts the target app may
+      // have added manually. The proxy injects its own inspector, so these
+      // duplicates cause multiple overlays and conflicting message handlers.
+      html = html.replace(/<script[^>]*src=["'][^"']*dev-editor-inspector\.js["'][^>]*><\/script>/gi, '');
+
       // Rewrite asset URLs to go through proxy, preserving target param
       const encodedTarget = encodeURIComponent(targetUrl);
       const targetOrigin = new URL(targetUrl).origin;
@@ -1065,6 +1130,20 @@ async function handleProxy(
     history.replaceState(history.state, '', tP + (qs ? '?' + qs : ''));
   } catch(e) {}
 
+  // Block duplicate inspector scripts — the proxy injects its own inline
+  // inspector, so any external dev-editor-inspector.js must be suppressed.
+  // Intercept HTMLScriptElement.src setter to prevent dynamic loading.
+  var scrDesc = Object.getOwnPropertyDescriptor(HTMLScriptElement.prototype, 'src');
+  if (scrDesc && scrDesc.set) {
+    Object.defineProperty(HTMLScriptElement.prototype, 'src', {
+      get: scrDesc.get,
+      set: function(val) {
+        if (typeof val === 'string' && val.indexOf('dev-editor-inspector') >= 0) return;
+        scrDesc.set.call(this, val);
+      },
+      configurable: true, enumerable: true
+    });
+  }
   // Reload safety net - detect infinite reload loops
   var rk = '_der';
   var rc = parseInt(sessionStorage.getItem(rk) || '0');
@@ -1098,10 +1177,16 @@ async function handleProxy(
     window.EventSource.CONNECTING=0; window.EventSource.OPEN=1; window.EventSource.CLOSED=2;
   }
 
-  // Intercept full-page navigations via Navigation API
+  // Intercept full-page navigations via Navigation API.
+  // IMPORTANT: Only intercept user-initiated navigations (link clicks, form submits).
+  // Programmatic navigations from SPA routers (Expo Router, Next.js, React Router)
+  // must NOT be intercepted — they cause bootstrap navigation events that would
+  // create infinite reload loops: router boots → navigates → intercepted → page reload → repeat.
   if (window.navigation) {
     window.navigation.addEventListener('navigate', function(e) {
       if (e.hashChange) return;
+      // Skip programmatic navigations (SPA router internal route changes)
+      if (!e.userInitiated) return;
       try {
         var d = new URL(e.destination.url);
         if (d.pathname.indexOf('/api/proxy') === 0) return;
@@ -1165,8 +1250,87 @@ async function handleProxy(
     return oX.apply(this, arguments);
   };
 
+  // Synchronous property interceptors — rewrite URLs BEFORE the browser
+  // starts fetching resources. MutationObserver is async (too late for images).
+  // Patch Element.prototype.setAttribute to catch attr-based URL setting.
+  var oSA = Element.prototype.setAttribute;
+  Element.prototype.setAttribute = function(name, value) {
+    if (typeof value === 'string') {
+      var n = name.toLowerCase();
+      // Block duplicate inspector scripts set via setAttribute
+      if (n === 'src' && this.tagName === 'SCRIPT' && value.indexOf('dev-editor-inspector') >= 0) {
+        return;
+      }
+      if (n === 'src' || n === 'poster' || n === 'data-src' || (n === 'href' && this.tagName !== 'A')) {
+        if (value.charAt(0) === '/' && value.indexOf('/api/proxy') !== 0) {
+          value = '/api/proxy' + value + (value.indexOf('?') >= 0 ? '&' : '?') + pH + '=' + eT;
+        } else if (value.indexOf(tO) === 0) {
+          var p3 = value.substring(tO.length) || '/';
+          value = '/api/proxy' + p3 + (p3.indexOf('?') >= 0 ? '&' : '?') + pH + '=' + eT;
+        }
+      }
+      if (n === 'srcset') {
+        var parts = value.split(',');
+        var rewritten = [];
+        for (var si = 0; si < parts.length; si++) {
+          var entry = parts[si].trim();
+          var spIdx = entry.indexOf(' ');
+          var url = spIdx >= 0 ? entry.substring(0, spIdx) : entry;
+          var desc = spIdx >= 0 ? entry.substring(spIdx) : '';
+          if (url.indexOf('/api/proxy') !== 0) {
+            if (url.charAt(0) === '/') {
+              url = '/api/proxy' + url + (url.indexOf('?') >= 0 ? '&' : '?') + pH + '=' + eT;
+            } else if (url.indexOf(tO) === 0) {
+              var p4 = url.substring(tO.length) || '/';
+              url = '/api/proxy' + p4 + (p4.indexOf('?') >= 0 ? '&' : '?') + pH + '=' + eT;
+            }
+          }
+          rewritten.push(url + desc);
+        }
+        value = rewritten.join(', ');
+      }
+    }
+    return oSA.call(this, name, value);
+  };
+
+  // Patch .src property on HTMLImageElement — React sets img.src directly
+  var imgDesc = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
+  if (imgDesc && imgDesc.set) {
+    Object.defineProperty(HTMLImageElement.prototype, 'src', {
+      get: imgDesc.get,
+      set: function(val) {
+        if (typeof val === 'string' && val.charAt(0) === '/' && val.indexOf('/api/proxy') !== 0) {
+          val = '/api/proxy' + val + (val.indexOf('?') >= 0 ? '&' : '?') + pH + '=' + eT;
+        } else if (typeof val === 'string' && val.indexOf(tO) === 0) {
+          var p5 = val.substring(tO.length) || '/';
+          val = '/api/proxy' + p5 + (p5.indexOf('?') >= 0 ? '&' : '?') + pH + '=' + eT;
+        }
+        imgDesc.set.call(this, val);
+      },
+      configurable: true, enumerable: true
+    });
+  }
+
+  // Patch .src on HTMLSourceElement (for <source> in <picture>/<video>)
+  var srcDesc = Object.getOwnPropertyDescriptor(HTMLSourceElement.prototype, 'src');
+  if (srcDesc && srcDesc.set) {
+    Object.defineProperty(HTMLSourceElement.prototype, 'src', {
+      get: srcDesc.get,
+      set: function(val) {
+        if (typeof val === 'string' && val.charAt(0) === '/' && val.indexOf('/api/proxy') !== 0) {
+          val = '/api/proxy' + val + (val.indexOf('?') >= 0 ? '&' : '?') + pH + '=' + eT;
+        } else if (typeof val === 'string' && val.indexOf(tO) === 0) {
+          var p6 = val.substring(tO.length) || '/';
+          val = '/api/proxy' + p6 + (p6.indexOf('?') >= 0 ? '&' : '?') + pH + '=' + eT;
+        }
+        srcDesc.set.call(this, val);
+      },
+      configurable: true, enumerable: true
+    });
+  }
+
   // Runtime interceptor: rewrite src/href on dynamically-created elements
-  // Catches images, scripts, links set by client-side JS
+  // Catches images, scripts, links set by client-side JS (backup for MutationObserver)
   var rObs = new MutationObserver(function(mutations) {
     for (var mi = 0; mi < mutations.length; mi++) {
       var added = mutations[mi].addedNodes;
@@ -1175,7 +1339,7 @@ async function handleProxy(
         if (node.nodeType !== 1) continue;
         rewriteNodeUrls(node);
         if (node.querySelectorAll) {
-          var children = node.querySelectorAll('[src],[href],[poster],[data-src]');
+          var children = node.querySelectorAll('[src],[href],[poster],[data-src],[srcset]');
           for (var ci = 0; ci < children.length; ci++) rewriteNodeUrls(children[ci]);
         }
       }
@@ -1187,29 +1351,54 @@ async function handleProxy(
   });
   function rewriteNodeUrls(el) {
     if (!el || !el.getAttribute) return;
-    var attrs = ['src', 'href', 'poster', 'data-src'];
+    var tag = el.tagName;
+    // Resource attributes that need proxy rewriting
+    var attrs = ['src', 'poster', 'data-src'];
+    // Rewrite href for non-anchor elements (stylesheets, etc.) but NOT <a> tags
+    // (anchor clicks are handled by the Navigation API intercept above)
+    if (tag !== 'A') attrs.push('href');
     for (var ai = 0; ai < attrs.length; ai++) {
       var val = el.getAttribute(attrs[ai]);
       if (!val) continue;
+      // Skip already-rewritten paths
+      if (val.indexOf('/api/proxy') === 0) continue;
       // Rewrite target-origin full URLs
       if (val.indexOf(tO) === 0) {
         var path = val.substring(tO.length) || '/';
         el.setAttribute(attrs[ai], '/api/proxy' + path + (path.indexOf('?') >= 0 ? '&' : '?') + pH + '=' + eT);
       }
+      // Rewrite absolute paths (e.g. /_next/image?url=...)
+      else if (val.charAt(0) === '/') {
+        el.setAttribute(attrs[ai], '/api/proxy' + val + (val.indexOf('?') >= 0 ? '&' : '?') + pH + '=' + eT);
+      }
     }
     // Handle srcset — split on comma, rewrite each entry
     var srcset = el.getAttribute('srcset');
-    if (srcset && srcset.indexOf(tO) >= 0) {
+    if (srcset) {
       var parts = srcset.split(',');
+      var changed = false;
       var rewritten = [];
       for (var si = 0; si < parts.length; si++) {
-        var part = parts[si].trim();
-        if (part.indexOf(tO) === 0) {
-          part = part.replace(tO, '/api/proxy');
+        var entry = parts[si].trim();
+        var spIdx = entry.indexOf(' ');
+        var url = spIdx >= 0 ? entry.substring(0, spIdx) : entry;
+        var desc = spIdx >= 0 ? entry.substring(spIdx) : '';
+        if (url.indexOf('/api/proxy') === 0) {
+          rewritten.push(entry);
+        } else if (url.indexOf(tO) === 0) {
+          var p2 = url.substring(tO.length) || '/';
+          rewritten.push('/api/proxy' + p2 + (p2.indexOf('?') >= 0 ? '&' : '?') + pH + '=' + eT + desc);
+          changed = true;
+        } else if (url.charAt(0) === '/') {
+          rewritten.push('/api/proxy' + url + (url.indexOf('?') >= 0 ? '&' : '?') + pH + '=' + eT + desc);
+          changed = true;
+        } else {
+          rewritten.push(entry);
         }
-        rewritten.push(part);
       }
-      el.setAttribute('srcset', rewritten.join(', '));
+      if (changed) {
+        el.setAttribute('srcset', rewritten.join(', '));
+      }
     }
   }
   if (document.body) {
@@ -1267,6 +1456,7 @@ async function handleProxy(
       }
 
       responseHeaders.set('content-type', 'text/html; charset=utf-8');
+      responseHeaders.set('cache-control', 'no-cache, no-store, must-revalidate');
       responseHeaders.delete('content-length');
 
       return new NextResponse(html, {

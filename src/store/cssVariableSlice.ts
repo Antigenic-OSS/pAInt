@@ -6,9 +6,10 @@ export interface CSSVariableSlice {
   cssVariableDefinitions: Record<string, CSSVariableDefinition>;
   cssVariableUsages: Record<string, string>;
   cssVariableFamilies: CSSVariableFamily[];
+  isExplicitTokens: boolean;
   detachedProperties: Record<string, boolean>;
 
-  setCSSVariableDefinitions: (definitions: Record<string, CSSVariableDefinition>) => void;
+  setCSSVariableDefinitions: (definitions: Record<string, CSSVariableDefinition>, isExplicit?: boolean) => void;
   setCSSVariableUsages: (usages: Record<string, string>) => void;
   clearCSSVariableUsages: () => void;
   detachProperty: (selectorPath: string, property: string) => void;
@@ -24,12 +25,14 @@ export const createCSSVariableSlice: StateCreator<CSSVariableSlice, [], [], CSSV
   cssVariableDefinitions: {},
   cssVariableUsages: {},
   cssVariableFamilies: [],
+  isExplicitTokens: false,
   detachedProperties: {},
 
-  setCSSVariableDefinitions: (definitions) => {
+  setCSSVariableDefinitions: (definitions, isExplicit) => {
     set({
       cssVariableDefinitions: definitions,
       cssVariableFamilies: groupVariablesIntoFamilies(definitions),
+      isExplicitTokens: isExplicit ?? false,
     });
   },
 
