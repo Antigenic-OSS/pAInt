@@ -72,7 +72,7 @@ export const createChangeSlice: StateCreator<ChangeSlice, [], [], ChangeSlice> =
   },
 
   clearAllChanges: () => {
-    set({ styleChanges: [], elementSnapshots: {} });
+    set({ styleChanges: [], elementSnapshots: {}, undoStack: [], redoStack: [] });
   },
 
   getChangeCount: () => {

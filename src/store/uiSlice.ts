@@ -23,7 +23,7 @@ export interface UISlice {
   currentPagePath: string;
   selectionMode: boolean;
   viewMode: boolean;
-  activeLeftTab: 'layers' | 'pages' | 'components';
+  activeLeftTab: 'layers' | 'pages' | 'components' | 'terminal';
   previewWidth: number;
   toasts: Toast[];
 
@@ -42,7 +42,7 @@ export interface UISlice {
   setSelectionMode: (enabled: boolean) => void;
   toggleSelectionMode: () => void;
   toggleViewMode: () => void;
-  setActiveLeftTab: (tab: 'layers' | 'pages' | 'components') => void;
+  setActiveLeftTab: (tab: 'layers' | 'pages' | 'components' | 'terminal') => void;
   setPreviewWidth: (width: number) => void;
   showToast: (type: Toast['type'], message: string) => void;
   dismissToast: (id: string) => void;

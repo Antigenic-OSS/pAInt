@@ -8,15 +8,13 @@ export function PagesPanel() {
   const currentPagePath = useEditorStore((s) => s.currentPagePath);
   const setCurrentPagePath = useEditorStore((s) => s.setCurrentPagePath);
   const targetUrl = useEditorStore((s) => s.targetUrl);
-  const setConnectionStatus = useEditorStore((s) => s.setConnectionStatus);
 
   const handleNavigate = useCallback(
     (path: string) => {
       if (!targetUrl) return;
       setCurrentPagePath(path);
-      setConnectionStatus('connecting');
     },
-    [targetUrl, setCurrentPagePath, setConnectionStatus]
+    [targetUrl, setCurrentPagePath]
   );
 
   // Build page list: always include "/" plus discovered links

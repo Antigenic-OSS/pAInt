@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useEditorStore } from '@/store';
 import { normalizeTargetUrl } from '@/lib/utils';
+import { LOCAL_STORAGE_KEYS } from '@/lib/constants';
 
 export function TargetSelector() {
   const targetUrl = useEditorStore((s) => s.targetUrl);
@@ -38,6 +39,15 @@ export function TargetSelector() {
   };
 
   const handleDisconnect = () => {
+    // Clear persisted changes for this URL so reconnect loads fresh content
+    if (targetUrl) {
+      try {
+        localStorage.removeItem(LOCAL_STORAGE_KEYS.CHANGES_PREFIX + targetUrl);
+      } catch {}
+    }
+    const store = useEditorStore.getState();
+    store.clearAllChanges();
+    store.clearSelection();
     setTargetUrl(null);
     setConnectionStatus('disconnected');
     setError(null);
@@ -100,24 +110,33 @@ export function TargetSelector() {
         )}
       </button>
 
-      {urlMode ? (
+      {isConnected ? (
+        <div
+          className="w-56 text-sm rounded px-2 py-1 truncate"
+          style={{
+            background: 'var(--bg-secondary)',
+            color: 'var(--text-primary)',
+            border: '1px solid var(--border)',
+            opacity: 0.7,
+          }}
+          title={targetUrl || ''}
+        >
+          {targetUrl || 'http://localhost:3000'}
+        </div>
+      ) : urlMode ? (
         <input
           type="text"
           value={customUrl}
           onChange={(e) => { setCustomUrl(e.target.value); setError(null); }}
           onKeyDown={handleKeyDown}
-          disabled={isConnected}
           placeholder="http://localhost:3000/path"
           className="w-56 text-xs bg-[var(--bg-secondary)] text-[var(--text-primary)] border border-[var(--border)] rounded px-2 py-1 outline-none focus:border-[var(--accent)]"
-          style={{ opacity: isConnected ? 0.7 : 1 }}
         />
       ) : (
         <select
           value={selectedPort}
           onChange={handlePortChange}
-          disabled={isConnected}
           className="w-56 text-xs bg-[var(--bg-secondary)] text-[var(--text-primary)] border border-[var(--border)] rounded px-2 py-1 outline-none focus:border-[var(--accent)]"
-          style={{ opacity: isConnected ? 0.7 : 1 }}
         >
           {portOptions.map((port) => (
             <option key={port} value={port}>

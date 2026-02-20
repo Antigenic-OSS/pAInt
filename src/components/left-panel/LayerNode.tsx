@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef, type ReactElement } from 'react';
+import { useCallback, useEffect, useRef, type ReactElement } from 'react';
 import { useEditorStore } from '@/store';
 import { usePostMessage } from '@/hooks/usePostMessage';
 import type { TreeNode } from '@/types/tree';
@@ -9,7 +9,6 @@ interface LayerNodeProps {
   node: TreeNode;
   depth: number;
   searchQuery: string;
-  changedSelectors: Set<string>;
 }
 
 // --- Element categorization ---
@@ -34,8 +33,14 @@ const LINK_TAGS = new Set(['a']);
 
 type NodeCategory = 'body' | 'component' | 'section' | 'image' | 'text' | 'form' | 'list' | 'link' | 'div';
 
-function categorize(tag: string): NodeCategory {
+function hasCPrefix(className: string | null | undefined): boolean {
+  if (!className) return false;
+  return className.split(/\s+/).some((cls) => cls.startsWith('c-') && cls.length > 2);
+}
+
+function categorize(tag: string, className?: string | null): NodeCategory {
   if (tag === 'body') return 'body';
+  if (hasCPrefix(className)) return 'component';
   if (COMPONENT_TAGS.has(tag)) return 'component';
   if (SECTION_TAGS.has(tag)) return 'section';
   if (IMAGE_TAGS.has(tag)) return 'image';
@@ -152,36 +157,29 @@ const ICON_MAP: Record<NodeCategory, () => ReactElement> = {
   link: LinkIcon,
 };
 
-// Component categories — semantic/landmark elements get purple-pink tint
-const COMPONENT_CATEGORIES = new Set<NodeCategory>(['component', 'section']);
-
-// --- Image filename extraction ---
-
-function extractImageFilename(src: string): string {
-  if (!src || src.startsWith('data:')) return '';
-  const withoutQuery = src.split('?')[0];
-  const segment = withoutQuery.split('/').pop() || '';
-  if (!segment) return '';
-  return segment.length > 25 ? segment.slice(0, 22) + '...' : segment;
-}
+// Green categories — semantic/component elements get green tint
+const GREEN_CATEGORIES = new Set<NodeCategory>(['component', 'section']);
 
 // --- Display label ---
 
+function getCPrefixClass(className: string | null | undefined): string | null {
+  if (!className) return null;
+  const match = className.split(/\s+/).find((cls) => cls.startsWith('c-') && cls.length > 2);
+  return match || null;
+}
+
 function getDisplayLabel(node: TreeNode): string {
   if (node.tagName === 'body') return 'Body';
-  // img with src → "img filename"
-  if (node.tagName === 'img' && node.imgSrc) {
-    const filename = extractImageFilename(node.imgSrc);
-    return filename ? `img ${filename}` : 'img';
-  }
-  // tag with id → "tag#id"
-  if (node.elementId) return `${node.tagName}#${node.elementId}`;
-  // div with class → "div.firstClass"
-  if (node.tagName === 'div' && node.className) {
+  // Prefer c- prefixed class (component identifier)
+  const cClass = getCPrefixClass(node.className);
+  if (cClass) return cClass;
+  // Then id
+  if (node.elementId) return node.elementId;
+  // Then first meaningful class
+  if (node.className) {
     const first = node.className.split(' ')[0];
-    if (first) return `div.${first}`;
+    if (first) return first;
   }
-  // All others → tag name
   return node.tagName;
 }
 
@@ -199,7 +197,7 @@ function matchesSearch(node: TreeNode, query: string): boolean {
 
 // --- Component ---
 
-function LayerNodeInner({ node, depth, searchQuery, changedSelectors }: LayerNodeProps) {
+export function LayerNode({ node, depth, searchQuery }: LayerNodeProps) {
   const selectorPath = useEditorStore((s) => s.selectorPath);
   const highlightedNodeId = useEditorStore((s) => s.highlightedNodeId);
   const toggleNodeExpanded = useEditorStore((s) => s.toggleNodeExpanded);
@@ -208,27 +206,23 @@ function LayerNodeInner({ node, depth, searchQuery, changedSelectors }: LayerNod
 
   const rowRef = useRef<HTMLDivElement>(null);
 
-  const expandedNodeIds = useEditorStore((s) => s.expandedNodeIds);
-
   const isSelected = selectorPath === node.id;
   const isHighlighted = highlightedNodeId === node.id;
-  const isExpanded = expandedNodeIds.has(node.id);
+  const isExpanded = node.isExpanded !== false;
   const hasChildren = node.children.length > 0;
 
-  const category = categorize(node.tagName);
-  const isComponent = COMPONENT_CATEGORIES.has(category);
-  const isEdited = changedSelectors.has(node.id);
+  const category = categorize(node.tagName, node.className);
+  const isGreen = GREEN_CATEGORIES.has(category);
   const IconComponent = ICON_MAP[category];
   const label = getDisplayLabel(node);
 
-  // Auto-expand ancestors (collapse others) and scroll selected layer into view
+  // Auto-expand ancestors and scroll selected layer into view
   useEffect(() => {
     if (isSelected) {
       expandToNode(node.id);
-      // Wait for DOM to re-render after expansion before scrolling
-      requestAnimationFrame(() => {
-        rowRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-      });
+      if (rowRef.current) {
+        rowRef.current.scrollIntoView({ block: 'center', behavior: 'instant' });
+      }
     }
   }, [isSelected, node.id, expandToNode]);
 
@@ -250,28 +244,24 @@ function LayerNodeInner({ node, depth, searchQuery, changedSelectors }: LayerNod
     return (
       <>
         {matchingChildren.map((child) => (
-          <LayerNode key={child.id} node={child} depth={depth} searchQuery={searchQuery} changedSelectors={changedSelectors} />
+          <LayerNode key={child.id} node={child} depth={depth} searchQuery={searchQuery} />
         ))}
       </>
     );
   }
 
-  // Resolve colors: selected (blue) > edited (amber) > component (purple-pink) > default
+  // Resolve colors
   const iconColor = isSelected
     ? 'var(--accent)'
-    : isEdited
-      ? '#fbbf24'
-      : isComponent
-        ? '#c084fc'
-        : 'var(--text-muted)';
+    : isGreen
+      ? '#4ade80'
+      : 'var(--text-muted)';
 
   const labelColor = isSelected
     ? 'var(--accent)'
-    : isEdited
-      ? '#fbbf24'
-      : isComponent
-        ? '#c084fc'
-        : 'var(--text-primary)';
+    : isGreen
+      ? '#4ade80'
+      : 'var(--text-primary)';
 
   return (
     <div className="relative">
@@ -342,13 +332,13 @@ function LayerNodeInner({ node, depth, searchQuery, changedSelectors }: LayerNod
           {label}
         </span>
 
-        {/* Tag badge — only for div elements showing class qualifier */}
-        {node.tagName === 'div' && node.className && label.startsWith('div.') && (
+        {/* Tag badge for non-div elements when showing class name */}
+        {node.className && node.tagName !== 'div' && node.tagName !== 'body' && label !== node.tagName && (
           <span
             className="text-[9px] ml-1.5 flex-shrink-0 opacity-50"
             style={{ color: 'var(--text-muted)' }}
           >
-            div
+            {node.tagName}
           </span>
         )}
       </div>
@@ -362,7 +352,6 @@ function LayerNodeInner({ node, depth, searchQuery, changedSelectors }: LayerNod
               node={child}
               depth={depth + 1}
               searchQuery={searchQuery}
-              changedSelectors={changedSelectors}
             />
           ))}
         </div>
@@ -370,5 +359,3 @@ function LayerNodeInner({ node, depth, searchQuery, changedSelectors }: LayerNod
     </div>
   );
 }
-
-export const LayerNode = React.memo(LayerNodeInner);

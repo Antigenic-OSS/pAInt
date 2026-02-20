@@ -1,20 +1,24 @@
 'use client';
 
 import type { StyleChange } from '@/types/changelog';
+import { camelToKebab } from '@/lib/utils';
 
 interface StyleChangeEntryProps {
   change: StyleChange;
+  /** When provided, display this value instead of change.newValue (CSS tab source of truth). */
+  displayValue?: string;
   onUndo: (id: string, selectorPath: string, property: string) => void;
 }
 
-export function ChangeEntry({ change, onUndo }: StyleChangeEntryProps) {
+export function ChangeEntry({ change, displayValue, onUndo }: StyleChangeEntryProps) {
+  const shownValue = displayValue ?? change.newValue;
   return (
     <div
       className="flex items-center gap-2 py-1.5 px-2 rounded text-xs group hover:bg-[var(--bg-hover)] transition-colors"
     >
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1">
-          <span style={{ color: 'var(--accent)' }}>{change.property}</span>
+          <span style={{ color: 'var(--accent)' }}>{camelToKebab(change.property)}</span>
         </div>
         <div className="flex items-center gap-1 mt-0.5">
           <span
@@ -25,7 +29,7 @@ export function ChangeEntry({ change, onUndo }: StyleChangeEntryProps) {
           </span>
           <span style={{ color: 'var(--text-muted)' }}>→</span>
           <span className="truncate max-w-[80px]" style={{ color: 'var(--success)' }}>
-            {change.newValue}
+            {shownValue}
           </span>
         </div>
       </div>

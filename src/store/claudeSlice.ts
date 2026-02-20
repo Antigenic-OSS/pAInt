@@ -1,11 +1,12 @@
 import type { StateCreator } from 'zustand';
-import type { ClaudeStatus, ClaudeError, ParsedDiff } from '@/types/claude';
+import type { ClaudeStatus, ClaudeError, ParsedDiff, ProjectScanResult } from '@/types/claude';
 import { LOCAL_STORAGE_KEYS } from '@/lib/constants';
 
 export interface ClaudeSlice {
   claudeStatus: ClaudeStatus;
   projectRoot: string | null;
   portRoots: Record<string, string>;
+  projectScans: Record<string, ProjectScanResult>;
   cliAvailable: boolean | null;
   sessionId: string | null;
   parsedDiffs: ParsedDiff[];
@@ -14,6 +15,8 @@ export interface ClaudeSlice {
   setClaudeStatus: (status: ClaudeStatus) => void;
   setProjectRoot: (url: string, path: string | null) => void;
   getProjectRootForUrl: (url: string | null) => string | null;
+  setProjectScan: (url: string, scan: ProjectScanResult) => void;
+  getProjectScanForUrl: (url: string | null) => ProjectScanResult | null;
   setCliAvailable: (available: boolean) => void;
   setSessionId: (id: string | null) => void;
   setParsedDiffs: (diffs: ParsedDiff[]) => void;
@@ -28,10 +31,17 @@ function persistPortRoots(portRoots: Record<string, string>) {
   } catch {}
 }
 
+function persistProjectScans(scans: Record<string, ProjectScanResult>) {
+  try {
+    localStorage.setItem(LOCAL_STORAGE_KEYS.CLAUDE_PROJECT_SCANS, JSON.stringify(scans));
+  } catch {}
+}
+
 export const createClaudeSlice: StateCreator<ClaudeSlice, [], [], ClaudeSlice> = (set, get) => ({
   claudeStatus: 'idle',
   projectRoot: null,
   portRoots: {},
+  projectScans: {},
   cliAvailable: null,
   sessionId: null,
   parsedDiffs: [],
@@ -53,6 +63,17 @@ export const createClaudeSlice: StateCreator<ClaudeSlice, [], [], ClaudeSlice> =
   getProjectRootForUrl: (url) => {
     if (!url) return null;
     return get().portRoots[url] ?? null;
+  },
+
+  setProjectScan: (url, scan) => {
+    const projectScans = { ...get().projectScans, [url]: scan };
+    set({ projectScans });
+    persistProjectScans(projectScans);
+  },
+
+  getProjectScanForUrl: (url) => {
+    if (!url) return null;
+    return get().projectScans[url] ?? null;
   },
 
   setCliAvailable: (available) => {
@@ -88,6 +109,13 @@ export const createClaudeSlice: StateCreator<ClaudeSlice, [], [], ClaudeSlice> =
       const oldRoot = localStorage.getItem(LOCAL_STORAGE_KEYS.CLAUDE_PROJECT_ROOT);
       if (oldRoot) {
         localStorage.removeItem(LOCAL_STORAGE_KEYS.CLAUDE_PROJECT_ROOT);
+      }
+
+      // Load project scans
+      const scansJson = localStorage.getItem(LOCAL_STORAGE_KEYS.CLAUDE_PROJECT_SCANS);
+      if (scansJson) {
+        const projectScans = JSON.parse(scansJson) as Record<string, ProjectScanResult>;
+        set({ projectScans });
       }
 
       const cli = localStorage.getItem(LOCAL_STORAGE_KEYS.CLAUDE_CLI_AVAILABLE);

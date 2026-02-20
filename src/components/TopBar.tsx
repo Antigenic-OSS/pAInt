@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { TargetSelector } from './TargetSelector';
 import { BreakpointTabs } from './BreakpointTabs';
-import { SetupInstructions } from './SetupInstructions';
 import { ChangeSummaryModal } from './ChangeSummaryModal';
 import { useEditorStore } from '@/store';
 import { usePostMessage } from '@/hooks/usePostMessage';
@@ -208,6 +207,18 @@ export function TopBar() {
         </>
       )}
 
+      {/* Docs link */}
+      <a
+        href="/docs"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="px-2 py-1 text-xs rounded hover:bg-[var(--bg-hover)] transition-colors no-underline"
+        style={{ color: 'var(--text-secondary)' }}
+        title="Setup guide & docs"
+      >
+        Docs
+      </a>
+
       {/* Right panel toggle */}
       <button
         onClick={toggleRightPanel}
@@ -218,7 +229,6 @@ export function TopBar() {
         ☰
       </button>
     </div>
-    <SetupInstructions />
     {showSummary && (
       <ChangeSummaryModal onClose={() => setShowSummary(false)} />
     )}

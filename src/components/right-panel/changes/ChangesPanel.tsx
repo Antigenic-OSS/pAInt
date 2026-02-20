@@ -4,9 +4,11 @@ import { useMemo, useState, useCallback, useRef } from 'react';
 import { useEditorStore } from '@/store';
 import { useChangeTracker } from '@/hooks/useChangeTracker';
 import { buildInstructionsFooter, getBreakpointDeviceInfo } from '@/lib/constants';
-import { getSourcePath } from '@/lib/classifyElement';
+import { inferSourcePath } from '@/lib/classifyElement';
+import { camelToKebab } from '@/lib/utils';
 import { EditablePre } from '@/components/common/EditablePre';
 import type { StyleChange, ElementSnapshot, Breakpoint } from '@/types/changelog';
+import type { FileMap, SourceInfo } from '@/types/claude';
 
 type BreakpointGroupKey = 'all' | 'desktop-only' | 'tablet-only' | 'mobile-only';
 
@@ -31,6 +33,14 @@ function truncateText(text: string, maxLen: number): string {
   return `"${text.substring(0, maxLen)}..."`;
 }
 
+/** Extract component name from c- prefixed class (e.g. "c-header" → "Header", "c-nav-bar" → "Nav Bar") */
+function getComponentName(className: string | null | undefined): string | null {
+  if (!className) return null;
+  const match = className.split(/\s+/).find((cls) => cls.startsWith('c-') && cls.length > 2);
+  if (!match) return null;
+  return match.substring(2).split('-').map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
+}
+
 function CopyIcon({ size = 14 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -48,13 +58,9 @@ function CheckIcon({ size = 14 }: { size?: number }) {
   );
 }
 
-function buildSingleElementLog(snapshot: ElementSnapshot, changes: StyleChange[]): string {
+function buildSingleElementLog(snapshot: ElementSnapshot, changes: StyleChange[], fileMap?: FileMap | null, projectRoot?: string | null, framework?: string | null): string {
   const lines: string[] = [];
-
-  const sourcePath = getSourcePath({
-    tagName: snapshot.tagName,
-    pagePath: snapshot.pagePath,
-  });
+  const isMobileApp = framework === 'flutter' || framework === 'react-native';
 
   const attrParts: string[] = [];
   if (snapshot.elementId) attrParts.push(`id="${snapshot.elementId}"`);
@@ -64,40 +70,41 @@ function buildSingleElementLog(snapshot: ElementSnapshot, changes: StyleChange[]
   const changeBp = (changes[0]?.breakpoint || 'mobile') as Breakpoint;
   const { deviceName, range } = getBreakpointDeviceInfo(changeBp);
 
+  const compName = getComponentName(snapshot.className);
+  if (compName) {
+    lines.push('COMPONENT NAME');
+    lines.push(compName);
+    lines.push('');
+  }
+
   lines.push('CHANGES');
   for (const c of changes) {
     if (c.property === '__text_content__') {
       lines.push(`  text content: "${c.originalValue}" → "${c.newValue}"`);
     } else {
       const cInfo = getBreakpointDeviceInfo(c.breakpoint);
-      lines.push(`  ${c.property}: "${c.originalValue}" → "${c.newValue}" [${cInfo.deviceName} ${cInfo.range}]`);
+      lines.push(`  ${camelToKebab(c.property)}: "${c.originalValue}" → "${c.newValue}" [${cInfo.deviceName} ${cInfo.range}]`);
     }
   }
   lines.push('');
 
-  lines.push('SOURCE');
-  lines.push(sourcePath);
+  lines.push('PAGE NAME');
+  lines.push(snapshot.pagePath || '/');
   lines.push('');
 
-  if (snapshot.componentPath) {
-    lines.push('COMPONENT');
-    lines.push(snapshot.componentPath);
-    lines.push('');
-  }
   lines.push('ELEMENT');
   lines.push(tag);
   lines.push('');
 
-  lines.push('DEVICE');
-  lines.push(`Device Name: ${deviceName}`);
-  lines.push(`Breakpoint: ${range}`);
-  lines.push('');
-  lines.push('APPLIES TO');
-  lines.push(snapshot.changeScope === 'all' ? 'All breakpoints' : `${deviceName} (${range})`);
-  lines.push('');
-  lines.push('PATH');
-  lines.push(snapshot.selectorPath);
-  lines.push('');
+  if (!isMobileApp) {
+    lines.push('DEVICE');
+    lines.push(`Device Name: ${deviceName}`);
+    lines.push(`Breakpoint: ${range}`);
+    lines.push('');
+    lines.push('APPLIES TO');
+    lines.push(snapshot.changeScope === 'all' ? 'All breakpoints' : `${deviceName} (${range})`);
+    lines.push('');
+  }
 
   const attrEntries = Object.entries(snapshot.attributes);
   if (attrEntries.length > 0) {
@@ -107,20 +114,6 @@ function buildSingleElementLog(snapshot: ElementSnapshot, changes: StyleChange[]
     }
     lines.push('');
   }
-
-  const styleKeys = [
-    'color', 'backgroundColor', 'fontSize', 'fontFamily', 'display', 'position',
-    'flexDirection', 'justifyContent', 'alignItems', 'gap',
-    'gridTemplateColumns', 'gridTemplateRows', 'overflow', 'boxSizing',
-  ];
-  const camelToKebab = (s: string) => s.replace(/[A-Z]/g, c => '-' + c.toLowerCase());
-  lines.push('COMPUTED STYLES');
-  for (const key of styleKeys) {
-    if (snapshot.computedStyles[key]) {
-      lines.push(`  ${camelToKebab(key)}: ${snapshot.computedStyles[key]}`);
-    }
-  }
-  lines.push('');
 
   if (snapshot.innerText) {
     lines.push('INNER TEXT');
@@ -133,13 +126,9 @@ function buildSingleElementLog(snapshot: ElementSnapshot, changes: StyleChange[]
   return lines.join('\n').trim();
 }
 
-function buildElementSection(snapshot: ElementSnapshot, changes: StyleChange[]): string {
+function buildElementSection(snapshot: ElementSnapshot, changes: StyleChange[], fileMap?: FileMap | null, projectRoot?: string | null, framework?: string | null): string {
   const lines: string[] = [];
-
-  const sourcePath = getSourcePath({
-    tagName: snapshot.tagName,
-    pagePath: snapshot.pagePath,
-  });
+  const isMobileApp = framework === 'flutter' || framework === 'react-native';
 
   const attrParts: string[] = [];
   if (snapshot.elementId) attrParts.push(`id="${snapshot.elementId}"`);
@@ -149,35 +138,37 @@ function buildElementSection(snapshot: ElementSnapshot, changes: StyleChange[]):
   const changeBp = (changes[0]?.breakpoint || 'mobile') as Breakpoint;
   const { deviceName: elDevice, range: elRange } = getBreakpointDeviceInfo(changeBp);
 
+  const compName = getComponentName(snapshot.className);
+  if (compName) {
+    lines.push('COMPONENT NAME');
+    lines.push(compName);
+    lines.push('');
+  }
+
   lines.push('CHANGES');
   for (const c of changes) {
     if (c.property === '__text_content__') {
       lines.push(`  text content: "${c.originalValue}" → "${c.newValue}"`);
     } else {
       const cInfo = getBreakpointDeviceInfo(c.breakpoint);
-      lines.push(`  ${c.property}: "${c.originalValue}" → "${c.newValue}" [${cInfo.deviceName} ${cInfo.range}]`);
+      lines.push(`  ${camelToKebab(c.property)}: "${c.originalValue}" → "${c.newValue}" [${cInfo.deviceName} ${cInfo.range}]`);
     }
   }
   lines.push('');
 
-  lines.push('SOURCE');
-  lines.push(sourcePath);
+  lines.push('PAGE NAME');
+  lines.push(snapshot.pagePath || '/');
   lines.push('');
 
-  if (snapshot.componentPath) {
-    lines.push('COMPONENT');
-    lines.push(snapshot.componentPath);
-    lines.push('');
-  }
   lines.push('ELEMENT');
   lines.push(tag);
   lines.push('');
-  lines.push('APPLIES TO');
-  lines.push(snapshot.changeScope === 'all' ? 'All breakpoints' : `${elDevice} (${elRange})`);
-  lines.push('');
-  lines.push('PATH');
-  lines.push(snapshot.selectorPath);
-  lines.push('');
+
+  if (!isMobileApp) {
+    lines.push('APPLIES TO');
+    lines.push(snapshot.changeScope === 'all' ? 'All breakpoints' : `${elDevice} (${elRange})`);
+    lines.push('');
+  }
 
   const attrEntries = Object.entries(snapshot.attributes);
   if (attrEntries.length > 0) {
@@ -187,20 +178,6 @@ function buildElementSection(snapshot: ElementSnapshot, changes: StyleChange[]):
     }
     lines.push('');
   }
-
-  const styleKeys = [
-    'color', 'backgroundColor', 'fontSize', 'fontFamily', 'display', 'position',
-    'flexDirection', 'justifyContent', 'alignItems', 'gap',
-    'gridTemplateColumns', 'gridTemplateRows', 'overflow', 'boxSizing',
-  ];
-  const camelToKebab = (s: string) => s.replace(/[A-Z]/g, c => '-' + c.toLowerCase());
-  lines.push('COMPUTED STYLES');
-  for (const key of styleKeys) {
-    if (snapshot.computedStyles[key]) {
-      lines.push(`  ${camelToKebab(key)}: ${snapshot.computedStyles[key]}`);
-    }
-  }
-  lines.push('');
 
   if (snapshot.innerText) {
     lines.push('INNER TEXT');
@@ -217,8 +194,12 @@ function buildGroupLog(opts: {
   targetUrl: string | null;
   pagePath: string;
   breakpoint: Breakpoint;
+  fileMap?: FileMap | null;
+  projectRoot?: string | null;
+  framework?: string | null;
 }): string {
   const lines: string[] = [];
+  const isMobileApp = opts.framework === 'flutter' || opts.framework === 'react-native';
   const totalChanges = opts.elements.reduce((sum, g) => sum + g.changes.length, 0);
   const { deviceName, range } = getBreakpointDeviceInfo(opts.breakpoint);
 
@@ -227,15 +208,17 @@ function buildGroupLog(opts: {
   if (opts.targetUrl) {
     lines.push(`Project URL: ${opts.targetUrl}`);
     lines.push(`Page: ${opts.pagePath || '/'}`);
-    lines.push(`Device Name: ${deviceName}`);
-    lines.push(`Breakpoint: ${range}`);
+    if (!isMobileApp) {
+      lines.push(`Device Name: ${deviceName}`);
+      lines.push(`Breakpoint: ${range}`);
+    }
   }
   lines.push(`Generated: ${new Date().toISOString()}`);
   lines.push('');
 
   for (let i = 0; i < opts.elements.length; i++) {
     const { snapshot, changes } = opts.elements[i];
-    lines.push(buildElementSection(snapshot, changes));
+    lines.push(buildElementSection(snapshot, changes, opts.fileMap, opts.projectRoot, opts.framework));
     if (i < opts.elements.length - 1) {
       lines.push('');
       lines.push('---');
@@ -301,15 +284,24 @@ function ElementAccordion({
   snapshot,
   changes,
   onRevert,
+  liveStyles,
+  fileMap,
+  projectRoot,
+  framework,
 }: {
   snapshot: ElementSnapshot;
   changes: StyleChange[];
   onRevert: (id: string, selector: string, property: string) => void;
+  /** When provided (current element), use these as display values instead of change.newValue. */
+  liveStyles?: Record<string, string>;
+  fileMap?: FileMap | null;
+  projectRoot?: string | null;
+  framework?: string | null;
 }) {
   const [open, setOpen] = useState(false);
   const editedTextRef = useRef<string | null>(null);
 
-  const logText = useMemo(() => buildSingleElementLog(snapshot, changes), [snapshot, changes]);
+  const logText = useMemo(() => buildSingleElementLog(snapshot, changes, fileMap, projectRoot, framework), [snapshot, changes, fileMap, projectRoot, framework]);
 
   const copyText = editedTextRef.current ?? logText;
 
@@ -317,14 +309,23 @@ function ElementAccordion({
     editedTextRef.current = edited === logText ? null : edited;
   }, [logText]);
 
-  const sourcePath = getSourcePath({
+  const sourcePath = inferSourcePath({
     tagName: snapshot.tagName,
+    className: snapshot.className,
+    id: snapshot.elementId,
+    selectorPath: snapshot.selectorPath,
     pagePath: snapshot.pagePath,
+    fileMap,
+    sourceInfo: snapshot.sourceInfo,
+    projectRoot,
   });
 
-  const label = snapshot.elementId
-    ? `${snapshot.tagName}#${snapshot.elementId}`
-    : snapshot.tagName;
+  const compName = getComponentName(snapshot.className);
+  const label = compName
+    ? compName
+    : snapshot.elementId
+      ? `${snapshot.tagName}#${snapshot.elementId}`
+      : snapshot.tagName;
 
   return (
     <div style={{ borderBottom: '1px solid var(--border)' }}>
@@ -343,7 +344,8 @@ function ElementAccordion({
           ▼
         </span>
         <span className="flex-1 text-left truncate" style={{ color: 'var(--text-secondary)' }}>
-          <span style={{ color: 'var(--accent)' }}>{label}</span>
+          <span style={{ color: compName ? '#4ade80' : 'var(--accent)' }}>{label}</span>
+          {compName && <span style={{ color: 'var(--text-muted)' }}> ({snapshot.tagName})</span>}
           <span style={{ color: 'var(--text-muted)' }}> · {sourcePath} · {changes.length} change{changes.length !== 1 ? 's' : ''}</span>
         </span>
         <CopyButton text={copyText} />
@@ -375,7 +377,11 @@ function ElementAccordion({
 
           {/* Per-change undo buttons */}
           <div className="space-y-1">
-            {changes.map((change) => (
+            {changes.map((change) => {
+              const displayVal = (liveStyles && change.property !== '__text_content__')
+                ? (liveStyles[change.property] ?? change.newValue)
+                : change.newValue;
+              return (
               <div key={change.id} className="flex items-center justify-between text-xs">
                 <span className="truncate" style={{ color: 'var(--text-muted)' }}>
                   {change.property === '__text_content__' ? (
@@ -386,7 +392,7 @@ function ElementAccordion({
                     </>
                   ) : (
                     <>
-                      {change.property}: <span style={{ color: 'var(--success)' }}>{change.newValue}</span>
+                      {camelToKebab(change.property)}: <span style={{ color: 'var(--success)' }}>{displayVal}</span>
                     </>
                   )}
                 </span>
@@ -402,7 +408,8 @@ function ElementAccordion({
                   Undo
                 </button>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -424,6 +431,11 @@ function BreakpointGroupAccordion({
   breakpoint,
   onRevert,
   isActiveBreakpoint,
+  selectorPath,
+  computedStyles,
+  fileMap,
+  projectRoot,
+  framework,
 }: {
   group: BreakpointGroupData;
   targetUrl: string | null;
@@ -431,6 +443,11 @@ function BreakpointGroupAccordion({
   breakpoint: Breakpoint;
   onRevert: (id: string, selector: string, property: string) => void;
   isActiveBreakpoint: boolean;
+  selectorPath?: string | null;
+  computedStyles?: Record<string, string>;
+  fileMap?: FileMap | null;
+  projectRoot?: string | null;
+  framework?: string | null;
 }) {
   const [open, setOpen] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -441,7 +458,10 @@ function BreakpointGroupAccordion({
     targetUrl,
     pagePath,
     breakpoint,
-  }), [group, targetUrl, pagePath, breakpoint]);
+    fileMap,
+    projectRoot,
+    framework,
+  }), [group, targetUrl, pagePath, breakpoint, fileMap, projectRoot, framework]);
 
   const totalChanges = group.allChanges.length;
   const isEmpty = group.elements.length === 0;
@@ -529,6 +549,10 @@ function BreakpointGroupAccordion({
                 snapshot={snapshot}
                 changes={changes}
                 onRevert={onRevert}
+                liveStyles={selector === selectorPath ? computedStyles : undefined}
+                fileMap={fileMap}
+                projectRoot={projectRoot}
+                framework={framework}
               />
             ))
           )}
@@ -675,8 +699,23 @@ export function ChangesPanel() {
   const targetUrl = useEditorStore((s) => s.targetUrl);
   const activeBreakpoint = useEditorStore((s) => s.activeBreakpoint);
   const currentPagePath = useEditorStore((s) => s.currentPagePath);
+  const selectorPath = useEditorStore((s) => s.selectorPath);
+  const computedStyles = useEditorStore((s) => s.computedStyles);
+  const getProjectScanForUrl = useEditorStore((s) => s.getProjectScanForUrl);
+  const getProjectRootForUrl = useEditorStore((s) => s.getProjectRootForUrl);
   const { revertChange } = useChangeTracker();
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+
+  const projectScan = useMemo(() => {
+    return getProjectScanForUrl(targetUrl);
+  }, [targetUrl, getProjectScanForUrl]);
+
+  const fileMap = projectScan?.fileMap ?? null;
+  const framework = projectScan?.framework ?? null;
+
+  const projectRoot = useMemo(() => {
+    return getProjectRootForUrl(targetUrl);
+  }, [targetUrl, getProjectRootForUrl]);
 
   // Separate component extractions from regular changes
   const { componentExtractions, regularChanges } = useMemo(() => {
@@ -725,8 +764,11 @@ export function ChangesPanel() {
       targetUrl,
       pagePath: currentPagePath,
       breakpoint: activeBreakpoint,
+      fileMap,
+      projectRoot,
+      framework,
     });
-  }, [elementGroups, targetUrl, currentPagePath, activeBreakpoint]);
+  }, [elementGroups, targetUrl, currentPagePath, activeBreakpoint, fileMap, projectRoot, framework]);
 
   const handleClearAll = useCallback(() => {
     for (const { changes } of elementGroups) {
@@ -827,6 +869,10 @@ export function ChangesPanel() {
             snapshot={snapshot}
             changes={changes}
             onRevert={revertChange}
+            liveStyles={selector === selectorPath ? computedStyles : undefined}
+            fileMap={fileMap}
+            projectRoot={projectRoot}
+            framework={framework}
           />
         ))}
       </div>

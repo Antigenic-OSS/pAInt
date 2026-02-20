@@ -3,8 +3,19 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { useEditorStore } from '@/store';
 import { usePostMessage } from '@/hooks/usePostMessage';
-import { PREVIEW_WIDTH_MIN, PREVIEW_WIDTH_MAX } from '@/lib/constants';
+import { PREVIEW_WIDTH_MIN, PREVIEW_WIDTH_MAX, PROXY_HEADER } from '@/lib/constants';
 import { ResponsiveToolbar } from './ResponsiveToolbar';
+
+/**
+ * Build the proxy URL for the iframe. Routes through /api/proxy/
+ * so the proxy can inject the inspector script and strip security
+ * headers (COEP, CSP, X-Frame-Options) that would block the editor.
+ */
+function buildProxyUrl(targetUrl: string, pagePath: string): string {
+  const path = pagePath === '/' ? '' : pagePath;
+  const encoded = encodeURIComponent(targetUrl);
+  return `/api/proxy${path}?${PROXY_HEADER}=${encoded}`;
+}
 
 export function PreviewFrame() {
   const targetUrl = useEditorStore((s) => s.targetUrl);
@@ -18,14 +29,14 @@ export function PreviewFrame() {
   const lastSrcRef = useRef<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
+  // Handle initial connection — load through proxy
   useEffect(() => {
     if (!targetUrl || connectionStatus !== 'connecting') return;
 
     const iframe = iframeRef.current;
     if (!iframe) return;
 
-    const pagePath = currentPagePath === '/' ? '' : currentPagePath;
-    const newSrc = `${targetUrl}${pagePath}`;
+    const newSrc = buildProxyUrl(targetUrl, currentPagePath);
 
     if (lastSrcRef.current !== newSrc) {
       lastSrcRef.current = newSrc;
@@ -43,33 +54,20 @@ export function PreviewFrame() {
     };
   }, [targetUrl, connectionStatus, currentPagePath, iframeRef, setConnectionStatus]);
 
-  // Hide hover highlight when mouse leaves iframe.
-  // Parent document receives mousemove only when the mouse is NOT inside the iframe,
-  // so any parent mousemove means the mouse has left the canvas area.
-  const hoverVisibleRef = useRef(false);
-
+  // Handle page navigation when already connected
   useEffect(() => {
+    if (!targetUrl || connectionStatus !== 'connected') return;
+
     const iframe = iframeRef.current;
     if (!iframe) return;
 
-    const handleParentMouseMove = () => {
-      if (hoverVisibleRef.current) {
-        hoverVisibleRef.current = false;
-        sendToInspector({ type: 'HIDE_HOVER' });
-      }
-    };
+    const newSrc = buildProxyUrl(targetUrl, currentPagePath);
 
-    const handleIframeEnter = () => {
-      hoverVisibleRef.current = true;
-    };
-
-    document.addEventListener('mousemove', handleParentMouseMove);
-    iframe.addEventListener('mouseenter', handleIframeEnter);
-    return () => {
-      document.removeEventListener('mousemove', handleParentMouseMove);
-      iframe.removeEventListener('mouseenter', handleIframeEnter);
-    };
-  }, [iframeRef, sendToInspector]);
+    if (lastSrcRef.current !== newSrc) {
+      lastSrcRef.current = newSrc;
+      iframe.src = newSrc;
+    }
+  }, [targetUrl, connectionStatus, currentPagePath, iframeRef]);
 
   // Drag resize logic — symmetric from center
   const dragStateRef = useRef<{ startX: number; startWidth: number; side: 'left' | 'right' } | null>(null);

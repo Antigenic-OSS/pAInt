@@ -90,6 +90,7 @@ export const CSS_PROPERTIES = {
   'flex-item': ['flex-grow', 'flex-shrink', 'flex-basis', 'align-self', 'order'],
   transform: ['transform'],
   filter: ['filter'],
+  svg: ['fill', 'stroke'],
 } as const;
 
 export const ALL_EDITABLE_PROPERTIES = Object.values(CSS_PROPERTIES).flat();
@@ -120,6 +121,7 @@ export const LOCAL_STORAGE_KEYS = {
   CLAUDE_PROJECT_ROOT: 'dev-editor:claude:project-root',
   CLAUDE_PORT_ROOTS: 'dev-editor:claude:port-roots',
   CLAUDE_CLI_AVAILABLE: 'dev-editor:claude:cli-available',
+  CLAUDE_PROJECT_SCANS: 'dev-editor:claude:project-scans',
 } as const;
 
 export const PROXY_HEADER = 'x-dev-editor-target';

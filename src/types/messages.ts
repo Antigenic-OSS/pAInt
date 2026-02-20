@@ -1,6 +1,7 @@
 import type { TreeNode } from './tree';
 import type { CSSVariableDefinition } from './cssVariables';
 import type { DetectedComponent } from './component';
+import type { SourceInfo } from './claude';
 
 // Inspector → Editor messages
 
@@ -19,7 +20,7 @@ export interface ElementSelectedMessage {
     innerText: string | null;
     computedStyles: Record<string, string>;
     cssVariableUsages?: Record<string, string>;
-    componentPath?: string | null;
+    sourceInfo?: SourceInfo | null;
     boundingRect: {
       x: number;
       y: number;
@@ -70,6 +71,7 @@ export interface CSSVariablesMessage {
   type: 'CSS_VARIABLES';
   payload: {
     definitions: Record<string, CSSVariableDefinition>;
+    isExplicit: boolean;
   };
 }
 
@@ -234,8 +236,11 @@ export interface ShowSelectionOverlayMessage {
   type: 'SHOW_SELECTION_OVERLAY';
 }
 
-export interface HideHoverMessage {
-  type: 'HIDE_HOVER';
+export interface NavigateToMessage {
+  type: 'NAVIGATE_TO';
+  payload: {
+    path: string;
+  };
 }
 
 // Union types
@@ -272,7 +277,7 @@ export type EditorToInspectorMessage =
   | RevertTextContentMessage
   | HideSelectionOverlayMessage
   | ShowSelectionOverlayMessage
-  | HideHoverMessage;
+  | NavigateToMessage;
 
 export type PostMessageType =
   | InspectorToEditorMessage['type']

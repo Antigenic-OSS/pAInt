@@ -62,3 +62,38 @@ export interface ClaudeStatusResponse {
   version?: string;
   error?: string;
 }
+
+export interface RouteEntry {
+  urlPattern: string;   // e.g. "/", "/about", "/blog/[slug]" (web only)
+  filePath: string;     // relative to projectRoot
+  type: 'page' | 'layout' | 'loading' | 'error' | 'not-found' | 'template';
+}
+
+export interface ComponentEntry {
+  name: string;         // PascalCase: "Button", "HomeScreen", "ProfileWidget"
+  filePath: string;     // relative to projectRoot
+  nameLower: string;    // lowercase for matching: "button", "homescreen"
+  category: 'component' | 'screen' | 'page' | 'layout' | 'widget' | 'view';
+}
+
+export interface FileMap {
+  routes: RouteEntry[];
+  components: ComponentEntry[];
+}
+
+export interface SourceInfo {
+  fileName: string;       // Absolute path from React fiber _debugSource
+  lineNumber: number;
+  columnNumber?: number;
+  componentName: string | null;
+  componentChain: string[];
+}
+
+export interface ProjectScanResult {
+  framework: string | null;
+  cssStrategy: string[];
+  cssFiles: string[];
+  srcDirs: string[];
+  packageName: string | null;
+  fileMap?: FileMap;
+}

@@ -1,5 +1,6 @@
 import type { StateCreator } from 'zustand';
 import type { BoundingRect } from '@/types/element';
+import type { SourceInfo } from '@/types/claude';
 
 export interface ElementSlice {
   selectorPath: string | null;
@@ -10,7 +11,7 @@ export interface ElementSlice {
   innerText: string | null;
   computedStyles: Record<string, string>;
   boundingRect: BoundingRect | null;
-  componentPath: string | null;
+  sourceInfo: SourceInfo | null;
 
   selectElement: (data: {
     selectorPath: string;
@@ -21,7 +22,7 @@ export interface ElementSlice {
     innerText: string | null;
     computedStyles: Record<string, string>;
     boundingRect: BoundingRect;
-    componentPath?: string | null;
+    sourceInfo?: SourceInfo | null;
   }) => void;
   clearSelection: () => void;
   updateComputedStyles: (styles: Record<string, string>) => void;
@@ -36,7 +37,7 @@ export const createElementSlice: StateCreator<ElementSlice, [], [], ElementSlice
   innerText: null,
   computedStyles: {},
   boundingRect: null,
-  componentPath: null,
+  sourceInfo: null,
 
   selectElement: (data) => {
     set({
@@ -48,7 +49,7 @@ export const createElementSlice: StateCreator<ElementSlice, [], [], ElementSlice
       innerText: data.innerText,
       computedStyles: data.computedStyles,
       boundingRect: data.boundingRect,
-      componentPath: data.componentPath ?? null,
+      sourceInfo: data.sourceInfo ?? null,
     });
   },
 
@@ -62,7 +63,7 @@ export const createElementSlice: StateCreator<ElementSlice, [], [], ElementSlice
       innerText: null,
       computedStyles: {},
       boundingRect: null,
-      componentPath: null,
+      sourceInfo: null,
     });
   },
 

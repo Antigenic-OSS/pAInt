@@ -5,10 +5,18 @@ import { useEditorStore } from '@/store';
 import type { InspectorToEditorMessage, EditorToInspectorMessage } from '@/types/messages';
 import { generateId } from '@/lib/utils';
 
-function isLocalhostOrigin(origin: string): boolean {
+function isAllowedOrigin(origin: string): boolean {
   try {
     const url = new URL(origin);
-    return url.hostname === 'localhost' || url.hostname === '127.0.0.1';
+    // Always allow localhost/127.0.0.1 (primary use case)
+    if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') return true;
+    // Also allow if origin matches the current target URL (for live site editing)
+    const targetUrl = useEditorStore.getState().targetUrl;
+    if (targetUrl) {
+      const targetOrigin = new URL(targetUrl).origin;
+      if (origin === targetOrigin) return true;
+    }
+    return false;
   } catch {
     return false;
   }
@@ -29,16 +37,13 @@ let componentRescanTimer: ReturnType<typeof setTimeout> | null = null;
 export function sendViaIframe(message: EditorToInspectorMessage) {
   const iframe = sharedIframeRef.current;
   if (!iframe?.contentWindow) return;
-  const targetUrl = useEditorStore.getState().targetUrl;
-  let origin = '*';
-  try {
-    if (targetUrl) origin = new URL(targetUrl).origin;
-  } catch { /* fallback to wildcard */ }
-  iframe.contentWindow.postMessage(message, origin);
+  // The iframe loads through the proxy (/api/proxy/...) so it's same-origin.
+  // Use window.location.origin to match the proxy-served page's origin.
+  iframe.contentWindow.postMessage(message, window.location.origin);
 }
 
 function handleMessage(event: MessageEvent) {
-  if (!isLocalhostOrigin(event.origin)) return;
+  if (!isAllowedOrigin(event.origin)) return;
   const msg = event.data as InspectorToEditorMessage;
   if (!msg || !msg.type) return;
 
@@ -59,17 +64,60 @@ function handleMessage(event: MessageEvent) {
       setTimeout(function() {
         sendViaIframe({ type: 'REQUEST_COMPONENTS', payload: {} });
       }, 500);
+
+      // Re-apply persisted changes to the iframe after a fresh load/refresh.
+      // The store already has them (loaded via useChangeTracker), but the
+      // iframe DOM is fresh — so we need to replay every PREVIEW_CHANGE.
+      const persisted = useEditorStore.getState().styleChanges;
+      if (persisted.length > 0) {
+        for (const change of persisted) {
+          if (change.property === '__text_content__' || change.property === '__component_creation__') continue;
+          sendViaIframe({
+            type: 'PREVIEW_CHANGE',
+            payload: {
+              selectorPath: change.elementSelector,
+              property: change.property,
+              value: change.newValue,
+            },
+          });
+        }
+      }
       break;
     }
 
-    case 'ELEMENT_SELECTED':
+    case 'ELEMENT_SELECTED': {
+      // Check for tracked changes on this element BEFORE updating the store.
+      // When re-selecting an element, the inspector sends fresh computedStyles
+      // that don't reflect previously applied inline changes (the inline styles
+      // may have been lost to DOM re-renders). We merge tracked change values
+      // into computedStyles so the store gets correct values in a single update,
+      // and re-apply the inline styles to the iframe DOM.
+      const trackedChanges = store.styleChanges.filter(
+        (c) => c.elementSelector === msg.payload.selectorPath
+      );
+      if (trackedChanges.length > 0) {
+        const merged = { ...msg.payload.computedStyles };
+        for (const change of trackedChanges) {
+          merged[change.property] = change.newValue;
+          sendViaIframe({
+            type: 'PREVIEW_CHANGE',
+            payload: {
+              selectorPath: msg.payload.selectorPath,
+              property: change.property,
+              value: change.newValue,
+            },
+          });
+        }
+        msg.payload.computedStyles = merged;
+      }
       store.selectElement(msg.payload);
       store.setCSSVariableUsages(msg.payload.cssVariableUsages || {});
       store.setActiveRightTab('design');
       break;
+    }
 
     case 'CSS_VARIABLES':
-      store.setCSSVariableDefinitions(msg.payload.definitions);
+      store.setCSSVariableDefinitions(msg.payload.definitions, msg.payload.isExplicit);
       break;
 
     case 'ELEMENT_HOVERED':
@@ -121,9 +169,8 @@ function handleMessage(event: MessageEvent) {
 
     case 'PAGE_NAVIGATE':
       store.setCurrentPagePath(msg.payload.path);
-      store.setConnectionStatus('connecting');
+      store.clearSelection();
       store.clearComponents();
-      store.clearConsole();
       break;
 
     case 'CONSOLE_MESSAGE':
@@ -162,7 +209,7 @@ function handleMessage(event: MessageEvent) {
         computedStyles: textEl?.computedStyles ? { ...textEl.computedStyles } : {},
         pagePath: store.currentPagePath,
         changeScope: store.changeScope,
-        componentPath: textEl?.componentPath ?? null,
+        sourceInfo: textEl?.sourceInfo ?? null,
       });
 
       // Add style change with sentinel property

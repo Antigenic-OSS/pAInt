@@ -1,3 +1,5 @@
+import type { SourceInfo } from './claude';
+
 export type Breakpoint = 'mobile' | 'tablet' | 'desktop';
 
 export interface StyleChange {
@@ -21,7 +23,7 @@ export interface ElementSnapshot {
   computedStyles: Record<string, string>;
   pagePath: string;
   changeScope: 'all' | 'breakpoint-only';
-  componentPath?: string | null;
+  sourceInfo?: SourceInfo | null;
 }
 
 export interface UndoRedoAction {

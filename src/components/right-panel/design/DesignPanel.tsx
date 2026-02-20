@@ -14,8 +14,14 @@ import { TextSection } from './TextSection';
 import { BackgroundSection } from './BackgroundSection';
 import { ShadowBlurSection } from './ShadowBlurSection';
 import { PropertiesSection } from './PropertiesSection';
+import { SVGSection } from './SVGSection';
 import { DesignCSSTabToggle } from './DesignCSSTabToggle';
 import { CSSRawView } from './CSSRawView';
+
+const SVG_TAG_NAMES = new Set([
+  'svg', 'path', 'circle', 'rect', 'line', 'polyline', 'polygon',
+  'ellipse', 'g', 'use', 'text', 'tspan', 'image', 'clippath', 'mask', 'defs',
+]);
 
 function ChangeScopeToggle() {
   const changeScope = useEditorStore((s) => s.changeScope);
@@ -68,6 +74,8 @@ const MAX_TOP_HEIGHT = 500;
 
 export function DesignPanel() {
   const selectorPath = useEditorStore((s) => s.selectorPath);
+  const tagName = useEditorStore((s) => s.tagName);
+  const isSVGElement = !!tagName && SVG_TAG_NAMES.has(tagName.toLowerCase());
   const [activeTab, setActiveTab] = useState<'design' | 'css'>('design');
   const [topHeight, setTopHeight] = useState(DEFAULT_TOP_HEIGHT);
   const isDragging = useRef(false);
@@ -206,6 +214,7 @@ export function DesignPanel() {
             <LayoutSection />
             <SizeSection />
             <AppearanceSection />
+            {isSVGElement && <SVGSection />}
             <TextSection />
             <BackgroundSection />
             <BorderSection />

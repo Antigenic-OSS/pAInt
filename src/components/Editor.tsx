@@ -8,6 +8,7 @@ import { TopBar } from './TopBar';
 import { LeftPanel } from './left-panel/LeftPanel';
 import { RightPanel } from './right-panel/RightPanel';
 import { PreviewFrame } from './PreviewFrame';
+import { ConnectModal } from './ConnectModal';
 import { ErrorBoundary } from './common/ErrorBoundary';
 import { ToastContainer } from './common/ToastContainer';
 
@@ -25,6 +26,8 @@ function PanelLoading() {
 }
 
 export function Editor() {
+  const targetUrl = useEditorStore((s) => s.targetUrl);
+  const connectionStatus = useEditorStore((s) => s.connectionStatus);
   const leftPanelOpen = useEditorStore((s) => s.leftPanelOpen);
   const rightPanelOpen = useEditorStore((s) => s.rightPanelOpen);
   const leftPanelWidth = useEditorStore((s) => s.leftPanelWidth);
@@ -72,6 +75,7 @@ export function Editor() {
         )}
       </div>
       <ToastContainer />
+      {(!targetUrl || connectionStatus === 'connecting') && <ConnectModal />}
     </div>
   );
 }

@@ -2,7 +2,6 @@
 
 import { useMemo, useState, useCallback, useRef } from 'react';
 import { useEditorStore } from '@/store';
-import { getSourcePath } from '@/lib/classifyElement';
 import { buildInstructionsFooter, BREAKPOINTS, getBreakpointDeviceInfo, getBreakpointRange } from '@/lib/constants';
 import { EditablePre } from '@/components/common/EditablePre';
 import type { Breakpoint } from '@/types/changelog';
@@ -36,7 +35,7 @@ function buildElementLogText(opts: {
   changeScope: 'all' | 'breakpoint-only';
   activeBreakpoint: Breakpoint;
   changeCount: number;
-  componentPath: string | null;
+  framework?: string | null;
 }): string {
   const lines: string[] = [];
   if (!opts.tagName) return '';
@@ -46,39 +45,25 @@ function buildElementLogText(opts: {
   if (opts.className) attrParts.push(`class="${opts.className}"`);
   const tag = `<${opts.tagName}${attrParts.length ? ' ' + attrParts.join(' ') : ''}>`;
 
-  const sourcePath = getSourcePath({
-    tagName: opts.tagName,
-    pagePath: opts.pagePath,
-  });
-
+  const isMobileApp = opts.framework === 'flutter' || opts.framework === 'react-native';
   const { deviceName, range } = getBreakpointDeviceInfo(opts.activeBreakpoint);
 
-  lines.push('SOURCE');
-  lines.push(sourcePath);
+  lines.push('PAGE NAME');
+  lines.push(opts.pagePath || '/');
   lines.push('');
-
-  if (opts.componentPath) {
-    lines.push('COMPONENT');
-    lines.push(opts.componentPath);
-    lines.push('');
-  }
 
   lines.push('ELEMENT');
   lines.push(tag);
   lines.push('');
 
-  lines.push('DEVICE');
-  lines.push(`Device Name: ${deviceName}`);
-  lines.push(`Breakpoint: ${range}`);
-  lines.push('');
+  if (!isMobileApp) {
+    lines.push('DEVICE');
+    lines.push(`Device Name: ${deviceName}`);
+    lines.push(`Breakpoint: ${range}`);
+    lines.push('');
 
-  lines.push('APPLIES TO');
-  lines.push(opts.changeScope === 'all' ? 'All breakpoints' : `${deviceName} (${range})`);
-  lines.push('');
-
-  if (opts.selectorPath) {
-    lines.push('PATH');
-    lines.push(opts.selectorPath);
+    lines.push('APPLIES TO');
+    lines.push(opts.changeScope === 'all' ? 'All breakpoints' : `${deviceName} (${range})`);
     lines.push('');
   }
 
@@ -90,20 +75,6 @@ function buildElementLogText(opts: {
     }
     lines.push('');
   }
-
-  const styleKeys = [
-    'color', 'backgroundColor', 'fontSize', 'fontFamily', 'display', 'position',
-    'flexDirection', 'justifyContent', 'alignItems', 'gap',
-    'gridTemplateColumns', 'gridTemplateRows', 'overflow', 'boxSizing',
-  ];
-  const camelToKebab = (s: string) => s.replace(/[A-Z]/g, c => '-' + c.toLowerCase());
-  lines.push('COMPUTED STYLES');
-  for (const key of styleKeys) {
-    if (opts.computedStyles[key]) {
-      lines.push(`  ${camelToKebab(key)}: ${opts.computedStyles[key]}`);
-    }
-  }
-  lines.push('');
 
   if (opts.innerText) {
     lines.push('INNER TEXT');
@@ -131,7 +102,13 @@ export function ElementLogBox() {
   const changeScope = useEditorStore((s) => s.changeScope);
   const activeBreakpoint = useEditorStore((s) => s.activeBreakpoint);
   const styleChanges = useEditorStore((s) => s.styleChanges);
-  const componentPath = useEditorStore((s) => s.componentPath);
+  const targetUrl = useEditorStore((s) => s.targetUrl);
+  const getProjectScanForUrl = useEditorStore((s) => s.getProjectScanForUrl);
+
+  const framework = useMemo(() => {
+    const scan = getProjectScanForUrl(targetUrl);
+    return scan?.framework ?? null;
+  }, [targetUrl, getProjectScanForUrl]);
 
   const changeCount = useMemo(() => {
     if (!selectorPath) return 0;
@@ -141,8 +118,8 @@ export function ElementLogBox() {
   const logText = useMemo(() => buildElementLogText({
     tagName, className, elementId, selectorPath,
     attributes, innerText, computedStyles,
-    pagePath: currentPagePath, changeScope, activeBreakpoint, changeCount, componentPath,
-  }), [tagName, className, elementId, selectorPath, attributes, innerText, computedStyles, currentPagePath, changeScope, activeBreakpoint, changeCount, componentPath]);
+    pagePath: currentPagePath, changeScope, activeBreakpoint, changeCount, framework,
+  }), [tagName, className, elementId, selectorPath, attributes, innerText, computedStyles, currentPagePath, changeScope, activeBreakpoint, changeCount, framework]);
 
   const handleTextChange = useCallback((edited: string) => {
     editedTextRef.current = edited === logText ? null : edited;
