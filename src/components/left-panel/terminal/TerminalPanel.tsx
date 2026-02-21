@@ -2,6 +2,7 @@
 
 import { useRef, useEffect, useCallback } from 'react';
 import { useEditorStore } from '@/store';
+import { ScanOverlay } from './ScanOverlay';
 import '@xterm/xterm/css/xterm.css';
 
 export function TerminalPanel() {
@@ -13,6 +14,7 @@ export function TerminalPanel() {
   const terminalStatus = useEditorStore((s) => s.terminalStatus);
   const setTerminalStatus = useEditorStore((s) => s.setTerminalStatus);
   const port = useEditorStore((s) => s.terminalServerPort);
+  const registerTerminalWriter = useEditorStore((s) => s.registerTerminalWriter);
 
   const connectWebSocket = useCallback(
     (term: import('@xterm/xterm').Terminal, fitAddon: import('@xterm/addon-fit').FitAddon) => {
@@ -106,6 +108,7 @@ export function TerminalPanel() {
       fitAddon.fit();
 
       termRef.current = term;
+      registerTerminalWriter((data: string) => term.write(data));
       connectWebSocket(term, fitAddon);
     }
 
@@ -113,10 +116,11 @@ export function TerminalPanel() {
 
     return () => {
       mounted = false;
+      registerTerminalWriter(null);
       wsRef.current?.close();
       termRef.current?.dispose();
     };
-  }, [connectWebSocket]);
+  }, [connectWebSocket, registerTerminalWriter]);
 
   // Refit terminal when container resizes
   useEffect(() => {
@@ -142,7 +146,7 @@ export function TerminalPanel() {
   }, [connectWebSocket]);
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="relative flex flex-col h-full">
       {/* Header */}
       <div
         className="flex items-center justify-between px-3 py-1 flex-shrink-0"
@@ -196,6 +200,9 @@ export function TerminalPanel() {
           </span>
         </div>
       )}
+
+      {/* AI Scan animation overlay */}
+      <ScanOverlay />
     </div>
   );
 }

@@ -115,17 +115,61 @@ function getInspectorCode(): string {
 
       function scanCSSVariableDefinitions() {
         var definitions = {};
+        var scopesSet = {};
         var rootStyles = window.getComputedStyle(document.documentElement);
         var FRAMEWORK_PREFIXES = ['--tw-', '--next-', '--radix-', '--chakra-', '--mantine-', '--mui-', '--framer-', '--sb-'];
 
-        function extractFromRules(rules) {
+        // Detect Tailwind v4 @theme usage — if present, keep --color-*, --font-*, --spacing-* vars
+        var hasTailwindTheme = false;
+        for (var tsi = 0; tsi < document.styleSheets.length; tsi++) {
+          var tSheet = document.styleSheets[tsi];
+          try {
+            // Check inline <style> content for @theme directive
+            if (tSheet.ownerNode && tSheet.ownerNode.textContent && tSheet.ownerNode.textContent.indexOf('@theme') >= 0) {
+              hasTailwindTheme = true;
+              break;
+            }
+            // Check linked stylesheet rules for @layer theme or @theme
+            var tRules = tSheet.cssRules || tSheet.rules;
+            if (tRules) {
+              for (var tri = 0; tri < tRules.length; tri++) {
+                var tRule = tRules[tri];
+                if (tRule.cssText && tRule.cssText.indexOf('@theme') >= 0) {
+                  hasTailwindTheme = true;
+                  break;
+                }
+              }
+            }
+          } catch(e) { /* cross-origin stylesheet */ }
+          if (hasTailwindTheme) break;
+        }
+
+        function classifyScope(selectorText, parentRule) {
+          if (!selectorText) return 'custom';
+          var sel = selectorText.trim().toLowerCase();
+          // Check if inside a @media (prefers-color-scheme: dark) block
+          if (parentRule && parentRule.conditionText) {
+            var cond = parentRule.conditionText.toLowerCase();
+            if (cond.indexOf('prefers-color-scheme') >= 0 && cond.indexOf('dark') >= 0) {
+              return 'media-dark';
+            }
+          }
+          if (sel === ':root' || sel === ':root, :host' || sel === ':host, :root') return 'root';
+          if (sel.indexOf('.dark') >= 0 || sel.indexOf('[data-theme="dark"]') >= 0 || sel.indexOf('[data-mode="dark"]') >= 0) return 'dark';
+          return 'root';
+        }
+
+        function extractFromRules(rules, parentRule) {
           for (var ri = 0; ri < rules.length; ri++) {
             var rule = rules[ri];
             if (rule.cssRules) {
-              extractFromRules(rule.cssRules);
+              extractFromRules(rule.cssRules, rule);
               continue;
             }
             if (!rule.style) continue;
+            var ruleSelector = rule.selectorText || '';
+            var scope = classifyScope(ruleSelector, parentRule);
+            if (ruleSelector) scopesSet[ruleSelector] = true;
             for (var pi = 0; pi < rule.style.length; pi++) {
               var prop = rule.style[pi];
               if (prop.indexOf('--') === 0) {
@@ -134,7 +178,8 @@ function getInspectorCode(): string {
                 definitions[prop] = {
                   value: rawVal,
                   resolvedValue: resolved || rawVal,
-                  selector: rule.selectorText || ''
+                  selector: ruleSelector,
+                  scope: scope
                 };
               }
             }
@@ -153,16 +198,16 @@ function getInspectorCode(): string {
           for (var ti = 0; ti < taggedSheets.length; ti++) {
             var taggedRules;
             try { taggedRules = taggedSheets[ti].cssRules || taggedSheets[ti].rules; } catch(e) { continue; }
-            if (taggedRules) extractFromRules(taggedRules);
+            if (taggedRules) extractFromRules(taggedRules, null);
           }
-          return { definitions: definitions, isExplicit: true };
+          return { definitions: definitions, isExplicit: true, scopes: Object.keys(scopesSet) };
         }
 
         for (var fi = 0; fi < document.styleSheets.length; fi++) {
           var fallbackSheet = document.styleSheets[fi];
           var fallbackRules;
           try { fallbackRules = fallbackSheet.cssRules || fallbackSheet.rules; } catch(e) { continue; }
-          if (fallbackRules) extractFromRules(fallbackRules);
+          if (fallbackRules) extractFromRules(fallbackRules, null);
         }
 
         var metaEl = document.querySelector('meta[name="design-tokens-prefix"]');
@@ -192,11 +237,15 @@ function getInspectorCode(): string {
             for (var fpi = 0; fpi < FRAMEWORK_PREFIXES.length; fpi++) {
               if (key.indexOf(FRAMEWORK_PREFIXES[fpi]) === 0) { isFramework = true; break; }
             }
+            // If Tailwind v4 @theme detected, keep --color-*, --font-*, --spacing-* even if --tw- internal vars are filtered
+            if (isFramework && hasTailwindTheme && key.indexOf('--tw-') !== 0) {
+              isFramework = false;
+            }
             if (!isFramework) filtered[key] = definitions[key];
           }
         }
 
-        return { definitions: filtered, isExplicit: false };
+        return { definitions: filtered, isExplicit: false, scopes: Object.keys(scopesSet) };
       }
 
       function detectCSSVariablesOnElement(el) {
@@ -486,6 +535,44 @@ function getInspectorCode(): string {
         return null;
       }
 
+      function titleWords(str) {
+        return str.replace(/\\w\\S*/g, function(w) {
+          return w.charAt(0).toUpperCase() + w.substr(1).toLowerCase();
+        });
+      }
+
+      function contextualName(el, baseName) {
+        var tag = el.tagName.toLowerCase();
+        // aria-label: most reliable semantic hint
+        var label = (el.getAttribute('aria-label') || '').trim();
+        if (label.length > 0 && label.length <= 25) return titleWords(label);
+        // title attribute
+        var titleAttr = (el.getAttribute('title') || '').trim();
+        if (titleAttr.length > 0 && titleAttr.length <= 25) return titleWords(titleAttr);
+        // Images: use alt text
+        if (tag === 'img') {
+          var alt = (el.getAttribute('alt') || '').trim();
+          if (alt.length > 0 && alt.length <= 25) return titleWords(alt);
+        }
+        // Inputs: use placeholder or type
+        if (tag === 'input' || tag === 'textarea' || tag === 'select') {
+          var ph = (el.getAttribute('placeholder') || '').trim();
+          if (ph.length > 0 && ph.length <= 20) return titleWords(ph);
+          var tp = el.getAttribute('type');
+          if (tp && tp !== 'text' && tp !== 'hidden') return titleWords(tp) + ' ' + baseName;
+        }
+        // Buttons/links: use short inner text
+        if (tag === 'button' || tag === 'a') {
+          var txt = (el.innerText || '').trim();
+          if (txt.length > 0 && txt.length <= 20 && txt.indexOf('\\n') === -1) return titleWords(txt);
+        }
+        // id attribute: convert to readable name
+        if (el.id && el.id.length > 1 && el.id.length <= 25) {
+          return titleWords(el.id.replace(/[-_]/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2'));
+        }
+        return baseName;
+      }
+
       var SIZE_SUFFIXES = ['xs','sm','md','lg','xl','2xl'];
       var COLOR_SUFFIXES = ['primary','secondary','success','danger','warning','info','light','dark'];
       var STATE_SUFFIXES = ['active','disabled','loading','selected','checked'];
@@ -625,7 +712,7 @@ function getInspectorCode(): string {
               }
               results.push({
                 selectorPath: generateSelectorPath(el),
-                name: detection.name,
+                name: contextualName(el, detection.name),
                 tagName: el.tagName.toLowerCase(),
                 detectionMethod: detection.method,
                 className: el.className && typeof el.className === 'string' ? el.className : null,
@@ -774,8 +861,9 @@ function getInspectorCode(): string {
           }
           case 'REQUEST_CSS_VARIABLES': {
             var result = scanCSSVariableDefinitions();
-            console.log('[DevEditor] CSS variable definitions found:', Object.keys(result.definitions).length, result.definitions);
-            send({ type: 'CSS_VARIABLES', payload: { definitions: result.definitions, isExplicit: result.isExplicit } });
+            initialVarCount = Object.keys(result.definitions).length;
+            console.log('[DevEditor] CSS variable definitions found:', initialVarCount, result.definitions);
+            send({ type: 'CSS_VARIABLES', payload: { definitions: result.definitions, isExplicit: result.isExplicit, scopes: result.scopes || [] } });
             break;
           }
           case 'REQUEST_COMPONENTS': {
@@ -870,6 +958,24 @@ function getInspectorCode(): string {
         send({ type: 'INSPECTOR_READY' });
       }
 
+      // Re-scan CSS variables after all resources (stylesheets, fonts) have loaded.
+      // The initial scan on INSPECTOR_READY may miss variables from stylesheets
+      // that haven't fully loaded yet (async CSS, @import chains, JS-injected styles).
+      var initialVarCount = -1;
+      function rescanCSSVariables() {
+        var result = scanCSSVariableDefinitions();
+        var count = Object.keys(result.definitions).length;
+        if (count > initialVarCount) {
+          initialVarCount = count;
+          send({ type: 'CSS_VARIABLES', payload: { definitions: result.definitions, isExplicit: result.isExplicit, scopes: result.scopes || [] } });
+        }
+      }
+      window.addEventListener('load', function() {
+        setTimeout(rescanCSSVariables, 300);
+      });
+      // Also re-scan after a longer delay for JS-injected styles (React hydration, etc.)
+      setTimeout(rescanCSSVariables, 3000);
+
       return { selectElement: selectElement, clearSelection: clearSelection };
     })();
   `;
@@ -956,11 +1062,16 @@ async function handleProxy(
         key !== PROXY_HEADER &&
         key !== 'host' &&
         !key.startsWith('x-forwarded') &&
-        key !== 'connection'
+        key !== 'connection' &&
+        key !== 'accept-encoding'
       ) {
         headers.set(key, value);
       }
     });
+    // Request uncompressed responses from the target. The proxy streams
+    // non-HTML/CSS bodies directly and strips content-encoding, so
+    // receiving compressed bytes would corrupt JS chunks, fonts, etc.
+    headers.set('accept-encoding', 'identity');
 
     const response = await fetch(url.toString(), {
       method: request.method,
@@ -1008,10 +1119,17 @@ async function handleProxy(
       const targetOrigin = new URL(targetUrl).origin;
       const escapedOrigin = targetOrigin.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-      // Helper to rewrite a single absolute path
+      // Helper to rewrite a single absolute path, preserving URL fragments
       function proxyPath(originalPath: string): string {
-        const separator = originalPath.includes('?') ? '&' : '?';
-        return `/api/proxy${originalPath}${separator}${PROXY_HEADER}=${encodedTarget}`;
+        let pathPart = originalPath;
+        let fragment = '';
+        const hashIdx = originalPath.indexOf('#');
+        if (hashIdx >= 0) {
+          pathPart = originalPath.substring(0, hashIdx);
+          fragment = originalPath.substring(hashIdx);
+        }
+        const separator = pathPart.includes('?') ? '&' : '?';
+        return `/api/proxy${pathPart}${separator}${PROXY_HEADER}=${encodedTarget}${fragment}`;
       }
 
       // Rewrite fully-qualified target-origin URLs in attributes FIRST
@@ -1032,13 +1150,22 @@ async function handleProxy(
         }
       );
 
-      // Rewrite src, href, action attributes (absolute paths starting with /)
+      // Rewrite src, href, action, poster attributes (absolute paths starting with /)
       html = html.replace(
-        /(href|src|action)=(["'])(\/[^"']*)/g,
+        /(href|src|action|poster)=(["'])(\/[^"']*)/g,
         (_match: string, attr: string, quote: string, originalPath: string) => {
           // Skip already-rewritten paths
           if (originalPath.startsWith('/api/proxy')) return _match;
           return `${attr}=${quote}${proxyPath(originalPath)}`;
+        }
+      );
+
+      // Rewrite xlink:href for SVG <use> elements (absolute paths starting with /)
+      html = html.replace(
+        /xlink:href=(["'])(\/[^"']*)/g,
+        (_match: string, quote: string, originalPath: string) => {
+          if (originalPath.startsWith('/api/proxy')) return _match;
+          return `xlink:href=${quote}${proxyPath(originalPath)}`;
         }
       );
 
@@ -1139,6 +1266,10 @@ async function handleProxy(
       get: scrDesc.get,
       set: function(val) {
         if (typeof val === 'string' && val.indexOf('dev-editor-inspector') >= 0) return;
+        if (typeof val === 'string') {
+          var r = proxyResUrl(val);
+          if (r) val = r;
+        }
         scrDesc.set.call(this, val);
       },
       configurable: true, enumerable: true
@@ -1252,6 +1383,7 @@ async function handleProxy(
 
   // Synchronous property interceptors — rewrite URLs BEFORE the browser
   // starts fetching resources. MutationObserver is async (too late for images).
+  // All interceptors use proxyResUrl() which handles fragments correctly.
   // Patch Element.prototype.setAttribute to catch attr-based URL setting.
   var oSA = Element.prototype.setAttribute;
   Element.prototype.setAttribute = function(name, value) {
@@ -1262,12 +1394,8 @@ async function handleProxy(
         return;
       }
       if (n === 'src' || n === 'poster' || n === 'data-src' || (n === 'href' && this.tagName !== 'A')) {
-        if (value.charAt(0) === '/' && value.indexOf('/api/proxy') !== 0) {
-          value = '/api/proxy' + value + (value.indexOf('?') >= 0 ? '&' : '?') + pH + '=' + eT;
-        } else if (value.indexOf(tO) === 0) {
-          var p3 = value.substring(tO.length) || '/';
-          value = '/api/proxy' + p3 + (p3.indexOf('?') >= 0 ? '&' : '?') + pH + '=' + eT;
-        }
+        var r = proxyResUrl(value);
+        if (r) value = r;
       }
       if (n === 'srcset') {
         var parts = value.split(',');
@@ -1277,15 +1405,8 @@ async function handleProxy(
           var spIdx = entry.indexOf(' ');
           var url = spIdx >= 0 ? entry.substring(0, spIdx) : entry;
           var desc = spIdx >= 0 ? entry.substring(spIdx) : '';
-          if (url.indexOf('/api/proxy') !== 0) {
-            if (url.charAt(0) === '/') {
-              url = '/api/proxy' + url + (url.indexOf('?') >= 0 ? '&' : '?') + pH + '=' + eT;
-            } else if (url.indexOf(tO) === 0) {
-              var p4 = url.substring(tO.length) || '/';
-              url = '/api/proxy' + p4 + (p4.indexOf('?') >= 0 ? '&' : '?') + pH + '=' + eT;
-            }
-          }
-          rewritten.push(url + desc);
+          var ru = proxyResUrl(url);
+          rewritten.push((ru || url) + desc);
         }
         value = rewritten.join(', ');
       }
@@ -1299,13 +1420,8 @@ async function handleProxy(
     Object.defineProperty(HTMLImageElement.prototype, 'src', {
       get: imgDesc.get,
       set: function(val) {
-        if (typeof val === 'string' && val.charAt(0) === '/' && val.indexOf('/api/proxy') !== 0) {
-          val = '/api/proxy' + val + (val.indexOf('?') >= 0 ? '&' : '?') + pH + '=' + eT;
-        } else if (typeof val === 'string' && val.indexOf(tO) === 0) {
-          var p5 = val.substring(tO.length) || '/';
-          val = '/api/proxy' + p5 + (p5.indexOf('?') >= 0 ? '&' : '?') + pH + '=' + eT;
-        }
-        imgDesc.set.call(this, val);
+        var r = proxyResUrl(val);
+        imgDesc.set.call(this, r || val);
       },
       configurable: true, enumerable: true
     });
@@ -1317,30 +1433,75 @@ async function handleProxy(
     Object.defineProperty(HTMLSourceElement.prototype, 'src', {
       get: srcDesc.get,
       set: function(val) {
-        if (typeof val === 'string' && val.charAt(0) === '/' && val.indexOf('/api/proxy') !== 0) {
-          val = '/api/proxy' + val + (val.indexOf('?') >= 0 ? '&' : '?') + pH + '=' + eT;
-        } else if (typeof val === 'string' && val.indexOf(tO) === 0) {
-          var p6 = val.substring(tO.length) || '/';
-          val = '/api/proxy' + p6 + (p6.indexOf('?') >= 0 ? '&' : '?') + pH + '=' + eT;
-        }
-        srcDesc.set.call(this, val);
+        var r = proxyResUrl(val);
+        srcDesc.set.call(this, r || val);
       },
       configurable: true, enumerable: true
     });
   }
 
+  // Intercept FontFace constructor — Expo/React Native Web and other frameworks
+  // load icon fonts (Ionicons, Material Icons, etc.) via new FontFace('name', 'url(...)')
+  // instead of <style> elements. Without this, the font URL bypasses the proxy.
+  var OFontFace = window.FontFace;
+  if (OFontFace) {
+    window.FontFace = function(family, source, descriptors) {
+      if (typeof source === 'string') {
+        source = source.replace(/url\\(\\s*(['"]?)([^)'"\\s]+)\\1\\s*\\)/g, function(m, q, urlVal) {
+          var r = proxyResUrl(urlVal);
+          return r ? 'url(' + q + r + q + ')' : m;
+        });
+      }
+      return new OFontFace(family, source, descriptors);
+    };
+    window.FontFace.prototype = OFontFace.prototype;
+    // Preserve static methods if any
+    Object.keys(OFontFace).forEach(function(k) {
+      try { window.FontFace[k] = OFontFace[k]; } catch(e) {}
+    });
+  }
+
+  // Rewrite url() references in dynamically-injected <style> elements
+  // (e.g., icon font CSS injected by Font Awesome, Material Icons, etc.)
+  var _processedStyles = typeof WeakSet !== 'undefined' ? new WeakSet() : null;
+  function rewriteStyleUrls(styleEl) {
+    if (_processedStyles) {
+      if (_processedStyles.has(styleEl)) return;
+      _processedStyles.add(styleEl);
+    }
+    var css = styleEl.textContent;
+    if (!css || css.indexOf('url(') < 0) return;
+    var newCss = css.replace(/url\\(\\s*(['"]?)([^)'"\\s]+)\\1\\s*\\)/g, function(m, q, urlVal) {
+      var r = proxyResUrl(urlVal);
+      return r ? 'url(' + q + r + q + ')' : m;
+    });
+    if (newCss !== css) styleEl.textContent = newCss;
+  }
+
   // Runtime interceptor: rewrite src/href on dynamically-created elements
-  // Catches images, scripts, links set by client-side JS (backup for MutationObserver)
+  // and url() in <style> elements (icon fonts, etc.)
   var rObs = new MutationObserver(function(mutations) {
     for (var mi = 0; mi < mutations.length; mi++) {
       var added = mutations[mi].addedNodes;
       for (var ni = 0; ni < added.length; ni++) {
         var node = added[ni];
+        // Text node added inside <style> (textContent change on icon font CSS)
+        if (node.nodeType === 3 && node.parentElement && node.parentElement.tagName === 'STYLE') {
+          rewriteStyleUrls(node.parentElement);
+          continue;
+        }
         if (node.nodeType !== 1) continue;
+        // <style> element with @font-face or background-image url() references
+        if (node.tagName === 'STYLE') {
+          rewriteStyleUrls(node);
+        }
         rewriteNodeUrls(node);
         if (node.querySelectorAll) {
           var children = node.querySelectorAll('[src],[href],[poster],[data-src],[srcset]');
           for (var ci = 0; ci < children.length; ci++) rewriteNodeUrls(children[ci]);
+          // Also rewrite url() in <style> elements within the added subtree
+          var styles = node.querySelectorAll('style');
+          for (var sti = 0; sti < styles.length; sti++) rewriteStyleUrls(styles[sti]);
         }
       }
       // Handle attribute changes (e.g., lazy-load libraries setting src)
@@ -1349,6 +1510,27 @@ async function handleProxy(
       }
     }
   });
+  // Rewrite a resource URL to go through proxy. Returns null if no rewrite needed.
+  // Handles URL fragments (#id) by placing them after the query string.
+  function proxyResUrl(val) {
+    if (!val || typeof val !== 'string') return null;
+    if (val.indexOf('/api/proxy') === 0) return null;
+    if (val.indexOf('data:') === 0 || val.indexOf('blob:') === 0 || val.charAt(0) === '#' || val.indexOf('javascript:') === 0) return null;
+    var fragment = '';
+    var hashIdx = val.indexOf('#');
+    var urlPart = val;
+    if (hashIdx >= 0) { urlPart = val.substring(0, hashIdx); fragment = val.substring(hashIdx); }
+    var proxied = null;
+    if (urlPart.indexOf(tO) === 0) {
+      proxied = '/api/proxy' + (urlPart.substring(tO.length) || '/');
+    } else if (urlPart.charAt(0) === '/') {
+      proxied = '/api/proxy' + urlPart;
+    }
+    if (proxied) {
+      return proxied + (proxied.indexOf('?') >= 0 ? '&' : '?') + pH + '=' + eT + fragment;
+    }
+    return null;
+  }
   function rewriteNodeUrls(el) {
     if (!el || !el.getAttribute) return;
     var tag = el.tagName;
@@ -1359,18 +1541,14 @@ async function handleProxy(
     if (tag !== 'A') attrs.push('href');
     for (var ai = 0; ai < attrs.length; ai++) {
       var val = el.getAttribute(attrs[ai]);
-      if (!val) continue;
-      // Skip already-rewritten paths
-      if (val.indexOf('/api/proxy') === 0) continue;
-      // Rewrite target-origin full URLs
-      if (val.indexOf(tO) === 0) {
-        var path = val.substring(tO.length) || '/';
-        el.setAttribute(attrs[ai], '/api/proxy' + path + (path.indexOf('?') >= 0 ? '&' : '?') + pH + '=' + eT);
-      }
-      // Rewrite absolute paths (e.g. /_next/image?url=...)
-      else if (val.charAt(0) === '/') {
-        el.setAttribute(attrs[ai], '/api/proxy' + val + (val.indexOf('?') >= 0 ? '&' : '?') + pH + '=' + eT);
-      }
+      var r = proxyResUrl(val);
+      if (r) el.setAttribute(attrs[ai], r);
+    }
+    // SVG xlink:href for <use> elements (e.g., <use xlink:href="/sprites.svg#icon">)
+    if (el.getAttributeNS) {
+      var xval = el.getAttributeNS('http://www.w3.org/1999/xlink', 'href');
+      var xr = proxyResUrl(xval);
+      if (xr) el.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', xr);
     }
     // Handle srcset — split on comma, rewrite each entry
     var srcset = el.getAttribute('srcset');
@@ -1383,45 +1561,52 @@ async function handleProxy(
         var spIdx = entry.indexOf(' ');
         var url = spIdx >= 0 ? entry.substring(0, spIdx) : entry;
         var desc = spIdx >= 0 ? entry.substring(spIdx) : '';
-        if (url.indexOf('/api/proxy') === 0) {
-          rewritten.push(entry);
-        } else if (url.indexOf(tO) === 0) {
-          var p2 = url.substring(tO.length) || '/';
-          rewritten.push('/api/proxy' + p2 + (p2.indexOf('?') >= 0 ? '&' : '?') + pH + '=' + eT + desc);
-          changed = true;
-        } else if (url.charAt(0) === '/') {
-          rewritten.push('/api/proxy' + url + (url.indexOf('?') >= 0 ? '&' : '?') + pH + '=' + eT + desc);
-          changed = true;
-        } else {
-          rewritten.push(entry);
-        }
+        var ru = proxyResUrl(url);
+        if (ru) { rewritten.push(ru + desc); changed = true; }
+        else rewritten.push(entry);
       }
       if (changed) {
         el.setAttribute('srcset', rewritten.join(', '));
       }
     }
   }
-  if (document.body) {
-    rObs.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['src', 'href', 'poster', 'data-src', 'srcset'] });
+  // Scan existing <style> elements in <head> that may have been added before
+  // the observer started (e.g., server-rendered @font-face or early JS injection)
+  var existingStyles = document.querySelectorAll('head style, style');
+  for (var esi = 0; esi < existingStyles.length; esi++) {
+    rewriteStyleUrls(existingStyles[esi]);
+  }
+
+  // Observe document.documentElement (<html>) instead of just document.body
+  // so we catch <style> elements with @font-face injected into <head> by
+  // frameworks like Expo/React Native Web and icon font loaders.
+  var obsRoot = document.documentElement || document.body;
+  if (obsRoot) {
+    rObs.observe(obsRoot, { childList: true, subtree: true, attributes: true, attributeFilter: ['src', 'href', 'poster', 'data-src', 'srcset'] });
   } else {
     document.addEventListener('DOMContentLoaded', function() {
-      rObs.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['src', 'href', 'poster', 'data-src', 'srcset'] });
+      rObs.observe(document.documentElement || document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['src', 'href', 'poster', 'data-src', 'srcset'] });
     });
   }
 
-  // Suppress HMR-related errors
+  // Suppress HMR and chunk-loading errors
+  function isProxyNoise(s) {
+    return s.indexOf('hmr') >= 0 || s.indexOf('hot') >= 0 || s.indexOf('WebSocket') >= 0 || s.indexOf('__webpack') >= 0 || s.indexOf('turbopack') >= 0 || s.indexOf('ChunkLoadError') >= 0 || s.indexOf('Loading chunk') >= 0 || s.indexOf('Loading CSS chunk') >= 0;
+  }
   window.addEventListener('error', function(e) {
-    var m = e.message || '';
-    if (m.indexOf('hmr') >= 0 || m.indexOf('hot') >= 0 || m.indexOf('WebSocket') >= 0 || m.indexOf('__webpack') >= 0 || m.indexOf('turbopack') >= 0) {
-      e.preventDefault(); return false;
+    if (isProxyNoise(e.message || '')) {
+      e.stopImmediatePropagation(); e.preventDefault(); return false;
     }
   });
   window.addEventListener('unhandledrejection', function(e) {
-    var r = e.reason ? String(e.reason) : '';
-    if (r.indexOf('hmr') >= 0 || r.indexOf('hot') >= 0 || r.indexOf('WebSocket') >= 0 || r.indexOf('__webpack') >= 0 || r.indexOf('turbopack') >= 0) {
-      e.preventDefault();
+    if (isProxyNoise(e.reason ? String(e.reason) : '')) {
+      e.stopImmediatePropagation(); e.preventDefault();
     }
   });
+  // Hide Next.js dev error overlay (uses <nextjs-portal> custom element)
+  var hs=document.createElement('style');
+  hs.textContent='nextjs-portal{display:none!important}';
+  document.documentElement.appendChild(hs);
 })();
 </script>`;
 

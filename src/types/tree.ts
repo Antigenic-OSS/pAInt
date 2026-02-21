@@ -5,4 +5,5 @@ export interface TreeNode {
   elementId: string | null;
   children: TreeNode[];
   imgSrc: string | null;
+  isExpanded?: boolean;
 }

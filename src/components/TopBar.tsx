@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { TargetSelector } from './TargetSelector';
 import { BreakpointTabs } from './BreakpointTabs';
 import { ChangeSummaryModal } from './ChangeSummaryModal';
+import { ProjectFolderBanner } from './ProjectFolderBanner';
 import { useEditorStore } from '@/store';
 import { usePostMessage } from '@/hooks/usePostMessage';
 import { performUndo, performRedo, performRevertAll } from '@/hooks/useChangeTracker';
@@ -229,6 +230,7 @@ export function TopBar() {
         ☰
       </button>
     </div>
+    <ProjectFolderBanner />
     {showSummary && (
       <ChangeSummaryModal onClose={() => setShowSummary(false)} />
     )}

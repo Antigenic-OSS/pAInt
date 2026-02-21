@@ -88,6 +88,7 @@ export function performRevertAll() {
   }
 
   state.clearAllChanges();
+  state.clearComponents();
 
   // Clear persisted changes from localStorage so they don't come back on refresh
   if (state.targetUrl) {

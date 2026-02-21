@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { homedir } from 'node:os';
 import { stripControlChars } from '@/lib/utils';
-import { spawnClaude } from '@/lib/claude-bin';
+import { spawnClaude, spawnClaudeStreaming, isAuthError } from '@/lib/claude-bin';
+import { validateProjectRoot } from '@/lib/validatePath';
+import { buildSmartAnalysisPrompt } from '@/lib/promptBuilder';
 import type {
   ClaudeAnalyzeRequest,
   ClaudeAnalyzeResponse,
@@ -14,40 +14,6 @@ import type {
 
 const MAX_CHANGELOG_BYTES = 50 * 1024; // 50KB
 const TIMEOUT_MS = 120_000; // 120 seconds
-
-/**
- * Validate that projectRoot is an absolute path, exists as a directory,
- * and resides under the user's HOME directory.
- */
-function validateProjectRoot(projectRoot: string): string | null {
-  if (!path.isAbsolute(projectRoot)) {
-    return 'projectRoot must be an absolute path';
-  }
-
-  const resolvedHome = path.resolve(homedir());
-
-  // Resolve to canonical form to prevent traversal tricks (e.g. /home/user/../other)
-  const resolved = path.resolve(projectRoot);
-
-  if (!resolved.startsWith(resolvedHome + path.sep) && resolved !== resolvedHome) {
-    return 'projectRoot must be under the user home directory';
-  }
-
-  if (!existsSync(resolved)) {
-    return 'projectRoot does not exist';
-  }
-
-  try {
-    const stat = statSync(resolved);
-    if (!stat.isDirectory()) {
-      return 'projectRoot is not a directory';
-    }
-  } catch {
-    return 'Unable to stat projectRoot';
-  }
-
-  return null;
-}
 
 /**
  * Parse unified diff output into structured ParsedDiff objects.
@@ -149,73 +115,125 @@ function buildSummary(diffs: ParsedDiff[]): string {
   );
 }
 
-export async function POST(request: Request): Promise<NextResponse> {
-  // Parse and validate request body
-  let body: ClaudeAnalyzeRequest;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json(
-      { error: 'Invalid JSON body' },
-      { status: 400 },
-    );
+/**
+ * Validate the request body and build the prompt. Returns an error NextResponse or the resolved data.
+ */
+function parseAndValidate(body: ClaudeAnalyzeRequest): { error: NextResponse } | { prompt: string; resolvedRoot: string } {
+  const { changelog, projectRoot, smartPrompt } = body;
+  const hasSmartPrompt = typeof smartPrompt === 'string' && smartPrompt.length > 0;
+
+  if (!hasSmartPrompt) {
+    if (!changelog || typeof changelog !== 'string' || changelog.length === 0) {
+      return { error: NextResponse.json({ error: 'changelog is required and must be a non-empty string' }, { status: 400 }) };
+    }
   }
 
-  const { changelog, projectRoot } = body;
-
-  // Validate changelog
-  if (!changelog || typeof changelog !== 'string') {
-    return NextResponse.json(
-      { error: 'changelog is required and must be a non-empty string' },
-      { status: 400 },
-    );
-  }
-
-  if (changelog.length === 0) {
-    return NextResponse.json(
-      { error: 'changelog must not be empty' },
-      { status: 400 },
-    );
-  }
-
-  // Strip control characters and enforce 50KB max
-  const sanitizedChangelog = stripControlChars(changelog).slice(0, MAX_CHANGELOG_BYTES);
-
-  // Validate projectRoot
   if (!projectRoot || typeof projectRoot !== 'string') {
-    return NextResponse.json(
-      { error: 'projectRoot is required and must be a string' },
-      { status: 400 },
-    );
+    return { error: NextResponse.json({ error: 'projectRoot is required and must be a string' }, { status: 400 }) };
   }
 
   const rootError = validateProjectRoot(projectRoot);
   if (rootError) {
-    return NextResponse.json(
-      { error: rootError },
-      { status: 400 },
-    );
+    return { error: NextResponse.json({ error: rootError }, { status: 400 }) };
   }
 
   const resolvedRoot = path.resolve(projectRoot);
 
-  // Build the prompt for Claude CLI
-  const prompt = [
-    'You are a code assistant. A user has made visual changes in a design editor.',
-    'Below is the changelog of changes they made. Analyze the project source code',
-    'and generate unified diffs that would apply these visual changes to the source files.',
-    '',
-    'IMPORTANT:',
-    '- Output ONLY unified diff format (diff --git a/... b/...)',
-    '- Use paths relative to the project root',
-    '- Do not include any explanatory text outside of the diff',
-    '- Make minimal, targeted changes',
-    '',
-    '--- CHANGELOG START ---',
-    sanitizedChangelog,
-    '--- CHANGELOG END ---',
-  ].join('\n');
+  let prompt: string;
+  if (hasSmartPrompt) {
+    const sanitized = stripControlChars(smartPrompt).slice(0, MAX_CHANGELOG_BYTES);
+    prompt = buildSmartAnalysisPrompt(sanitized, resolvedRoot);
+  } else {
+    const sanitizedChangelog = stripControlChars(changelog).slice(0, MAX_CHANGELOG_BYTES);
+    prompt = [
+      'You are a code assistant. A user has made visual changes in a design editor.',
+      'Below is the changelog of changes they made. Analyze the project source code',
+      'and generate unified diffs that would apply these visual changes to the source files.',
+      '',
+      'IMPORTANT:',
+      '- Output ONLY unified diff format (diff --git a/... b/...)',
+      '- Use paths relative to the project root',
+      '- Do not include any explanatory text outside of the diff',
+      '- Make minimal, targeted changes',
+      '',
+      '--- CHANGELOG START ---',
+      sanitizedChangelog,
+      '--- CHANGELOG END ---',
+    ].join('\n');
+  }
 
+  return { prompt, resolvedRoot };
+}
+
+/** Format an SSE event. */
+function sseEvent(event: string, data: Record<string, unknown>): string {
+  return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+}
+
+export async function POST(request: Request): Promise<Response> {
+  let body: ClaudeAnalyzeRequest;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
+
+  const validated = parseAndValidate(body);
+  if ('error' in validated) return validated.error;
+  const { prompt, resolvedRoot } = validated;
+
+  const wantsStream = request.headers.get('accept')?.includes('text/event-stream');
+
+  // ── SSE streaming path ──
+  if (wantsStream) {
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      start(controller) {
+        const enqueue = (event: string, data: Record<string, unknown>) => {
+          try { controller.enqueue(encoder.encode(sseEvent(event, data))); } catch { /* closed */ }
+        };
+
+        spawnClaudeStreaming(
+          ['--print', '--allowedTools', 'Read', '-p', prompt],
+          {
+            cwd: resolvedRoot,
+            timeout: TIMEOUT_MS,
+            onStderr: (line) => enqueue('stderr', { line }),
+          },
+        )
+          .then((result) => {
+            if (result.exitCode !== 0) {
+              enqueue('error', { code: 'CLI_ERROR', message: 'Claude CLI exited with an error' });
+            } else {
+              const diffs = parseDiffs(result.stdout);
+              const summary = buildSummary(diffs);
+              const sessionId = crypto.randomUUID();
+              const response: ClaudeAnalyzeResponse = { sessionId, diffs, summary };
+              enqueue('result', response as unknown as Record<string, unknown>);
+            }
+          })
+          .catch((err) => {
+            const message = err instanceof Error ? err.message : 'Unknown error';
+            const code = message === 'TIMEOUT' ? 'TIMEOUT' : 'SPAWN_ERROR';
+            enqueue('error', { code, message });
+          })
+          .finally(() => {
+            enqueue('done', {});
+            controller.close();
+          });
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
+    });
+  }
+
+  // ── JSON fallback path (backward compatible) ──
   try {
     const result = await spawnClaude(
       ['--print', '--allowedTools', 'Read', '-p', prompt],
@@ -223,43 +241,30 @@ export async function POST(request: Request): Promise<NextResponse> {
     );
 
     if (result.exitCode !== 0) {
+      const stderr = result.stderr.trim();
+      if (isAuthError(stderr)) {
+        return NextResponse.json(
+          { error: 'Claude CLI is not authenticated. Run `claude login` in your terminal.', authRequired: true },
+          { status: 401 },
+        );
+      }
       return NextResponse.json(
-        {
-          error: 'Claude CLI exited with an error',
-          details: result.stderr.trim() || 'Unknown CLI error',
-        },
+        { error: 'Claude CLI exited with an error', details: stderr || 'Unknown CLI error' },
         { status: 500 },
       );
     }
 
-    // Generate a session ID from the output for potential --resume usage
     const sessionIdMatch = result.stderr.match(/session[:\s]+([a-f0-9-]+)/i);
-    const sessionId = sessionIdMatch
-      ? sessionIdMatch[1]
-      : crypto.randomUUID();
-
-    // Parse diffs from CLI output
+    const sessionId = sessionIdMatch ? sessionIdMatch[1] : crypto.randomUUID();
     const diffs = parseDiffs(result.stdout);
     const summary = buildSummary(diffs);
-
-    const response: ClaudeAnalyzeResponse = {
-      sessionId,
-      diffs,
-      summary,
-    };
-
+    const response: ClaudeAnalyzeResponse = { sessionId, diffs, summary };
     return NextResponse.json(response);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     if (message === 'TIMEOUT') {
-      return NextResponse.json(
-        { error: 'Claude CLI timed out after 120 seconds' },
-        { status: 504 },
-      );
+      return NextResponse.json({ error: 'Claude CLI timed out after 120 seconds' }, { status: 504 });
     }
-    return NextResponse.json(
-      { error: 'Failed to run Claude CLI', details: message },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: 'Failed to run Claude CLI', details: message }, { status: 500 });
   }
 }

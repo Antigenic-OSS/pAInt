@@ -4,7 +4,10 @@ import { useState, useEffect, useRef } from 'react';
 import { useEditorStore } from '@/store';
 import { normalizeTargetUrl } from '@/lib/utils';
 import { BREAKPOINTS } from '@/lib/constants';
+import { useProjectScan } from '@/hooks/useProjectScan';
+import { ScanAnimation } from './common/ScanAnimation';
 import type { Breakpoint } from '@/types/changelog';
+import type { ScanResult } from '@/hooks/useProjectScan';
 
 export function ConnectModal() {
   const setTargetUrl = useEditorStore((s) => s.setTargetUrl);
@@ -17,7 +20,14 @@ export function ConnectModal() {
   const setPreviewWidth = useEditorStore((s) => s.setPreviewWidth);
   const portRoots = useEditorStore((s) => s.portRoots);
   const setProjectRoot = useEditorStore((s) => s.setProjectRoot);
-  const setProjectScan = useEditorStore((s) => s.setProjectScan);
+  const setPendingConnection = useEditorStore((s) => s.setPendingConnection);
+  const finalizeConnection = useEditorStore((s) => s.finalizeConnection);
+  const cancelPendingConnection = useEditorStore((s) => s.cancelPendingConnection);
+  const pendingTargetUrl = useEditorStore((s) => s.pendingTargetUrl);
+  const pendingFolderPath = useEditorStore((s) => s.pendingFolderPath);
+  const targetUrl = useEditorStore((s) => s.targetUrl);
+
+  const { triggerScan } = useProjectScan();
 
   const portOptions = Array.from({ length: 8 }, (_, i) => 3000 + i);
   const [selectedPort, setSelectedPort] = useState(3000);
@@ -30,10 +40,14 @@ export function ConnectModal() {
   const [howToOpen, setHowToOpen] = useState(false);
   const [showScriptFallback, setShowScriptFallback] = useState(false);
   const [scriptCopied, setScriptCopied] = useState(false);
+  const [scanResult, setScanResult] = useState<ScanResult | null>(null);
+  const [scanDone, setScanDone] = useState(false);
   const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoAdvanceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isConnecting = connectionStatus === 'connecting';
-  const targetUrl = useEditorStore((s) => s.targetUrl);
+  const isConfirming = connectionStatus === 'confirming';
+  const isScanning = connectionStatus === 'scanning';
 
   // Show script tag fallback after 5s of connecting
   useEffect(() => {
@@ -56,17 +70,35 @@ export function ConnectModal() {
     };
   }, [isConnecting, targetUrl]);
 
+  // Cleanup auto-advance timer
+  useEffect(() => {
+    return () => {
+      if (autoAdvanceRef.current) {
+        clearTimeout(autoAdvanceRef.current);
+      }
+    };
+  }, []);
+
   // Cancel current connection and reset to editable state
   const cancelConnection = () => {
     if (isConnecting) {
       setConnectionStatus('disconnected');
       setTargetUrl(null);
     }
+    if (isConfirming || isScanning) {
+      cancelPendingConnection();
+    }
     setShowScriptFallback(false);
     setScriptCopied(false);
+    setScanResult(null);
+    setScanDone(false);
     if (fallbackTimerRef.current) {
       clearTimeout(fallbackTimerRef.current);
       fallbackTimerRef.current = null;
+    }
+    if (autoAdvanceRef.current) {
+      clearTimeout(autoAdvanceRef.current);
+      autoAdvanceRef.current = null;
     }
   };
 
@@ -82,13 +114,14 @@ export function ConnectModal() {
   // Pre-fill folder path from portRoots when selected URL changes
   const currentUrl = urlMode ? customUrl.trim() : `http://localhost:${selectedPort}`;
   useEffect(() => {
+    if (connectionStatus !== 'disconnected') return;
     const normalized = normalizeTargetUrl(currentUrl);
     const saved = portRoots[normalized];
     if (saved) {
       setFolderPath(saved);
       setFolderError(null);
     }
-  }, [selectedPort, urlMode, currentUrl, portRoots]);
+  }, [selectedPort, urlMode, currentUrl, portRoots, connectionStatus]);
 
   const handleBrowse = async () => {
     setIsBrowsing(true);
@@ -119,30 +152,47 @@ export function ConnectModal() {
       return;
     }
     const normalized = normalizeTargetUrl(raw);
-
-    // Save folder path if provided
     const trimmedFolder = folderPath.trim();
+
     if (trimmedFolder) {
+      // Save folder and go to confirmation step
       setProjectRoot(normalized, trimmedFolder);
-
-      // Fire-and-forget scan
-      fetch('/api/project/scan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectRoot: trimmedFolder }),
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          if (!data.error) {
-            setProjectScan(normalized, data);
-          }
-        })
-        .catch(() => { /* scan is best-effort */ });
+      setPendingConnection(normalized, trimmedFolder);
+      addRecentUrl(normalized);
+    } else {
+      // No folder — skip confirmation and scan, connect directly
+      setPendingConnection(normalized, '');
+      addRecentUrl(normalized);
     }
+  };
 
-    setTargetUrl(normalized);
-    setConnectionStatus('connecting');
-    addRecentUrl(normalized);
+  const handleConfirm = async () => {
+    if (!pendingTargetUrl || !pendingFolderPath) return;
+    setConnectionStatus('scanning');
+    setScanResult(null);
+    setScanDone(false);
+
+    const result = await triggerScan(pendingFolderPath);
+    setScanResult(result);
+    setScanDone(true);
+
+    // Auto-advance to connecting after brief display
+    autoAdvanceRef.current = setTimeout(() => {
+      finalizeConnection();
+    }, 1200);
+  };
+
+  const handleContinueAnyway = () => {
+    if (autoAdvanceRef.current) {
+      clearTimeout(autoAdvanceRef.current);
+    }
+    finalizeConnection();
+  };
+
+  const handleBack = () => {
+    cancelPendingConnection();
+    setScanResult(null);
+    setScanDone(false);
   };
 
   const handleRecentClick = (url: string) => {
@@ -158,6 +208,15 @@ export function ConnectModal() {
       handleConnect();
     }
   };
+
+  // Header subtitle changes per step
+  const headerSubtitle = isConfirming
+    ? 'Confirm connection details'
+    : isScanning
+      ? 'Scanning project folder'
+      : isConnecting
+        ? 'Connecting to your project'
+        : 'Connect to your localhost project';
 
   return (
     <div
@@ -204,267 +263,269 @@ export function ConnectModal() {
             className="text-xs ml-[30px]"
             style={{ color: 'var(--text-secondary)' }}
           >
-            Connect to your localhost project
+            {headerSubtitle}
           </p>
         </div>
 
         {/* Body — scrollable */}
         <div className="flex-1 overflow-y-auto px-6 py-5">
-          {/* Connection controls */}
-          <div className="flex items-center gap-2">
-            {/* URL mode toggle */}
-            <button
-              onClick={() => {
-                setUrlMode(!urlMode);
-                setError(null);
-                cancelConnection();
-              }}
-              className="p-1.5 rounded transition-colors flex-shrink-0"
-              style={{
-                color: urlMode ? 'var(--accent)' : 'var(--text-muted)',
-                background: urlMode ? 'var(--accent-bg)' : 'transparent',
-              }}
-              title={urlMode ? 'Switch to port selector' : 'Switch to URL input'}
-            >
-              {urlMode ? (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="6 9 6 2 18 2 18 9" />
-                  <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-                  <rect x="6" y="14" width="12" height="8" />
-                </svg>
-              ) : (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                </svg>
-              )}
-            </button>
 
-            {/* Port selector or URL input */}
-            {urlMode ? (
-              <input
-                type="text"
-                value={customUrl}
-                onChange={(e) => { setCustomUrl(e.target.value); setError(null); cancelConnection(); }}
-                onKeyDown={handleKeyDown}
-                placeholder="http://localhost:3000/path"
-                className="flex-1 text-xs rounded px-2.5 py-1.5 outline-none"
-                style={{
-                  background: 'var(--bg-secondary)',
-                  color: 'var(--text-primary)',
-                  border: '1px solid var(--border)',
-                }}
-                autoFocus
-              />
-            ) : (
-              <select
-                value={selectedPort}
-                onChange={(e) => { setSelectedPort(parseInt(e.target.value, 10)); setError(null); cancelConnection(); }}
-                onKeyDown={handleKeyDown}
-                className="flex-1 text-xs rounded px-2.5 py-1.5 outline-none"
-                style={{
-                  background: 'var(--bg-secondary)',
-                  color: 'var(--text-primary)',
-                  border: '1px solid var(--border)',
-                }}
-              >
-                {portOptions.map((port) => (
-                  <option key={port} value={port}>
-                    http://localhost:{port}
-                  </option>
-                ))}
-              </select>
-            )}
-
-          </div>
-
-          {/* Breakpoint selector */}
-          <div className="flex items-center gap-1.5 mt-3">
-            <span
-              className="text-[11px] mr-1"
-              style={{ color: 'var(--text-muted)' }}
-            >
-              Viewport
-            </span>
-            {(Object.entries(BREAKPOINTS) as [Breakpoint, { label: string; width: number }][])
-              .reverse()
-              .map(([bp, { label, width }]) => (
+          {/* ─── STEP: SETUP (disconnected) ─── */}
+          {connectionStatus === 'disconnected' && (
+            <>
+              {/* Connection controls */}
+              <div className="flex items-center gap-2">
+                {/* URL mode toggle */}
                 <button
-                  key={bp}
                   onClick={() => {
-                    setActiveBreakpoint(bp);
-                    setPreviewWidth(width);
+                    setUrlMode(!urlMode);
+                    setError(null);
                   }}
-                  className="text-[11px] px-2.5 py-1 rounded transition-colors"
+                  className="p-1.5 rounded transition-colors flex-shrink-0"
                   style={{
-                    background: activeBreakpoint === bp ? 'var(--accent-bg)' : 'var(--bg-tertiary)',
-                    color: activeBreakpoint === bp ? 'var(--accent)' : 'var(--text-secondary)',
-                    border: `1px solid ${activeBreakpoint === bp ? 'var(--accent)' : 'var(--border)'}`,
+                    color: urlMode ? 'var(--accent)' : 'var(--text-muted)',
+                    background: urlMode ? 'var(--accent-bg)' : 'transparent',
                   }}
+                  title={urlMode ? 'Switch to port selector' : 'Switch to URL input'}
                 >
-                  {label}
-                  <span
-                    className="ml-1"
-                    style={{ color: 'var(--text-muted)', fontSize: '10px' }}
-                  >
-                    {width}px
-                  </span>
+                  {urlMode ? (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="6 9 6 2 18 2 18 9" />
+                      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                      <rect x="6" y="14" width="12" height="8" />
+                    </svg>
+                  ) : (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                    </svg>
+                  )}
                 </button>
-              ))}
-          </div>
 
-          {/* Project folder path (optional) */}
-          <div className="mt-3">
-            <span
-              className="text-[11px] mr-1"
-              style={{ color: 'var(--text-muted)' }}
-            >
-              Project folder
-              <span className="ml-1" style={{ color: 'var(--text-muted)', opacity: 0.6 }}>
-                (optional)
-              </span>
-            </span>
-            <div className="flex items-center gap-1.5 mt-1">
-              <div
-                className="flex-1 text-xs rounded px-2.5 py-1.5 font-mono truncate cursor-default select-none"
-                style={{
-                  background: 'var(--bg-secondary)',
-                  color: folderPath ? 'var(--text-primary)' : 'var(--text-muted)',
-                  border: `1px solid ${folderError ? 'var(--error)' : 'var(--border)'}`,
-                  minHeight: '28px',
-                  lineHeight: '16px',
-                }}
-                title={folderPath || undefined}
-                onClick={handleBrowse}
-              >
-                {folderPath || 'Click Browse to select a folder'}
+                {/* Port selector or URL input */}
+                {urlMode ? (
+                  <input
+                    type="text"
+                    value={customUrl}
+                    onChange={(e) => { setCustomUrl(e.target.value); setError(null); }}
+                    onKeyDown={handleKeyDown}
+                    placeholder="http://localhost:3000/path"
+                    className="flex-1 text-xs rounded px-2.5 py-1.5 outline-none"
+                    style={{
+                      background: 'var(--bg-secondary)',
+                      color: 'var(--text-primary)',
+                      border: '1px solid var(--border)',
+                    }}
+                    autoFocus
+                  />
+                ) : (
+                  <select
+                    value={selectedPort}
+                    onChange={(e) => { setSelectedPort(parseInt(e.target.value, 10)); setError(null); }}
+                    onKeyDown={handleKeyDown}
+                    className="flex-1 text-xs rounded px-2.5 py-1.5 outline-none"
+                    style={{
+                      background: 'var(--bg-secondary)',
+                      color: 'var(--text-primary)',
+                      border: '1px solid var(--border)',
+                    }}
+                  >
+                    {portOptions.map((port) => (
+                      <option key={port} value={port}>
+                        http://localhost:{port}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
-              <button
-                onClick={handleBrowse}
-                disabled={isBrowsing}
-                className="px-2.5 py-1.5 text-[11px] rounded transition-colors flex-shrink-0"
-                style={{
-                  background: 'var(--bg-tertiary)',
-                  color: 'var(--text-secondary)',
-                  border: '1px solid var(--border)',
-                  opacity: isBrowsing ? 0.6 : 1,
-                }}
-                title="Browse for folder"
-              >
-                {isBrowsing ? '...' : 'Browse'}
-              </button>
-            </div>
-            {folderError && (
-              <p className="text-[11px] mt-1" style={{ color: 'var(--error)' }}>
-                {folderError}
-              </p>
-            )}
-          </div>
 
-          {/* Recent URLs */}
-          {recentUrls.length > 0 && (
-            <div className="mt-4">
-              <span
-                className="text-[11px] font-medium"
-                style={{ color: 'var(--text-muted)' }}
-              >
-                Recent
-              </span>
-              <div className="flex flex-wrap gap-1.5 mt-1.5">
-                {recentUrls.map((url) => (
+              {/* Breakpoint selector */}
+              <div className="flex items-center gap-1.5 mt-3">
+                <span
+                  className="text-[11px] mr-1"
+                  style={{ color: 'var(--text-muted)' }}
+                >
+                  Viewport
+                </span>
+                {(Object.entries(BREAKPOINTS) as [Breakpoint, { label: string; width: number }][])
+                  .reverse()
+                  .map(([bp, { label, width }]) => (
+                    <button
+                      key={bp}
+                      onClick={() => {
+                        setActiveBreakpoint(bp);
+                        setPreviewWidth(width);
+                      }}
+                      className="text-[11px] px-2.5 py-1 rounded transition-colors"
+                      style={{
+                        background: activeBreakpoint === bp ? 'var(--accent-bg)' : 'var(--bg-tertiary)',
+                        color: activeBreakpoint === bp ? 'var(--accent)' : 'var(--text-secondary)',
+                        border: `1px solid ${activeBreakpoint === bp ? 'var(--accent)' : 'var(--border)'}`,
+                      }}
+                    >
+                      {label}
+                      <span
+                        className="ml-1"
+                        style={{ color: 'var(--text-muted)', fontSize: '10px' }}
+                      >
+                        {width}px
+                      </span>
+                    </button>
+                  ))}
+              </div>
+
+              {/* Project folder path (optional) */}
+              <div className="mt-3">
+                <span
+                  className="text-[11px] mr-1"
+                  style={{ color: 'var(--text-muted)' }}
+                >
+                  Project folder
+                  <span className="ml-1" style={{ color: 'var(--text-muted)', opacity: 0.6 }}>
+                    (optional)
+                  </span>
+                </span>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <div
+                    className="flex-1 text-xs rounded px-2.5 py-1.5 font-mono truncate cursor-default select-none"
+                    style={{
+                      background: 'var(--bg-secondary)',
+                      color: folderPath ? 'var(--text-primary)' : 'var(--text-muted)',
+                      border: `1px solid ${folderError ? 'var(--error)' : 'var(--border)'}`,
+                      minHeight: '28px',
+                      lineHeight: '16px',
+                    }}
+                    title={folderPath || undefined}
+                    onClick={handleBrowse}
+                  >
+                    {folderPath || 'Click Browse to select a folder'}
+                  </div>
                   <button
-                    key={url}
-                    onClick={() => handleRecentClick(url)}
-                    className="text-[11px] px-2.5 py-1 rounded transition-colors"
+                    onClick={handleBrowse}
+                    disabled={isBrowsing}
+                    className="px-2.5 py-1.5 text-[11px] rounded transition-colors flex-shrink-0"
                     style={{
                       background: 'var(--bg-tertiary)',
                       color: 'var(--text-secondary)',
                       border: '1px solid var(--border)',
+                      opacity: isBrowsing ? 0.6 : 1,
                     }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = 'var(--accent)';
-                      e.currentTarget.style.color = 'var(--text-primary)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = 'var(--border)';
-                      e.currentTarget.style.color = 'var(--text-secondary)';
-                    }}
+                    title="Browse for folder"
                   >
-                    {url.replace(/^https?:\/\//, '')}
+                    {isBrowsing ? '...' : 'Browse'}
                   </button>
-                ))}
+                </div>
+                {folderError && (
+                  <p className="text-[11px] mt-1" style={{ color: 'var(--error)' }}>
+                    {folderError}
+                  </p>
+                )}
               </div>
-            </div>
-          )}
 
-          {/* Divider */}
-          <div
-            className="h-px my-5"
-            style={{ background: 'var(--border)' }}
-          />
+              {/* Recent URLs */}
+              {recentUrls.length > 0 && (
+                <div className="mt-4">
+                  <span
+                    className="text-[11px] font-medium"
+                    style={{ color: 'var(--text-muted)' }}
+                  >
+                    Recent
+                  </span>
+                  <div className="flex flex-wrap gap-1.5 mt-1.5">
+                    {recentUrls.map((url) => (
+                      <button
+                        key={url}
+                        onClick={() => handleRecentClick(url)}
+                        className="text-[11px] px-2.5 py-1 rounded transition-colors"
+                        style={{
+                          background: 'var(--bg-tertiary)',
+                          color: 'var(--text-secondary)',
+                          border: '1px solid var(--border)',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.borderColor = 'var(--accent)';
+                          e.currentTarget.style.color = 'var(--text-primary)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = 'var(--border)';
+                          e.currentTarget.style.color = 'var(--text-secondary)';
+                        }}
+                      >
+                        {url.replace(/^https?:\/\//, '')}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-          {/* How to Use — collapsible */}
-          <button
-            onClick={() => setHowToOpen(!howToOpen)}
-            className="flex items-center gap-2 w-full text-left"
-          >
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="var(--text-muted)"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="transition-transform flex-shrink-0"
-              style={{
-                transform: howToOpen ? 'rotate(0deg)' : 'rotate(-90deg)',
-              }}
-            >
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
-            <span
-              className="text-xs font-medium"
-              style={{ color: 'var(--text-secondary)' }}
-            >
-              How to Use
-            </span>
-          </button>
+              {/* Divider */}
+              <div
+                className="h-px my-5"
+                style={{ background: 'var(--border)' }}
+              />
 
-          {howToOpen && (
-            <div
-              className="mt-3 rounded-lg px-4 py-4 text-xs leading-relaxed flex flex-col gap-4"
-              style={{
-                background: 'var(--bg-secondary)',
-                color: 'var(--text-secondary)',
-              }}
-            >
-              {/* Connection Methods */}
-              <div>
-                <h4
-                  className="text-[11px] font-semibold uppercase tracking-wide mb-2"
-                  style={{ color: 'var(--text-primary)' }}
+              {/* How to Use — collapsible */}
+              <button
+                onClick={() => setHowToOpen(!howToOpen)}
+                className="flex items-center gap-2 w-full text-left"
+              >
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="var(--text-muted)"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="transition-transform flex-shrink-0"
+                  style={{
+                    transform: howToOpen ? 'rotate(0deg)' : 'rotate(-90deg)',
+                  }}
                 >
-                  Connection Methods
-                </h4>
-                <div className="flex flex-col gap-2">
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+                <span
+                  className="text-xs font-medium"
+                  style={{ color: 'var(--text-secondary)' }}
+                >
+                  How to Use
+                </span>
+              </button>
+
+              {howToOpen && (
+                <div
+                  className="mt-3 rounded-lg px-4 py-4 text-xs leading-relaxed flex flex-col gap-4"
+                  style={{
+                    background: 'var(--bg-secondary)',
+                    color: 'var(--text-secondary)',
+                  }}
+                >
+                  {/* Connection Methods */}
                   <div>
-                    <span style={{ color: 'var(--success)' }}>Automatic (Reverse Proxy)</span> — Default. The editor loads your page through a built-in proxy and injects the inspector script automatically.
-                  </div>
-                  <div>
-                    <span style={{ color: 'var(--warning)' }}>Manual (Script Tag)</span> — If auto-connect takes longer than 5s, add the provided script tag to your project&apos;s HTML layout.
-                  </div>
-                  <div>
-                    <span style={{ color: 'var(--accent)' }}>React Native / Expo Web</span> — Add the inspector script dynamically in your root layout:
-                    <pre
-                      className="mt-1.5 px-3 py-2.5 rounded text-[11px] leading-relaxed overflow-x-auto whitespace-pre"
-                      style={{
-                        background: 'var(--bg-tertiary)',
-                        color: 'var(--text-primary)',
-                        border: '1px solid var(--border)',
-                      }}
-                    >{`useEffect(() => {
+                    <h4
+                      className="text-[11px] font-semibold uppercase tracking-wide mb-2"
+                      style={{ color: 'var(--text-primary)' }}
+                    >
+                      Connection Methods
+                    </h4>
+                    <div className="flex flex-col gap-2">
+                      <div>
+                        <span style={{ color: 'var(--success)' }}>Automatic (Reverse Proxy)</span> — Default. The editor loads your page through a built-in proxy and injects the inspector script automatically.
+                      </div>
+                      <div>
+                        <span style={{ color: 'var(--warning)' }}>Manual (Script Tag)</span> — If auto-connect takes longer than 5s, add the provided script tag to your project&apos;s HTML layout.
+                      </div>
+                      <div>
+                        <span style={{ color: 'var(--accent)' }}>React Native / Expo Web</span> — Add the inspector script dynamically in your root layout:
+                        <pre
+                          className="mt-1.5 px-3 py-2.5 rounded text-[11px] leading-relaxed overflow-x-auto whitespace-pre"
+                          style={{
+                            background: 'var(--bg-tertiary)',
+                            color: 'var(--text-primary)',
+                            border: '1px solid var(--border)',
+                          }}
+                        >{`useEffect(() => {
   if (Platform.OS === 'web') {
     const script1 = document.createElement('script');
     script1.src = 'http://localhost:4000/dev-editor-inspector.js';
@@ -480,25 +541,179 @@ export function ConnectModal() {
     };
   }
 }`}</pre>
+                      </div>
+                    </div>
                   </div>
+
+                  {/* What You Can Do */}
+                  <div>
+                    <h4
+                      className="text-[11px] font-semibold uppercase tracking-wide mb-2"
+                      style={{ color: 'var(--text-primary)' }}
+                    >
+                      What You Can Do
+                    </h4>
+                    <ul className="flex flex-col gap-1">
+                      <li><span style={{ color: 'var(--accent)' }}>Style Editing</span> — Adjust colors, spacing, typography, borders, and layout live</li>
+                      <li><span style={{ color: 'var(--accent)' }}>Responsive Testing</span> — Switch between Mobile, Tablet, and Desktop breakpoints</li>
+                      <li><span style={{ color: 'var(--accent)' }}>Change Tracking</span> — Every edit recorded with original and new values</li>
+                      <li><span style={{ color: 'var(--accent)' }}>Changelog Export</span> — Copy or send changes to Claude Code for source file updates</li>
+                    </ul>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* ─── STEP: CONFIRM ─── */}
+          {isConfirming && (
+            <div className="flex flex-col gap-4">
+              {/* URL summary */}
+              <div>
+                <span
+                  className="text-[11px] font-medium"
+                  style={{ color: 'var(--text-muted)' }}
+                >
+                  URL
+                </span>
+                <div
+                  className="mt-1 text-xs rounded px-3 py-2 font-mono"
+                  style={{
+                    background: 'var(--bg-secondary)',
+                    color: 'var(--text-primary)',
+                    border: '1px solid var(--border)',
+                  }}
+                >
+                  {pendingTargetUrl}
                 </div>
               </div>
 
-              {/* What You Can Do */}
+              {/* Folder summary */}
               <div>
-                <h4
-                  className="text-[11px] font-semibold uppercase tracking-wide mb-2"
-                  style={{ color: 'var(--text-primary)' }}
+                <span
+                  className="text-[11px] font-medium"
+                  style={{ color: 'var(--text-muted)' }}
                 >
-                  What You Can Do
-                </h4>
-                <ul className="flex flex-col gap-1">
-                  <li><span style={{ color: 'var(--accent)' }}>Style Editing</span> — Adjust colors, spacing, typography, borders, and layout live</li>
-                  <li><span style={{ color: 'var(--accent)' }}>Responsive Testing</span> — Switch between Mobile, Tablet, and Desktop breakpoints</li>
-                  <li><span style={{ color: 'var(--accent)' }}>Change Tracking</span> — Every edit recorded with original and new values</li>
-                  <li><span style={{ color: 'var(--accent)' }}>Changelog Export</span> — Copy or send changes to Claude Code for source file updates</li>
-                </ul>
+                  Project Folder
+                </span>
+                <div
+                  className="mt-1 text-xs rounded px-3 py-2 font-mono truncate"
+                  style={{
+                    background: 'var(--bg-secondary)',
+                    color: 'var(--text-primary)',
+                    border: '1px solid var(--border)',
+                  }}
+                  title={pendingFolderPath || undefined}
+                >
+                  {pendingFolderPath}
+                </div>
               </div>
+
+              <p
+                className="text-[11px]"
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                Clicking Confirm will scan this folder for components and CSS files before loading the page.
+              </p>
+            </div>
+          )}
+
+          {/* ─── STEP: SCANNING ─── */}
+          {isScanning && (
+            <div className="flex flex-col items-center py-6 gap-4">
+              <ScanAnimation active={!scanDone} label="SCANNING" />
+
+              {/* Folder being scanned */}
+              <p
+                className="text-[11px] font-mono text-center truncate max-w-full px-4"
+                style={{ color: 'var(--text-secondary)' }}
+                title={pendingFolderPath || undefined}
+              >
+                {pendingFolderPath}
+              </p>
+
+              {/* Scan result feedback */}
+              {scanDone && scanResult && scanResult.success && (
+                <div className="flex flex-col items-center gap-1.5">
+                  <div
+                    className="text-xs font-medium text-center"
+                    style={{ color: 'var(--success)' }}
+                  >
+                    {[
+                      scanResult.count > 0 ? `${scanResult.count} component${scanResult.count !== 1 ? 's' : ''}` : null,
+                      scanResult.pageCount > 0 ? `${scanResult.pageCount} page${scanResult.pageCount !== 1 ? 's' : ''}` : null,
+                      scanResult.cssFileCount > 0 ? `${scanResult.cssFileCount} CSS file${scanResult.cssFileCount !== 1 ? 's' : ''}` : null,
+                    ].filter(Boolean).join(', ') || 'No files found'}
+                  </div>
+                  {(scanResult.framework || scanResult.cssStrategy.length > 0) && (
+                    <div
+                      className="text-[11px] text-center"
+                      style={{ color: 'var(--text-secondary)' }}
+                    >
+                      {[
+                        scanResult.framework,
+                        scanResult.cssStrategy.length > 0 ? scanResult.cssStrategy.join(', ') : null,
+                      ].filter(Boolean).join('  \u00b7  ')}
+                    </div>
+                  )}
+                </div>
+              )}
+              {scanDone && scanResult && !scanResult.success && (
+                <div
+                  className="text-xs font-medium text-center"
+                  style={{ color: 'var(--error)' }}
+                >
+                  {scanResult.error || 'Scan failed'}
+                </div>
+              )}
+
+              {/* Error: continue anyway / back */}
+              {scanDone && scanResult && !scanResult.success && (
+                <div className="flex items-center gap-3 mt-2">
+                  <button
+                    onClick={handleBack}
+                    className="px-4 py-1.5 text-[11px] rounded transition-colors"
+                    style={{
+                      background: 'var(--bg-tertiary)',
+                      color: 'var(--text-secondary)',
+                      border: '1px solid var(--border)',
+                    }}
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={handleContinueAnyway}
+                    className="px-4 py-1.5 text-[11px] rounded font-medium transition-colors"
+                    style={{
+                      background: 'var(--accent)',
+                      color: '#fff',
+                    }}
+                  >
+                    Continue anyway
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ─── STEP: CONNECTING ─── */}
+          {isConnecting && (
+            <div className="flex flex-col items-center py-8 gap-3">
+              {/* Spinner */}
+              <div
+                className="w-8 h-8 rounded-full"
+                style={{
+                  border: '2px solid var(--border)',
+                  borderTopColor: 'var(--accent)',
+                  animation: 'spin 0.8s linear infinite',
+                }}
+              />
+              <p
+                className="text-xs"
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                Connecting to {targetUrl?.replace(/^https?:\/\//, '')}...
+              </p>
             </div>
           )}
         </div>
@@ -549,7 +764,7 @@ export function ConnectModal() {
           </div>
         )}
 
-        {/* Footer — Connect button */}
+        {/* Footer */}
         <div
           className="px-6 py-4 flex-shrink-0"
           style={{ borderTop: '1px solid var(--border)' }}
@@ -559,31 +774,92 @@ export function ConnectModal() {
               {error}
             </p>
           )}
-          <button
-            onClick={handleConnect}
-            disabled={isConnecting}
-            className="w-full py-2 text-xs rounded font-medium transition-colors"
-            style={{
-              background: isConnecting ? 'var(--bg-hover)' : 'var(--accent)',
-              color: isConnecting ? 'var(--text-secondary)' : '#fff',
-              opacity: isConnecting ? 0.7 : 1,
-            }}
-          >
-            {isConnecting ? 'Connecting...' : 'Connect'}
-          </button>
-          <div className="mt-3 text-center">
-            <a
-              href="/docs"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs no-underline transition-colors"
-              style={{ color: 'var(--text-muted)' }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--accent)')}
-              onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+
+          {/* SETUP footer: Connect button */}
+          {connectionStatus === 'disconnected' && (
+            <>
+              <button
+                onClick={handleConnect}
+                className="w-full py-2 text-xs rounded font-medium transition-colors"
+                style={{
+                  background: 'var(--accent)',
+                  color: '#fff',
+                }}
+              >
+                Connect
+              </button>
+              <div className="mt-3 text-center">
+                <a
+                  href="/docs"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs no-underline transition-colors"
+                  style={{ color: 'var(--text-muted)' }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--accent)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+                >
+                  Setup Guide & Docs
+                </a>
+              </div>
+            </>
+          )}
+
+          {/* CONFIRM footer: Back + Confirm buttons */}
+          {isConfirming && (
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleBack}
+                className="flex-1 py-2 text-xs rounded font-medium transition-colors"
+                style={{
+                  background: 'var(--bg-tertiary)',
+                  color: 'var(--text-secondary)',
+                  border: '1px solid var(--border)',
+                }}
+              >
+                Back
+              </button>
+              <button
+                onClick={handleConfirm}
+                className="flex-1 py-2 text-xs rounded font-medium transition-colors"
+                style={{
+                  background: 'var(--accent)',
+                  color: '#fff',
+                }}
+              >
+                Confirm
+              </button>
+            </div>
+          )}
+
+          {/* SCANNING footer: Cancel */}
+          {isScanning && !scanDone && (
+            <button
+              onClick={cancelConnection}
+              className="w-full py-2 text-xs rounded font-medium transition-colors"
+              style={{
+                background: 'var(--bg-tertiary)',
+                color: 'var(--text-secondary)',
+                border: '1px solid var(--border)',
+              }}
             >
-              Setup Guide & Docs
-            </a>
-          </div>
+              Cancel
+            </button>
+          )}
+
+          {/* CONNECTING footer: Cancel */}
+          {isConnecting && (
+            <button
+              onClick={cancelConnection}
+              className="w-full py-2 text-xs rounded font-medium transition-colors"
+              style={{
+                background: 'var(--bg-tertiary)',
+                color: 'var(--text-secondary)',
+                border: '1px solid var(--border)',
+              }}
+            >
+              Cancel
+            </button>
+          )}
         </div>
       </div>
     </div>

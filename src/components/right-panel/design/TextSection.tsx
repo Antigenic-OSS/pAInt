@@ -110,7 +110,7 @@ function parseFontStack(value: string): string[] {
   }
   const last = current.trim().replace(/^["']|["']$/g, '');
   if (last) fonts.push(last);
-  return fonts;
+  return [...new Set(fonts)];
 }
 
 // --- Helper: extract first keyword from compound text-decoration ---

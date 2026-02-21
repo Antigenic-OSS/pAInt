@@ -4,6 +4,7 @@ import React, { useEffect, useCallback } from 'react';
 import { useEditorStore } from '@/store';
 import type { InspectorToEditorMessage, EditorToInspectorMessage } from '@/types/messages';
 import { generateId } from '@/lib/utils';
+import { buildTailwindClassMap } from '@/lib/tailwindClassParser';
 
 function isAllowedOrigin(origin: string): boolean {
   try {
@@ -112,13 +113,54 @@ function handleMessage(event: MessageEvent) {
       }
       store.selectElement(msg.payload);
       store.setCSSVariableUsages(msg.payload.cssVariableUsages || {});
+      // Build Tailwind class → CSS property → variable mapping
+      const twMap = buildTailwindClassMap(msg.payload.className, store.cssVariableDefinitions);
+      store.setTailwindClassMap(twMap);
       store.setActiveRightTab('design');
       break;
     }
 
-    case 'CSS_VARIABLES':
-      store.setCSSVariableDefinitions(msg.payload.definitions, msg.payload.isExplicit);
+    case 'CSS_VARIABLES': {
+      store.setCSSVariableDefinitions(msg.payload.definitions, msg.payload.isExplicit, msg.payload.scopes);
+      const varCount = Object.keys(msg.payload.definitions).length;
+      const csProjectRoot = useEditorStore.getState().projectRoot;
+
+      // If the inspector found no variables, try scanning the project folder
+      if (varCount === 0 && csProjectRoot) {
+        fetch('/api/project-scan/css-variables', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ projectRoot: csProjectRoot }),
+        })
+          .then((res) => res.ok ? res.json() : null)
+          .then((data) => {
+            if (data?.definitions && Object.keys(data.definitions).length > 0) {
+              useEditorStore.getState().setCSSVariableDefinitions(data.definitions, false);
+            }
+          })
+          .catch(() => { /* ignore scan failures */ });
+      }
+
+      // Also try Tailwind config parser to supplement with theme colors
+      if (csProjectRoot) {
+        fetch('/api/project-scan/tailwind-config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ projectRoot: csProjectRoot }),
+        })
+          .then((res) => res.ok ? res.json() : null)
+          .then((data) => {
+            if (data?.definitions && Object.keys(data.definitions).length > 0) {
+              // Merge with existing definitions (don't overwrite runtime-scanned vars)
+              const current = useEditorStore.getState().cssVariableDefinitions;
+              const merged = { ...data.definitions, ...current };
+              useEditorStore.getState().setCSSVariableDefinitions(merged, false);
+            }
+          })
+          .catch(() => { /* ignore tailwind config scan failures */ });
+      }
       break;
+    }
 
     case 'ELEMENT_HOVERED':
       store.setHighlightedNodeId(msg.payload.selectorPath);

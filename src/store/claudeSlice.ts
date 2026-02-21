@@ -1,5 +1,5 @@
 import type { StateCreator } from 'zustand';
-import type { ClaudeStatus, ClaudeError, ParsedDiff, ProjectScanResult } from '@/types/claude';
+import type { ClaudeStatus, ClaudeError, ParsedDiff, ProjectScanResult, ClaudeScanResponse } from '@/types/claude';
 import { LOCAL_STORAGE_KEYS } from '@/lib/constants';
 
 export interface ClaudeSlice {
@@ -12,6 +12,17 @@ export interface ClaudeSlice {
   parsedDiffs: ParsedDiff[];
   claudeError: ClaudeError | null;
 
+  // Project scan state
+  componentFileMap: Record<string, string> | null;
+  scanStatus: 'idle' | 'scanning' | 'complete' | 'error';
+  scanError: string | null;
+  scannedProjectName: string | null;
+
+  // AI scan state (smart prompt generation)
+  aiScanStatus: 'idle' | 'scanning' | 'complete' | 'error';
+  aiScanResult: ClaudeScanResponse | null;
+  aiScanError: string | null;
+
   setClaudeStatus: (status: ClaudeStatus) => void;
   setProjectRoot: (url: string, path: string | null) => void;
   getProjectRootForUrl: (url: string | null) => string | null;
@@ -23,6 +34,19 @@ export interface ClaudeSlice {
   setClaudeError: (error: ClaudeError | null) => void;
   resetClaude: () => void;
   loadPersistedClaude: () => void;
+
+  // Project scan actions
+  setComponentFileMap: (map: Record<string, string> | null) => void;
+  setScanStatus: (status: 'idle' | 'scanning' | 'complete' | 'error') => void;
+  setScanError: (error: string | null) => void;
+  setScannedProjectName: (name: string | null) => void;
+  clearScan: () => void;
+
+  // AI scan actions
+  setAiScanStatus: (status: 'idle' | 'scanning' | 'complete' | 'error') => void;
+  setAiScanResult: (result: ClaudeScanResponse | null) => void;
+  setAiScanError: (error: string | null) => void;
+  resetAiScan: () => void;
 }
 
 function persistPortRoots(portRoots: Record<string, string>) {
@@ -46,6 +70,15 @@ export const createClaudeSlice: StateCreator<ClaudeSlice, [], [], ClaudeSlice> =
   sessionId: null,
   parsedDiffs: [],
   claudeError: null,
+
+  componentFileMap: null,
+  scanStatus: 'idle',
+  scanError: null,
+  scannedProjectName: null,
+
+  aiScanStatus: 'idle',
+  aiScanResult: null,
+  aiScanError: null,
 
   setClaudeStatus: (status) => set({ claudeStatus: status }),
 
@@ -93,8 +126,31 @@ export const createClaudeSlice: StateCreator<ClaudeSlice, [], [], ClaudeSlice> =
       sessionId: null,
       parsedDiffs: [],
       claudeError: null,
+      aiScanStatus: 'idle',
+      aiScanResult: null,
+      aiScanError: null,
     });
   },
+
+  setComponentFileMap: (map) => set({ componentFileMap: map }),
+  setScanStatus: (status) => set({ scanStatus: status }),
+  setScanError: (error) => set({ scanError: error }),
+  setScannedProjectName: (name) => set({ scannedProjectName: name }),
+  clearScan: () => set({
+    componentFileMap: null,
+    scanStatus: 'idle',
+    scanError: null,
+    scannedProjectName: null,
+  }),
+
+  setAiScanStatus: (status) => set({ aiScanStatus: status }),
+  setAiScanResult: (result) => set({ aiScanResult: result }),
+  setAiScanError: (error) => set({ aiScanError: error }),
+  resetAiScan: () => set({
+    aiScanStatus: 'idle',
+    aiScanResult: null,
+    aiScanError: null,
+  }),
 
   loadPersistedClaude: () => {
     try {

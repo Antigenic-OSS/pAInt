@@ -71,6 +71,7 @@ export const createComponentSlice: StateCreator<ComponentSlice, [], [], Componen
       detectedComponents: [],
       selectedComponentPath: null,
       componentSearchQuery: '',
+      createdComponents: {},
     });
   },
 });

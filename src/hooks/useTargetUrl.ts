@@ -48,15 +48,15 @@ export function useTargetUrl() {
     return stopHeartbeat;
   }, [connectionStatus, startHeartbeat, stopHeartbeat]);
 
-  // Auto-reconnect on disconnect
+  // Auto-reconnect on disconnect (confirming/scanning have null targetUrl so they won't trigger this)
   useEffect(() => {
-    if (connectionStatus === 'disconnected' && targetUrl && retryCountRef.current < RECONNECT_MAX_RETRIES) {
-      const delay = RECONNECT_BASE_DELAY_MS * Math.pow(2, retryCountRef.current);
-      retryTimeoutRef.current = setTimeout(() => {
-        retryCountRef.current++;
-        setConnectionStatus('connecting');
-      }, delay);
-    }
+    if (connectionStatus !== 'disconnected' || !targetUrl || retryCountRef.current >= RECONNECT_MAX_RETRIES) return;
+
+    const delay = RECONNECT_BASE_DELAY_MS * Math.pow(2, retryCountRef.current);
+    retryTimeoutRef.current = setTimeout(() => {
+      retryCountRef.current++;
+      setConnectionStatus('connecting');
+    }, delay);
 
     return () => {
       if (retryTimeoutRef.current) {

@@ -6,9 +6,11 @@ import { useChangeTracker } from '@/hooks/useChangeTracker';
 import { buildInstructionsFooter, getBreakpointDeviceInfo } from '@/lib/constants';
 import { inferSourcePath } from '@/lib/classifyElement';
 import { camelToKebab } from '@/lib/utils';
+import { consumeClaudeStream, formatStderrLine } from '@/lib/claude-stream';
 import { EditablePre } from '@/components/common/EditablePre';
+import { AiScanResultPanel } from './AiScanResultPanel';
 import type { StyleChange, ElementSnapshot, Breakpoint } from '@/types/changelog';
-import type { FileMap, SourceInfo } from '@/types/claude';
+import type { FileMap, ClaudeScanResponse } from '@/types/claude';
 
 type BreakpointGroupKey = 'all' | 'desktop-only' | 'tablet-only' | 'mobile-only';
 
@@ -41,6 +43,46 @@ function getComponentName(className: string | null | undefined): string | null {
   return match.substring(2).split('-').map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
 }
 
+function buildComponentCreationLog(extraction: StyleChange): string {
+  const lines: string[] = [];
+  try {
+    const data = JSON.parse(extraction.newValue) as {
+      name: string;
+      variants: Array<{ groupName: string; options: string[] }>;
+    };
+    const kebabName = data.name
+      .replace(/([a-z])([A-Z])/g, '$1-$2')
+      .replace(/\s+/g, '-')
+      .toLowerCase();
+
+    lines.push('=== COMPONENT EXTRACTION ===');
+    lines.push('');
+    lines.push(`### ${data.name} Component`);
+    lines.push(`- Selector: \`${extraction.elementSelector}\``);
+    lines.push(`- Suggested file: \`src/components/${kebabName}.tsx\``);
+    if (data.variants.length > 0) {
+      lines.push('- Suggested props:');
+      for (const v of data.variants) {
+        lines.push(`  - ${v.groupName.toLowerCase()}: ${v.options.join(' | ')}`);
+      }
+    }
+    lines.push('');
+    lines.push('## Instructions for Claude Code');
+    lines.push(`Extract the element at selector \`${extraction.elementSelector}\` into a`);
+    lines.push(`reusable React component named \`${data.name}\`.`);
+    if (data.variants.length > 0) {
+      lines.push('Accept the following props for variant control:');
+      for (const v of data.variants) {
+        lines.push(`  - ${v.groupName.toLowerCase()}: ${v.options.join(' | ')}`);
+      }
+    }
+    lines.push('=== END COMPONENT EXTRACTION ===');
+  } catch {
+    lines.push(`Create component from ${extraction.elementSelector}`);
+  }
+  return lines.join('\n');
+}
+
 function CopyIcon({ size = 14 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -58,7 +100,7 @@ function CheckIcon({ size = 14 }: { size?: number }) {
   );
 }
 
-function buildSingleElementLog(snapshot: ElementSnapshot, changes: StyleChange[], fileMap?: FileMap | null, projectRoot?: string | null, framework?: string | null): string {
+function buildSingleElementLog(snapshot: ElementSnapshot, changes: StyleChange[], fileMap?: FileMap | null, projectRoot?: string | null, framework?: string | null, cssStrategy?: string[] | null): string {
   const lines: string[] = [];
   const isMobileApp = framework === 'flutter' || framework === 'react-native';
 
@@ -121,12 +163,12 @@ function buildSingleElementLog(snapshot: ElementSnapshot, changes: StyleChange[]
     lines.push('');
   }
 
-  lines.push(buildInstructionsFooter(changes.length, 1));
+  lines.push(buildInstructionsFooter(changes.length, 1, { framework, cssStrategy }));
 
   return lines.join('\n').trim();
 }
 
-function buildElementSection(snapshot: ElementSnapshot, changes: StyleChange[], fileMap?: FileMap | null, projectRoot?: string | null, framework?: string | null): string {
+function buildElementSection(snapshot: ElementSnapshot, changes: StyleChange[], fileMap?: FileMap | null, projectRoot?: string | null, framework?: string | null, cssStrategy?: string[] | null): string {
   const lines: string[] = [];
   const isMobileApp = framework === 'flutter' || framework === 'react-native';
 
@@ -197,6 +239,7 @@ function buildGroupLog(opts: {
   fileMap?: FileMap | null;
   projectRoot?: string | null;
   framework?: string | null;
+  cssStrategy?: string[] | null;
 }): string {
   const lines: string[] = [];
   const isMobileApp = opts.framework === 'flutter' || opts.framework === 'react-native';
@@ -218,7 +261,7 @@ function buildGroupLog(opts: {
 
   for (let i = 0; i < opts.elements.length; i++) {
     const { snapshot, changes } = opts.elements[i];
-    lines.push(buildElementSection(snapshot, changes, opts.fileMap, opts.projectRoot, opts.framework));
+    lines.push(buildElementSection(snapshot, changes, opts.fileMap, opts.projectRoot, opts.framework, opts.cssStrategy));
     if (i < opts.elements.length - 1) {
       lines.push('');
       lines.push('---');
@@ -227,7 +270,7 @@ function buildGroupLog(opts: {
   }
 
   lines.push('');
-  lines.push(buildInstructionsFooter(totalChanges, opts.elements.length));
+  lines.push(buildInstructionsFooter(totalChanges, opts.elements.length, { framework: opts.framework, cssStrategy: opts.cssStrategy }));
 
   return lines.join('\n').trim();
 }
@@ -288,6 +331,7 @@ function ElementAccordion({
   fileMap,
   projectRoot,
   framework,
+  cssStrategy,
 }: {
   snapshot: ElementSnapshot;
   changes: StyleChange[];
@@ -297,11 +341,12 @@ function ElementAccordion({
   fileMap?: FileMap | null;
   projectRoot?: string | null;
   framework?: string | null;
+  cssStrategy?: string[] | null;
 }) {
   const [open, setOpen] = useState(false);
   const editedTextRef = useRef<string | null>(null);
 
-  const logText = useMemo(() => buildSingleElementLog(snapshot, changes, fileMap, projectRoot, framework), [snapshot, changes, fileMap, projectRoot, framework]);
+  const logText = useMemo(() => buildSingleElementLog(snapshot, changes, fileMap, projectRoot, framework, cssStrategy), [snapshot, changes, fileMap, projectRoot, framework, cssStrategy]);
 
   const copyText = editedTextRef.current ?? logText;
 
@@ -436,6 +481,7 @@ function BreakpointGroupAccordion({
   fileMap,
   projectRoot,
   framework,
+  cssStrategy,
 }: {
   group: BreakpointGroupData;
   targetUrl: string | null;
@@ -448,6 +494,7 @@ function BreakpointGroupAccordion({
   fileMap?: FileMap | null;
   projectRoot?: string | null;
   framework?: string | null;
+  cssStrategy?: string[] | null;
 }) {
   const [open, setOpen] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -461,7 +508,8 @@ function BreakpointGroupAccordion({
     fileMap,
     projectRoot,
     framework,
-  }), [group, targetUrl, pagePath, breakpoint, fileMap, projectRoot, framework]);
+    cssStrategy,
+  }), [group, targetUrl, pagePath, breakpoint, fileMap, projectRoot, framework, cssStrategy]);
 
   const totalChanges = group.allChanges.length;
   const isEmpty = group.elements.length === 0;
@@ -553,6 +601,7 @@ function BreakpointGroupAccordion({
                 fileMap={fileMap}
                 projectRoot={projectRoot}
                 framework={framework}
+                cssStrategy={cssStrategy}
               />
             ))
           )}
@@ -607,6 +656,35 @@ function ChangeScopeToggle() {
   );
 }
 
+function ScanIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 7V5a2 2 0 0 1 2-2h2" />
+      <path d="M17 3h2a2 2 0 0 1 2 2v2" />
+      <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
+      <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
+      <line x1="7" y1="12" x2="17" y2="12" />
+    </svg>
+  );
+}
+
+function SpinnerIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      className="animate-spin"
+    >
+      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+    </svg>
+  );
+}
+
 function BottomActionBar({
   copyAllText,
   changeCount,
@@ -614,6 +692,8 @@ function BottomActionBar({
   onClearAll,
   onShowClearConfirm,
   onCancelClear,
+  onAiScan,
+  aiScanStatus,
 }: {
   copyAllText: string;
   changeCount: number;
@@ -621,6 +701,8 @@ function BottomActionBar({
   onClearAll: () => void;
   onShowClearConfirm: () => void;
   onCancelClear: () => void;
+  onAiScan: () => void;
+  aiScanStatus: 'idle' | 'scanning' | 'complete' | 'error';
 }) {
   const { copied, copy } = useCopy();
 
@@ -647,6 +729,23 @@ function BottomActionBar({
       >
         {copied ? <CheckIcon size={14} /> : <CopyIcon size={14} />}
         {copied ? 'Copied to clipboard' : `Copy All Changes (${changeCount})`}
+      </button>
+
+      {/* AI Scan */}
+      <button
+        onClick={onAiScan}
+        disabled={aiScanStatus === 'scanning'}
+        className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-md text-[12px] font-medium transition-all disabled:opacity-60"
+        style={{
+          background: aiScanStatus === 'scanning'
+            ? 'rgba(168, 85, 247, 0.06)'
+            : 'rgba(168, 85, 247, 0.12)',
+          color: aiScanStatus === 'scanning' ? 'var(--text-muted)' : '#a855f7',
+          border: `1px solid ${aiScanStatus === 'scanning' ? 'var(--border)' : 'rgba(168, 85, 247, 0.25)'}`,
+        }}
+      >
+        {aiScanStatus === 'scanning' ? <SpinnerIcon size={14} /> : <ScanIcon size={14} />}
+        {aiScanStatus === 'scanning' ? 'Scanning...' : 'AI Scan'}
       </button>
 
       {/* Secondary: Clear */}
@@ -703,8 +802,21 @@ export function ChangesPanel() {
   const computedStyles = useEditorStore((s) => s.computedStyles);
   const getProjectScanForUrl = useEditorStore((s) => s.getProjectScanForUrl);
   const getProjectRootForUrl = useEditorStore((s) => s.getProjectRootForUrl);
+  const aiScanStatus = useEditorStore((s) => s.aiScanStatus);
+  const aiScanResult = useEditorStore((s) => s.aiScanResult);
+  const aiScanError = useEditorStore((s) => s.aiScanError);
+  const setAiScanStatus = useEditorStore((s) => s.setAiScanStatus);
+  const setAiScanResult = useEditorStore((s) => s.setAiScanResult);
+  const setAiScanError = useEditorStore((s) => s.setAiScanError);
+  const resetAiScan = useEditorStore((s) => s.resetAiScan);
+  const showToast = useEditorStore((s) => s.showToast);
+  const setActiveRightTab = useEditorStore((s) => s.setActiveRightTab);
+  const removeStyleChange = useEditorStore((s) => s.removeStyleChange);
+  const removeCreatedComponent = useEditorStore((s) => s.removeCreatedComponent);
   const { revertChange } = useChangeTracker();
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const setActiveLeftTab = useEditorStore((s) => s.setActiveLeftTab);
+  const scanAbortRef = useRef<AbortController | null>(null);
 
   const projectScan = useMemo(() => {
     return getProjectScanForUrl(targetUrl);
@@ -712,6 +824,7 @@ export function ChangesPanel() {
 
   const fileMap = projectScan?.fileMap ?? null;
   const framework = projectScan?.framework ?? null;
+  const cssStrategy = projectScan?.cssStrategy ?? null;
 
   const projectRoot = useMemo(() => {
     return getProjectRootForUrl(targetUrl);
@@ -755,29 +868,109 @@ export function ChangesPanel() {
     return elements;
   }, [breakpointChanges, elementSnapshots]);
 
-  // Build "Copy All" log text
+  // Build "Copy All" log text (includes component extractions)
   const copyAllText = useMemo(() => {
-    if (elementGroups.length === 0) return '';
-    return buildGroupLog({
-      groupLabel: 'All Changes',
-      elements: elementGroups,
-      targetUrl,
-      pagePath: currentPagePath,
-      breakpoint: activeBreakpoint,
-      fileMap,
-      projectRoot,
-      framework,
-    });
-  }, [elementGroups, targetUrl, currentPagePath, activeBreakpoint, fileMap, projectRoot, framework]);
+    const hasChanges = elementGroups.length > 0;
+    const hasExtractions = componentExtractions.length > 0;
+    if (!hasChanges && !hasExtractions) return '';
+
+    const parts: string[] = [];
+
+    // Component extractions section
+    if (hasExtractions) {
+      for (const extraction of componentExtractions) {
+        parts.push(buildComponentCreationLog(extraction));
+      }
+    }
+
+    // Style changes section
+    if (hasChanges) {
+      parts.push(buildGroupLog({
+        groupLabel: 'All Changes',
+        elements: elementGroups,
+        targetUrl,
+        pagePath: currentPagePath,
+        breakpoint: activeBreakpoint,
+        fileMap,
+        projectRoot,
+        framework,
+        cssStrategy,
+      }));
+    }
+
+    return parts.join('\n\n');
+  }, [elementGroups, componentExtractions, targetUrl, currentPagePath, activeBreakpoint, fileMap, projectRoot, framework, cssStrategy]);
+
+  const handleRevertExtraction = useCallback((extraction: StyleChange) => {
+    removeStyleChange(extraction.id);
+    removeCreatedComponent(extraction.elementSelector);
+  }, [removeStyleChange, removeCreatedComponent]);
 
   const handleClearAll = useCallback(() => {
+    // Revert component extractions
+    for (const extraction of componentExtractions) {
+      handleRevertExtraction(extraction);
+    }
+    // Revert style changes
     for (const { changes } of elementGroups) {
       for (const c of changes) {
         revertChange(c.id, c.elementSelector, c.property);
       }
     }
+    resetAiScan();
     setShowClearConfirm(false);
-  }, [elementGroups, revertChange]);
+  }, [elementGroups, componentExtractions, revertChange, handleRevertExtraction, resetAiScan]);
+
+  const handleAiScan = useCallback(() => {
+    if (!targetUrl || !projectRoot || breakpointChanges.length === 0) return;
+
+    setAiScanStatus('scanning');
+    setAiScanError(null);
+
+    // Auto-switch to Terminal tab so user sees progress
+    setActiveLeftTab('terminal');
+
+    // Write header to terminal
+    const write = useEditorStore.getState().writeToTerminal;
+    write?.('\r\n\x1b[1;35m  AI Scan: Analyzing project...\x1b[0m\r\n');
+
+    // Abort any previous scan stream
+    scanAbortRef.current?.abort();
+
+    const controller = consumeClaudeStream<ClaudeScanResponse>(
+      '/api/claude/scan',
+      { changelog: copyAllText, projectRoot, projectScan },
+      {
+        onStderr: (line: string) => {
+          const w = useEditorStore.getState().writeToTerminal;
+          const formatted = formatStderrLine(line);
+          if (formatted) w?.(formatted + '\r\n');
+        },
+        onResult: (data: ClaudeScanResponse) => {
+          setAiScanResult(data);
+          setAiScanStatus('complete');
+          showToast('success', 'AI Scan complete');
+          const w = useEditorStore.getState().writeToTerminal;
+          w?.('\x1b[32m  AI Scan complete.\x1b[0m\r\n');
+        },
+        onError: (err: { code: string; message: string }) => {
+          setAiScanStatus('error');
+          setAiScanError(err.message);
+          showToast('error', err.message || 'AI Scan failed');
+          const w = useEditorStore.getState().writeToTerminal;
+          w?.(`\x1b[31m  Error: ${err.message}\x1b[0m\r\n`);
+        },
+      },
+    );
+
+    scanAbortRef.current = controller;
+  }, [targetUrl, projectRoot, breakpointChanges.length, copyAllText, projectScan, setAiScanStatus, setAiScanError, setAiScanResult, showToast, setActiveLeftTab]);
+
+  const handleSendToClaudeCode = useCallback((prompt: string) => {
+    // Store the edited prompt so ClaudeIntegrationPanel can pick it up
+    setAiScanResult({ ...(aiScanResult!), smartPrompt: prompt });
+    setActiveRightTab('claude');
+  }, [aiScanResult, setAiScanResult, setActiveRightTab]);
 
   if (styleChanges.length === 0) {
     return (
@@ -790,7 +983,7 @@ export function ChangesPanel() {
     );
   }
 
-  if (breakpointChanges.length === 0) {
+  if (breakpointChanges.length === 0 && componentExtractions.length === 0) {
     return (
       <div className="flex flex-col h-full">
         <ChangeScopeToggle />
@@ -816,6 +1009,37 @@ export function ChangesPanel() {
       >
         <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
           {breakpointChanges.length} change{breakpointChanges.length !== 1 ? 's' : ''} · {elementGroups.length} element{elementGroups.length !== 1 ? 's' : ''}
+        </span>
+        <span className="flex items-center gap-1">
+          <CopyButton text={copyAllText} size={11} />
+          {showClearConfirm ? (
+            <span className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+              <button
+                onClick={handleClearAll}
+                className="px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors"
+                style={{ background: 'var(--error)', color: '#fff' }}
+              >
+                Confirm
+              </button>
+              <button
+                onClick={() => setShowClearConfirm(false)}
+                className="px-1.5 py-0.5 rounded text-[10px] transition-colors"
+                style={{ color: 'var(--text-muted)' }}
+              >
+                Cancel
+              </button>
+            </span>
+          ) : (
+            <button
+              onClick={() => setShowClearConfirm(true)}
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] transition-colors flex-shrink-0 hover:bg-[var(--bg-hover)]"
+              style={{ color: 'var(--text-muted)' }}
+              title="Clear all changes"
+            >
+              <ClearIcon size={11} />
+              Clear
+            </button>
+          )}
         </span>
       </div>
 
@@ -859,6 +1083,16 @@ export function ChangesPanel() {
                   {extraction.elementSelector}
                 </div>
               </div>
+              <CopyButton text={buildComponentCreationLog(extraction)} size={11} />
+              <button
+                onClick={() => handleRevertExtraction(extraction)}
+                className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] transition-colors flex-shrink-0 hover:bg-[var(--bg-hover)]"
+                style={{ color: 'var(--text-muted)' }}
+                title="Remove component extraction"
+              >
+                <ClearIcon size={11} />
+                Clear
+              </button>
             </div>
           );
         })}
@@ -873,9 +1107,47 @@ export function ChangesPanel() {
             fileMap={fileMap}
             projectRoot={projectRoot}
             framework={framework}
+            cssStrategy={cssStrategy}
           />
         ))}
       </div>
+
+      {/* AI Scan result panel */}
+      {aiScanStatus === 'complete' && aiScanResult && (
+        <AiScanResultPanel
+          result={aiScanResult}
+          onDismiss={resetAiScan}
+          onSendToClaudeCode={handleSendToClaudeCode}
+        />
+      )}
+
+      {/* AI Scan error */}
+      {aiScanStatus === 'error' && (
+        <div
+          className="mx-3 mt-2 px-2 py-1.5 rounded text-[11px]"
+          style={{
+            background: 'rgba(248, 113, 113, 0.08)',
+            border: '1px solid rgba(248, 113, 113, 0.25)',
+            color: 'var(--error)',
+          }}
+        >
+          {aiScanError?.includes('not authenticated') || aiScanError?.includes('claude login') ? (
+            <>
+              <span className="font-medium">Claude CLI not authenticated.</span>{' '}
+              Run{' '}
+              <code
+                className="px-1 py-0.5 rounded text-[10px]"
+                style={{ background: 'rgba(248, 113, 113, 0.15)' }}
+              >
+                claude login
+              </code>{' '}
+              in your terminal, then try again.
+            </>
+          ) : (
+            aiScanError || 'AI Scan failed. Try again.'
+          )}
+        </div>
+      )}
 
       {/* Bottom action bar */}
       {breakpointChanges.length > 0 && (
@@ -886,6 +1158,8 @@ export function ChangesPanel() {
           onClearAll={handleClearAll}
           onShowClearConfirm={() => setShowClearConfirm(true)}
           onCancelClear={() => setShowClearConfirm(false)}
+          onAiScan={handleAiScan}
+          aiScanStatus={aiScanStatus}
         />
       )}
     </div>

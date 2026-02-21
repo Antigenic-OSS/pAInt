@@ -36,6 +36,7 @@ function buildElementLogText(opts: {
   activeBreakpoint: Breakpoint;
   changeCount: number;
   framework?: string | null;
+  cssStrategy?: string[] | null;
 }): string {
   const lines: string[] = [];
   if (!opts.tagName) return '';
@@ -82,7 +83,7 @@ function buildElementLogText(opts: {
     lines.push('');
   }
 
-  lines.push(buildInstructionsFooter(opts.changeCount, 1));
+  lines.push(buildInstructionsFooter(opts.changeCount, 1, { framework: opts.framework, cssStrategy: opts.cssStrategy }));
 
   return lines.join('\n').trim();
 }
@@ -105,10 +106,12 @@ export function ElementLogBox() {
   const targetUrl = useEditorStore((s) => s.targetUrl);
   const getProjectScanForUrl = useEditorStore((s) => s.getProjectScanForUrl);
 
-  const framework = useMemo(() => {
-    const scan = getProjectScanForUrl(targetUrl);
-    return scan?.framework ?? null;
+  const projectScan = useMemo(() => {
+    return getProjectScanForUrl(targetUrl);
   }, [targetUrl, getProjectScanForUrl]);
+
+  const framework = projectScan?.framework ?? null;
+  const cssStrategy = projectScan?.cssStrategy ?? null;
 
   const changeCount = useMemo(() => {
     if (!selectorPath) return 0;
@@ -118,8 +121,8 @@ export function ElementLogBox() {
   const logText = useMemo(() => buildElementLogText({
     tagName, className, elementId, selectorPath,
     attributes, innerText, computedStyles,
-    pagePath: currentPagePath, changeScope, activeBreakpoint, changeCount, framework,
-  }), [tagName, className, elementId, selectorPath, attributes, innerText, computedStyles, currentPagePath, changeScope, activeBreakpoint, changeCount, framework]);
+    pagePath: currentPagePath, changeScope, activeBreakpoint, changeCount, framework, cssStrategy,
+  }), [tagName, className, elementId, selectorPath, attributes, innerText, computedStyles, currentPagePath, changeScope, activeBreakpoint, changeCount, framework, cssStrategy]);
 
   const handleTextChange = useCallback((edited: string) => {
     editedTextRef.current = edited === logText ? null : edited;

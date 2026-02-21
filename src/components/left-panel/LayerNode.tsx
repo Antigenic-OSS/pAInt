@@ -9,6 +9,7 @@ interface LayerNodeProps {
   node: TreeNode;
   depth: number;
   searchQuery: string;
+  changedSelectors?: Set<string>;
 }
 
 // --- Element categorization ---
@@ -197,7 +198,7 @@ function matchesSearch(node: TreeNode, query: string): boolean {
 
 // --- Component ---
 
-export function LayerNode({ node, depth, searchQuery }: LayerNodeProps) {
+export function LayerNode({ node, depth, searchQuery, changedSelectors }: LayerNodeProps) {
   const selectorPath = useEditorStore((s) => s.selectorPath);
   const highlightedNodeId = useEditorStore((s) => s.highlightedNodeId);
   const toggleNodeExpanded = useEditorStore((s) => s.toggleNodeExpanded);
@@ -244,7 +245,7 @@ export function LayerNode({ node, depth, searchQuery }: LayerNodeProps) {
     return (
       <>
         {matchingChildren.map((child) => (
-          <LayerNode key={child.id} node={child} depth={depth} searchQuery={searchQuery} />
+          <LayerNode key={child.id} node={child} depth={depth} searchQuery={searchQuery} changedSelectors={changedSelectors} />
         ))}
       </>
     );
@@ -352,6 +353,7 @@ export function LayerNode({ node, depth, searchQuery }: LayerNodeProps) {
               node={child}
               depth={depth + 1}
               searchQuery={searchQuery}
+              changedSelectors={changedSelectors}
             />
           ))}
         </div>

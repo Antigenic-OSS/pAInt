@@ -67,7 +67,7 @@ export function TargetSelector() {
   const statusColor =
     connectionStatus === 'connected'
       ? 'var(--success)'
-      : connectionStatus === 'connecting'
+      : connectionStatus === 'connecting' || connectionStatus === 'confirming' || connectionStatus === 'scanning'
         ? 'var(--warning)'
         : 'var(--error)';
 

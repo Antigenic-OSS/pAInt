@@ -62,6 +62,34 @@ export interface SpawnResult {
   stderr: string;
 }
 
+export interface StreamingSpawnResult {
+  exitCode: number;
+  stdout: string;
+}
+
+export interface StreamingSpawnOptions {
+  cwd?: string;
+  timeout?: number;
+  onStderr?: (line: string) => void;
+}
+
+const AUTH_PATTERNS = [
+  /not authenticated/i,
+  /not logged in/i,
+  /authentication required/i,
+  /api key/i,
+  /unauthorized/i,
+  /login required/i,
+  /please log in/i,
+  /claude login/i,
+  /ANTHROPIC_API_KEY/,
+];
+
+/** Check if stderr indicates an authentication / login issue. */
+export function isAuthError(stderr: string): boolean {
+  return AUTH_PATTERNS.some((re) => re.test(stderr));
+}
+
 /**
  * Spawn the claude CLI with given args using Node's child_process.
  * Works in both Bun and Node runtimes (Next.js Turbopack uses Node).
@@ -76,7 +104,7 @@ export function spawnClaude(
   return new Promise((resolve, reject) => {
     const proc = spawn(claudeBin, args, {
       cwd,
-      env: { ...process.env },
+      env: { ...process.env, CLAUDECODE: undefined },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
 
@@ -97,6 +125,65 @@ export function spawnClaude(
         exitCode: code ?? 1,
         stdout: Buffer.concat(stdoutChunks).toString('utf-8'),
         stderr: Buffer.concat(stderrChunks).toString('utf-8'),
+      });
+    });
+
+    proc.on('error', (err) => {
+      clearTimeout(timer);
+      reject(err);
+    });
+  });
+}
+
+/**
+ * Spawn the claude CLI with streaming stderr.
+ * stderr is line-buffered and delivered via onStderr callback.
+ * stdout is fully buffered (contains diffs/JSON that need complete parsing).
+ */
+export function spawnClaudeStreaming(
+  args: string[],
+  options: StreamingSpawnOptions = {},
+): Promise<StreamingSpawnResult> {
+  const claudeBin = getClaudeBin();
+  const { cwd, timeout = 120_000, onStderr } = options;
+
+  return new Promise((resolve, reject) => {
+    const proc = spawn(claudeBin, args, {
+      cwd,
+      env: { ...process.env, CLAUDECODE: undefined },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+
+    const stdoutChunks: Buffer[] = [];
+    let stderrPartial = '';
+
+    proc.stdout.on('data', (chunk: Buffer) => stdoutChunks.push(chunk));
+
+    proc.stderr.on('data', (chunk: Buffer) => {
+      if (!onStderr) return;
+      stderrPartial += chunk.toString('utf-8');
+      const lines = stderrPartial.split('\n');
+      // Hold the last element — it may be a partial line
+      stderrPartial = lines.pop() || '';
+      for (const line of lines) {
+        if (line) onStderr(line);
+      }
+    });
+
+    const timer = setTimeout(() => {
+      proc.kill('SIGKILL');
+      reject(new Error('TIMEOUT'));
+    }, timeout);
+
+    proc.on('close', (code) => {
+      clearTimeout(timer);
+      // Flush remaining partial line
+      if (onStderr && stderrPartial) {
+        onStderr(stderrPartial);
+      }
+      resolve({
+        exitCode: code ?? 1,
+        stdout: Buffer.concat(stdoutChunks).toString('utf-8'),
       });
     });
 

@@ -38,6 +38,8 @@ export interface ParsedDiff {
 export interface ClaudeAnalyzeRequest {
   changelog: string;
   projectRoot: string;
+  /** When provided (from AI Scan), used as-is instead of wrapping changelog. */
+  smartPrompt?: string;
 }
 
 export interface ClaudeAnalyzeResponse {
@@ -61,6 +63,35 @@ export interface ClaudeStatusResponse {
   available: boolean;
   version?: string;
   error?: string;
+}
+
+export interface ClaudeScanRequest {
+  changelog: string;
+  projectRoot: string;
+}
+
+export type ScanGroupCategory =
+  | 'typography'
+  | 'spacing'
+  | 'colors'
+  | 'layout'
+  | 'borders'
+  | 'background'
+  | 'effects'
+  | 'mixed';
+
+export interface ScanGroup {
+  label: string;
+  category: ScanGroupCategory;
+  changeCount: number;
+  suggestedFiles: string[];
+}
+
+export interface ClaudeScanResponse {
+  smartPrompt: string;
+  intent: string;
+  groups: ScanGroup[];
+  warnings: string[];
 }
 
 export interface RouteEntry {
@@ -96,4 +127,5 @@ export interface ProjectScanResult {
   srcDirs: string[];
   packageName: string | null;
   fileMap?: FileMap;
+  assetDirs?: string[];
 }

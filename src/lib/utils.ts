@@ -1,4 +1,4 @@
-import { getBreakpointDeviceInfo } from '@/lib/constants';
+import { getBreakpointDeviceInfo, buildInstructionsFooter } from '@/lib/constants';
 
 /**
  * Convert a camelCase CSS property name to kebab-case.
@@ -137,6 +137,8 @@ export function formatChangelog(opts: {
   breakpoint: import('@/types/changelog').Breakpoint;
   breakpointWidth: number;
   styleChanges: import('@/types/changelog').StyleChange[];
+  framework?: string | null;
+  cssStrategy?: string[] | null;
 }): string {
   const {
     targetUrl,
@@ -233,37 +235,49 @@ export function formatChangelog(opts: {
     }
   }
 
-  // Summary
+  // Summary + instructions footer (framework-aware)
   const totalChanges = styleChanges.length;
   const uniqueElements = new Set(styleChanges.map((c) => c.elementSelector)).size;
+
+  // Temporarily override summary line in the footer with component extraction count
+  const summaryPrefix = `${totalChanges} change${totalChanges !== 1 ? 's' : ''} across ${uniqueElements} element${uniqueElements !== 1 ? 's' : ''}${componentExtractions.length > 0 ? ` (${componentExtractions.length} component extraction${componentExtractions.length !== 1 ? 's' : ''})` : ''}`;
   lines.push('---');
-  lines.push(`Summary: ${totalChanges} change${totalChanges !== 1 ? 's' : ''} across ${uniqueElements} element${uniqueElements !== 1 ? 's' : ''}${componentExtractions.length > 0 ? ` (${componentExtractions.length} component extraction${componentExtractions.length !== 1 ? 's' : ''})` : ''}`);
+  lines.push(`Summary: ${summaryPrefix}`);
   lines.push('');
-  lines.push('## Instructions for Claude Code');
-  lines.push('Apply these visual changes to the source files. For each style change,');
-  lines.push('find the element matching the selector and update its CSS (inline styles,');
-  lines.push('CSS classes, or stylesheet rules) to reflect the new values.');
-  lines.push('');
-  lines.push('### Tailwind CSS Guidance');
-  lines.push('If the project uses Tailwind CSS, prefer updating utility classes over');
-  lines.push('adding inline styles. Common mappings:');
-  lines.push('- font-size → text-{size} (text-sm, text-base, text-lg, text-xl, etc.)');
-  lines.push('- margin/padding → m-{n}/p-{n} (m-4, px-6, py-2, etc.)');
-  lines.push('- color → text-{color} (text-gray-500, text-blue-600, etc.)');
-  lines.push('- background-color → bg-{color} (bg-white, bg-gray-100, etc.)');
-  lines.push('- width/height → w-{n}/h-{n} (w-full, h-screen, w-64, etc.)');
-  lines.push('- display: flex → flex, display: grid → grid');
-  lines.push('- border-radius → rounded-{size} (rounded, rounded-lg, rounded-full)');
-  lines.push('- gap → gap-{n} (gap-4, gap-x-2, etc.)');
-  if (variableDefinitions.length > 0) {
-    lines.push('');
-    lines.push('### CSS Variable Guidance');
-    lines.push('When the changelog includes CSS Variable Definitions, create the custom');
-    lines.push('properties in the project\'s root stylesheet or theme file. Then update');
-    lines.push('the referencing elements to use var(--name) instead of hardcoded values.');
-    lines.push('If using Tailwind, consider adding the variables to the theme config.');
+
+  // Get the framework-aware instructions (skip the first 3 lines which are --- / Summary / blank)
+  const footer = buildInstructionsFooter(totalChanges, uniqueElements, {
+    framework: opts.framework,
+    cssStrategy: opts.cssStrategy,
+  });
+  const footerLines = footer.split('\n');
+  // Skip "---", "Summary: ...", and blank line from footer — we already wrote our own summary
+  const instructionsStart = footerLines.findIndex((l) => l.startsWith('## Instructions'));
+  if (instructionsStart >= 0) {
+    lines.push(footerLines.slice(instructionsStart).join('\n'));
+  } else {
+    // Fallback: append entire footer
+    lines.push(footer);
   }
-  lines.push('=== END CHANGELOG ===');
+
+  if (variableDefinitions.length > 0) {
+    // Insert CSS variable guidance before the closing marker
+    const closingIdx = lines.lastIndexOf('=== END CHANGELOG ===');
+    const varLines = [
+      '',
+      '### CSS Variable Guidance',
+      'When the changelog includes CSS Variable Definitions, create the custom',
+      "properties in the project's root stylesheet or theme file. Then update",
+      'the referencing elements to use var(--name) instead of hardcoded values.',
+      'If using Tailwind, consider adding the variables to the theme config.',
+    ];
+    if (closingIdx >= 0) {
+      lines.splice(closingIdx, 0, ...varLines);
+    } else {
+      lines.push(...varLines);
+      lines.push('=== END CHANGELOG ===');
+    }
+  }
 
   const result = lines.join('\n');
   return stripControlChars(result).slice(0, 50 * 1024);

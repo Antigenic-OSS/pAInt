@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { useEditorStore } from '@/store';
+import { useProjectScan } from '@/hooks/useProjectScan';
 
 interface ProjectRootSelectorProps {
   targetUrl: string;
@@ -12,12 +13,33 @@ export function ProjectRootSelector({ targetUrl, onSaved }: ProjectRootSelectorP
   const portRoots = useEditorStore((s) => s.portRoots);
   const projectRoot = portRoots[targetUrl] ?? null;
   const setProjectRoot = useEditorStore((s) => s.setProjectRoot);
+  const scanStatus = useEditorStore((s) => s.scanStatus);
+  const scannedProjectName = useEditorStore((s) => s.scannedProjectName);
+  const componentFileMap = useEditorStore((s) => s.componentFileMap);
+  const { triggerScan } = useProjectScan();
 
   const [inputValue, setInputValue] = useState(projectRoot || '');
   const [validating, setValidating] = useState(false);
   const [validationState, setValidationState] = useState<'idle' | 'success' | 'error'>('idle');
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
   const [picking, setPicking] = useState(false);
+
+  const scanWithFeedback = useCallback(async (rootPath: string) => {
+    await triggerScan(rootPath, {
+      onSuccess: (count, projectName) => {
+        setValidationState('success');
+        setValidationMessage(
+          count > 0
+            ? `Found ${count} components in ${projectName}`
+            : 'No component files found — check folder'
+        );
+      },
+      onError: (message) => {
+        setValidationState('error');
+        setValidationMessage(message);
+      },
+    });
+  }, [triggerScan]);
 
   const handlePickFolder = useCallback(async () => {
     setPicking(true);
@@ -61,8 +83,8 @@ export function ProjectRootSelector({ targetUrl, onSaved }: ProjectRootSelectorP
 
       if (res.ok) {
         setProjectRoot(targetUrl, trimmed);
-        setValidationState('success');
-        setValidationMessage('Project root saved');
+        // Trigger scan immediately after saving
+        await scanWithFeedback(trimmed);
         onSaved?.();
       } else {
         const data = await res.json().catch(() => ({ error: 'Validation failed' }));
@@ -70,16 +92,14 @@ export function ProjectRootSelector({ targetUrl, onSaved }: ProjectRootSelectorP
         setValidationMessage(data.error || 'Path validation failed');
       }
     } catch {
-      // If the POST endpoint doesn't exist yet, fall back to client-side validation
-      // and save directly since the path format is already validated
+      // If the POST endpoint doesn't exist yet, fall back to saving and scanning
       setProjectRoot(targetUrl, trimmed);
-      setValidationState('success');
-      setValidationMessage('Project root saved');
+      await scanWithFeedback(trimmed);
       onSaved?.();
     } finally {
       setValidating(false);
     }
-  }, [inputValue, targetUrl, setProjectRoot, onSaved]);
+  }, [inputValue, targetUrl, setProjectRoot, onSaved, scanWithFeedback]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -89,6 +109,8 @@ export function ProjectRootSelector({ targetUrl, onSaved }: ProjectRootSelectorP
     },
     [handleSave]
   );
+
+  const componentCount = componentFileMap ? Object.keys(componentFileMap).length : 0;
 
   return (
     <div className="flex flex-col gap-2">
@@ -161,16 +183,25 @@ export function ProjectRootSelector({ targetUrl, onSaved }: ProjectRootSelectorP
         <div
           className="text-[11px]"
           style={{
-            color: validationState === 'success' ? 'var(--success)' : 'var(--error)',
+            color: validationState === 'success'
+              ? (componentCount > 0 ? 'var(--success)' : 'var(--warning)')
+              : 'var(--error)',
           }}
         >
           {validationState === 'success' ? '\u2713' : '\u2717'} {validationMessage}
         </div>
       )}
 
-      {projectRoot && validationState !== 'success' && (
+      {scanStatus === 'scanning' && (
+        <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+          Scanning project for components...
+        </div>
+      )}
+
+      {projectRoot && validationState !== 'success' && scanStatus !== 'scanning' && (
         <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
           Current: {projectRoot}
+          {scannedProjectName && ` (${scannedProjectName})`}
         </div>
       )}
     </div>

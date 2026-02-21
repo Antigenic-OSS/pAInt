@@ -2,6 +2,7 @@ export interface CSSVariableDefinition {
   value: string;         // raw value from stylesheet
   resolvedValue: string; // computed value from getComputedStyle
   selector: string;      // e.g. ':root'
+  scope?: 'root' | 'dark' | 'media-dark' | 'custom';  // theme scope
 }
 
 export interface CSSVariableFamilyMember {

@@ -72,6 +72,7 @@ export interface CSSVariablesMessage {
   payload: {
     definitions: Record<string, CSSVariableDefinition>;
     isExplicit: boolean;
+    scopes?: string[];  // selectors where variables are defined: ':root', '.dark', etc.
   };
 }
 
@@ -236,6 +237,10 @@ export interface ShowSelectionOverlayMessage {
   type: 'SHOW_SELECTION_OVERLAY';
 }
 
+export interface HideHoverMessage {
+  type: 'HIDE_HOVER';
+}
+
 export interface NavigateToMessage {
   type: 'NAVIGATE_TO';
   payload: {
@@ -277,6 +282,7 @@ export type EditorToInspectorMessage =
   | RevertTextContentMessage
   | HideSelectionOverlayMessage
   | ShowSelectionOverlayMessage
+  | HideHoverMessage
   | NavigateToMessage;
 
 export type PostMessageType =

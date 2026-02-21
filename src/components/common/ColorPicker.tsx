@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { sendViaIframe } from '@/hooks/usePostMessage';
 import { useEditorStore } from '@/store';
-import { filterColorVariables } from '@/lib/cssVariableUtils';
+import { filterColorVariables, toDisplayableColor } from '@/lib/cssVariableUtils';
 
 // ─── Color Conversion Utilities ─────────────────────────────────
 
@@ -761,7 +761,7 @@ export function ColorPicker({ value, onChange, onSelectVariable, label }: ColorP
                           <div
                             className="w-3.5 h-3.5 rounded border flex-shrink-0"
                             style={{
-                              background: def.resolvedValue,
+                              background: toDisplayableColor(def.resolvedValue),
                               borderColor: 'var(--border)',
                             }}
                           />

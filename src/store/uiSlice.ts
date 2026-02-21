@@ -8,16 +8,20 @@ export interface Toast {
   message: string;
 }
 
+export type ConnectionStatus = 'disconnected' | 'confirming' | 'scanning' | 'connecting' | 'connected';
+
 export interface UISlice {
   targetUrl: string | null;
-  connectionStatus: 'disconnected' | 'connecting' | 'connected';
+  connectionStatus: ConnectionStatus;
+  pendingTargetUrl: string | null;
+  pendingFolderPath: string | null;
   recentUrls: string[];
   activeBreakpoint: Breakpoint;
   leftPanelOpen: boolean;
   rightPanelOpen: boolean;
   leftPanelWidth: number;
   rightPanelWidth: number;
-  activeRightTab: 'design' | 'changes' | 'claude' | 'console';
+  activeRightTab: 'design' | 'variables' | 'changes' | 'claude' | 'console';
   changeScope: 'all' | 'breakpoint-only';
   pageLinks: Array<{ href: string; text: string }>;
   currentPagePath: string;
@@ -28,14 +32,17 @@ export interface UISlice {
   toasts: Toast[];
 
   setTargetUrl: (url: string | null) => void;
-  setConnectionStatus: (status: 'disconnected' | 'connecting' | 'connected') => void;
+  setConnectionStatus: (status: ConnectionStatus) => void;
+  setPendingConnection: (url: string, folder: string) => void;
+  finalizeConnection: () => void;
+  cancelPendingConnection: () => void;
   addRecentUrl: (url: string) => void;
   setActiveBreakpoint: (bp: Breakpoint) => void;
   toggleLeftPanel: () => void;
   toggleRightPanel: () => void;
   setLeftPanelWidth: (width: number) => void;
   setRightPanelWidth: (width: number) => void;
-  setActiveRightTab: (tab: 'design' | 'changes' | 'claude' | 'console') => void;
+  setActiveRightTab: (tab: 'design' | 'variables' | 'changes' | 'claude' | 'console') => void;
   setChangeScope: (scope: 'all' | 'breakpoint-only') => void;
   setPageLinks: (links: Array<{ href: string; text: string }>) => void;
   setCurrentPagePath: (path: string) => void;
@@ -52,6 +59,8 @@ export interface UISlice {
 export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (set, get) => ({
   targetUrl: null,
   connectionStatus: 'disconnected',
+  pendingTargetUrl: null,
+  pendingFolderPath: null,
   recentUrls: [],
   activeBreakpoint: 'desktop',
   leftPanelOpen: true,
@@ -74,6 +83,36 @@ export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (set, get) 
 
   setConnectionStatus: (status) => {
     set({ connectionStatus: status });
+  },
+
+  setPendingConnection: (url, folder) => {
+    set({
+      pendingTargetUrl: url,
+      pendingFolderPath: folder,
+      connectionStatus: folder ? 'confirming' : 'connecting',
+      // If no folder, go straight to connecting
+      ...(folder ? {} : { targetUrl: url }),
+    });
+  },
+
+  finalizeConnection: () => {
+    const { pendingTargetUrl } = get();
+    if (!pendingTargetUrl) return;
+    set({
+      targetUrl: pendingTargetUrl,
+      connectionStatus: 'connecting',
+      pendingTargetUrl: null,
+      pendingFolderPath: null,
+    });
+  },
+
+  cancelPendingConnection: () => {
+    set({
+      connectionStatus: 'disconnected',
+      pendingTargetUrl: null,
+      pendingFolderPath: null,
+      targetUrl: null,
+    });
   },
 
   addRecentUrl: (url) => {

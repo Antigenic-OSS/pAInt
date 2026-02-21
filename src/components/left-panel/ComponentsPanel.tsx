@@ -1,10 +1,93 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useEditorStore } from '@/store';
 import { usePostMessage } from '@/hooks/usePostMessage';
 import { MESSAGE_TYPES } from '@/lib/constants';
 import type { DetectedComponent, VariantGroup } from '@/types/component';
+
+interface ComponentTreeNode {
+  component: DetectedComponent;
+  children: ComponentTreeNode[];
+  depth: number;
+  instanceCount: number;
+}
+
+function buildComponentTree(components: DetectedComponent[]): ComponentTreeNode[] {
+  const sorted = [...components].sort(
+    (a, b) => a.selectorPath.length - b.selectorPath.length
+  );
+  const roots: ComponentTreeNode[] = [];
+  const nodeMap = new Map<string, ComponentTreeNode>();
+
+  for (const component of sorted) {
+    const node: ComponentTreeNode = { component, children: [], depth: 0, instanceCount: 1 };
+    let parentNode: ComponentTreeNode | null = null;
+
+    for (const [path, candidate] of nodeMap) {
+      if (
+        component.selectorPath.startsWith(path + ' ') ||
+        component.selectorPath.startsWith(path + ' > ')
+      ) {
+        if (!parentNode || path.length > parentNode.component.selectorPath.length) {
+          parentNode = candidate;
+        }
+      }
+    }
+
+    if (parentNode) {
+      node.depth = parentNode.depth + 1;
+      parentNode.children.push(node);
+    } else {
+      roots.push(node);
+    }
+    nodeMap.set(component.selectorPath, node);
+  }
+  return roots;
+}
+
+function flattenVisible(
+  nodes: ComponentTreeNode[],
+  collapsed: Set<string>,
+  searchActive: boolean
+): ComponentTreeNode[] {
+  const result: ComponentTreeNode[] = [];
+  for (const node of nodes) {
+    result.push(node);
+    if (node.children.length > 0 && (searchActive || !collapsed.has(node.component.selectorPath))) {
+      result.push(...flattenVisible(node.children, collapsed, searchActive));
+    }
+  }
+  return result;
+}
+
+/** Structural fingerprint: name + tagName + recursive child shape. */
+function structuralKey(node: ComponentTreeNode): string {
+  if (node.children.length === 0) return `${node.component.name}:${node.component.tagName}`;
+  const childKeys = node.children.map(structuralKey).sort().join(',');
+  return `${node.component.name}:${node.component.tagName}[${childKeys}]`;
+}
+
+/** Merge sibling nodes with the same structural shape into one entry with a count. */
+function deduplicateSiblings(nodes: ComponentTreeNode[]): ComponentTreeNode[] {
+  const result: ComponentTreeNode[] = [];
+  const seen = new Map<string, ComponentTreeNode>();
+
+  for (const node of nodes) {
+    const dedupedChildren = deduplicateSiblings(node.children);
+    const processed = { ...node, children: dedupedChildren, instanceCount: 1 };
+    const key = structuralKey(processed);
+    const existing = seen.get(key);
+    if (existing) {
+      existing.instanceCount++;
+    } else {
+      seen.set(key, processed);
+      result.push(processed);
+    }
+  }
+
+  return result;
+}
 
 export default function ComponentsPanel() {
   const detectedComponents = useEditorStore((s) => s.detectedComponents);
@@ -19,8 +102,10 @@ export default function ComponentsPanel() {
   const addCreatedComponent = useEditorStore((s) => s.addCreatedComponent);
   const addStyleChange = useEditorStore((s) => s.addStyleChange);
   const activeBreakpoint = useEditorStore((s) => s.activeBreakpoint);
+  const setActiveLeftTab = useEditorStore((s) => s.setActiveLeftTab);
 
   const { sendToInspector } = usePostMessage();
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
   // Track active variants for revert-on-deselect
   const activeVariantsRef = useRef<{
@@ -59,30 +144,34 @@ export default function ComponentsPanel() {
     }
   }, [selectorPath, sendToInspector]);
 
-  // Filter components based on selection scope and search query
+  // Filter by search query only (no selectorPath scoping — tree handles hierarchy)
   const filteredComponents = useMemo(() => {
-    let components = detectedComponents;
+    if (!componentSearchQuery) return detectedComponents;
+    const query = componentSearchQuery.toLowerCase();
+    return detectedComponents.filter(
+      (c) =>
+        c.name.toLowerCase().includes(query) ||
+        c.tagName.toLowerCase().includes(query) ||
+        (c.className && c.className.toLowerCase().includes(query))
+    );
+  }, [detectedComponents, componentSearchQuery]);
 
-    // Scope to selected element + children when an element is selected
-    if (selectorPath) {
-      components = components.filter(
-        (c) => c.selectorPath === selectorPath || c.selectorPath.startsWith(selectorPath + ' ')
-      );
-    }
+  const tree = useMemo(() => deduplicateSiblings(buildComponentTree(filteredComponents)), [filteredComponents]);
 
-    // Apply search filter
-    if (componentSearchQuery) {
-      const query = componentSearchQuery.toLowerCase();
-      components = components.filter(
-        (c) =>
-          c.name.toLowerCase().includes(query) ||
-          c.tagName.toLowerCase().includes(query) ||
-          (c.className && c.className.toLowerCase().includes(query))
-      );
-    }
+  const visibleNodes = useMemo(
+    () => flattenVisible(tree, collapsed, !!componentSearchQuery),
+    [tree, collapsed, componentSearchQuery]
+  );
 
-    return components;
-  }, [detectedComponents, selectorPath, componentSearchQuery]);
+  const toggleCollapse = useCallback((path: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
+      return next;
+    });
+  }, []);
 
   const handleComponentClick = useCallback(
     (component: DetectedComponent) => {
@@ -91,8 +180,10 @@ export default function ComponentsPanel() {
         type: MESSAGE_TYPES.SELECT_ELEMENT as 'SELECT_ELEMENT',
         payload: { selectorPath: component.selectorPath },
       });
+      // Switch to Layers tab so the user sees the selected node in the tree
+      setActiveLeftTab('layers');
     },
-    [sendToInspector, setSelectedComponentPath]
+    [sendToInspector, setSelectedComponentPath, setActiveLeftTab]
   );
 
   const handleVariantChange = useCallback(
@@ -239,28 +330,42 @@ export default function ComponentsPanel() {
           borderBottom: '1px solid var(--border)',
         }}
       >
-        {filteredComponents.length} component{filteredComponents.length !== 1 ? 's' : ''} found
+        {visibleNodes.length} component{visibleNodes.length !== 1 ? 's' : ''} found
+        {filteredComponents.length > visibleNodes.length && (
+          <span style={{ color: 'var(--text-muted)', fontWeight: 'normal' }}> · {filteredComponents.length} instances</span>
+        )}
       </div>
 
-      {/* Component list */}
+      {/* Component tree */}
       <div className="flex-1 overflow-y-auto">
-        {filteredComponents.length > 0 ? (
-          filteredComponents.map((component) => {
+        {visibleNodes.length > 0 ? (
+          visibleNodes.map(({ component, children, depth, instanceCount }) => {
             const isSelected = selectedComponentPath === component.selectorPath;
             const isCreated = !!createdComponents[component.selectorPath];
-            const isAlreadyComponent =
+            const isActualComponent =
               component.detectionMethod === 'semantic-html' ||
               component.detectionMethod === 'custom-element' ||
               component.detectionMethod === 'data-attribute';
+            const hasChildren = children.length > 0;
+            const isCollapsed = collapsed.has(component.selectorPath);
+            const nameColor = isSelected
+              ? 'var(--accent)'
+              : isActualComponent
+                ? '#c084fc'
+                : 'var(--text-primary)';
+            const iconColor = isSelected
+              ? 'var(--accent)'
+              : isActualComponent
+                ? '#c084fc'
+                : 'var(--text-muted)';
             return (
-              <div
-                key={component.selectorPath}
-                style={{ borderBottom: '1px solid var(--border)' }}
-              >
+              <div key={component.selectorPath}>
                 <div
                   onClick={() => handleComponentClick(component)}
-                  className="w-full text-left px-3 py-2 text-xs transition-colors flex items-center gap-2 cursor-pointer"
+                  className="w-full text-left py-1.5 text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
                   style={{
+                    paddingLeft: `${8 + depth * 16}px`,
+                    paddingRight: '12px',
                     color: isSelected ? 'var(--accent)' : 'var(--text-primary)',
                     background: isSelected ? 'rgba(74, 158, 255, 0.08)' : 'transparent',
                   }}
@@ -269,13 +374,38 @@ export default function ComponentsPanel() {
                   tabIndex={0}
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleComponentClick(component); } }}
                 >
+                  {/* Collapse/expand toggle */}
+                  {hasChildren ? (
+                    <button
+                      onClick={(e) => toggleCollapse(component.selectorPath, e)}
+                      className="flex-shrink-0 flex items-center justify-center"
+                      style={{ width: '14px', height: '14px' }}
+                    >
+                      <svg
+                        width="8"
+                        height="8"
+                        viewBox="0 0 16 16"
+                        fill="none"
+                        stroke={isSelected ? 'var(--accent)' : 'var(--text-muted)'}
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="transition-transform"
+                        style={{ transform: isCollapsed ? 'rotate(0deg)' : 'rotate(90deg)' }}
+                      >
+                        <path d="M6 4l4 4-4 4" />
+                      </svg>
+                    </button>
+                  ) : (
+                    <span style={{ width: '14px' }} className="flex-shrink-0" />
+                  )}
                   {/* Component icon */}
                   <svg
                     width="12"
                     height="12"
                     viewBox="0 0 16 16"
                     fill="none"
-                    stroke={isSelected ? 'var(--accent)' : 'var(--text-muted)'}
+                    stroke={iconColor}
                     strokeWidth="1.5"
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -284,20 +414,16 @@ export default function ComponentsPanel() {
                     <rect x="1" y="4" width="14" height="8" rx="1.5" />
                     <path d="M4 4V2.5A1.5 1.5 0 0 1 5.5 1h5A1.5 1.5 0 0 1 12 2.5V4" />
                   </svg>
-                  <div className="truncate flex-1">
-                    <div className="truncate font-medium">
-                      {component.name}
-                      <span style={{ color: 'var(--text-muted)', fontWeight: 'normal' }}>
-                        {' '}({component.tagName})
-                      </span>
-                    </div>
-                    {component.childComponentCount > 0 && (
-                      <div className="truncate" style={{ color: 'var(--text-muted)', fontSize: '10px' }}>
-                        {component.childComponentCount} child component{component.childComponentCount !== 1 ? 's' : ''}
-                      </div>
+                  <span className="truncate flex-1 font-medium" style={{ color: nameColor }}>
+                    {component.name}
+                    {instanceCount > 1 && (
+                      <span style={{ color: 'var(--text-muted)', fontWeight: 'normal', fontSize: '10px' }}> ×{instanceCount}</span>
                     )}
-                  </div>
-                  {/* Create as Component button — hidden for inherently detected components */}
+                    <span style={{ color: 'var(--text-muted)', fontWeight: 'normal' }}>
+                      {' '}({component.tagName})
+                    </span>
+                  </span>
+                  {/* Create as Component button */}
                   {isCreated ? (
                     <span
                       className="flex items-center gap-1 flex-shrink-0"
@@ -308,7 +434,7 @@ export default function ComponentsPanel() {
                       </svg>
                       Created
                     </span>
-                  ) : !isAlreadyComponent ? (
+                  ) : !isActualComponent ? (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -326,24 +452,7 @@ export default function ComponentsPanel() {
                       + Create
                     </button>
                   ) : null}
-                  {/* Expand chevron for variants */}
-                  {component.variants.length > 0 && (
-                    <svg
-                      width="10"
-                      height="10"
-                      viewBox="0 0 16 16"
-                      fill="none"
-                      stroke={isSelected ? 'var(--accent)' : 'var(--text-muted)'}
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="flex-shrink-0 transition-transform"
-                      style={{ transform: isSelected ? 'rotate(90deg)' : 'rotate(0deg)' }}
-                    >
-                      <path d="M6 4l4 4-4 4" />
-                    </svg>
-                  )}
-                  {isSelected && component.variants.length === 0 && (
+                  {isSelected && !hasChildren && (
                     <div
                       className="w-1.5 h-1.5 rounded-full flex-shrink-0"
                       style={{ background: 'var(--accent)' }}
@@ -354,8 +463,12 @@ export default function ComponentsPanel() {
                 {/* Variant dropdowns — only visible when selected */}
                 {isSelected && component.variants.length > 0 && (
                   <div
-                    className="px-3 pb-2 pt-1 flex flex-col gap-2"
-                    style={{ background: 'rgba(74, 158, 255, 0.04)' }}
+                    className="pb-2 pt-1 flex flex-col gap-2"
+                    style={{
+                      paddingLeft: `${24 + depth * 16}px`,
+                      paddingRight: '12px',
+                      background: 'rgba(74, 158, 255, 0.04)',
+                    }}
                   >
                     {component.variants.map((group, gi) => (
                       <div key={group.groupName}>

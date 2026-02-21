@@ -6,6 +6,7 @@ import { DesignPanel } from './design/DesignPanel';
 import { ChangesPanel } from './changes/ChangesPanel';
 import { ClaudeIntegrationPanel } from './claude/ClaudeIntegrationPanel';
 import { ConsolePanel } from './console/ConsolePanel';
+import { VariablesPanel } from './variables/VariablesPanel';
 import { useEditorStore } from '@/store';
 import { PANEL_DEFAULTS } from '@/lib/constants';
 
@@ -29,6 +30,7 @@ export function RightPanel({ width }: RightPanelProps) {
         <PanelTabs />
         <div className="flex-1 overflow-y-auto">
           {activeRightTab === 'design' && <DesignPanel />}
+          {activeRightTab === 'variables' && <VariablesPanel />}
           {activeRightTab === 'changes' && <ChangesPanel />}
           {activeRightTab === 'claude' && <ClaudeIntegrationPanel />}
           {activeRightTab === 'console' && <ConsolePanel />}

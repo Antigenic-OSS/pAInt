@@ -75,7 +75,7 @@ export function Editor() {
         )}
       </div>
       <ToastContainer />
-      {(!targetUrl || connectionStatus === 'connecting') && <ConnectModal />}
+      {(!targetUrl || ['confirming', 'scanning', 'connecting'].includes(connectionStatus)) && <ConnectModal />}
     </div>
   );
 }

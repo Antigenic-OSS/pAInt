@@ -1,15 +1,16 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useEditorStore } from '@/store';
 import { formatChangelog } from '@/lib/utils';
 import { BREAKPOINTS } from '@/lib/constants';
+import { consumeClaudeStream, formatStderrLine } from '@/lib/claude-stream';
 import { SetupFlow } from './SetupFlow';
 import { ClaudeProgressIndicator } from './ClaudeProgressIndicator';
 import { DiffViewer } from './DiffViewer';
 import { ResultsSummary } from './ResultsSummary';
 import { ClaudeErrorState } from './ClaudeErrorState';
-import type { ClaudeAnalyzeResponse, ClaudeApplyResponse } from '@/types/claude';
+import type { ClaudeAnalyzeResponse, ClaudeApplyResponse, ClaudeErrorCode } from '@/types/claude';
 
 export function ClaudeIntegrationPanel() {
   const claudeStatus = useEditorStore((s) => s.claudeStatus);
@@ -30,9 +31,16 @@ export function ClaudeIntegrationPanel() {
   const activeBreakpoint = useEditorStore((s) => s.activeBreakpoint);
   const currentPagePath = useEditorStore((s) => s.currentPagePath);
   const styleChanges = useEditorStore((s) => s.styleChanges);
+  const aiScanResult = useEditorStore((s) => s.aiScanResult);
+  const aiScanStatus = useEditorStore((s) => s.aiScanStatus);
+  const resetAiScan = useEditorStore((s) => s.resetAiScan);
+  const showToast = useEditorStore((s) => s.showToast);
+  const setActiveLeftTab = useEditorStore((s) => s.setActiveLeftTab);
+
   const [analysisSummary, setAnalysisSummary] = useState('');
   const [appliedFiles, setAppliedFiles] = useState<string[]>([]);
   const [setupComplete, setSetupComplete] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
 
   // Derive projectRoot from per-port mapping
   const projectRoot = targetUrl ? (portRoots[targetUrl] ?? null) : null;
@@ -56,12 +64,53 @@ export function ClaudeIntegrationPanel() {
     setSetupComplete(true);
   }, []);
 
-  const handleAnalyze = useCallback(async () => {
-    if (!targetUrl || !projectRoot || totalChanges === 0) return;
-
+  // Shared analysis logic — sends to /api/claude/analyze with SSE streaming
+  const runAnalysis = useCallback((payload: { changelog?: string; smartPrompt?: string; projectRoot: string }) => {
     setClaudeStatus('analyzing');
     setClaudeError(null);
     setAnalysisSummary('');
+
+    // Auto-switch to Terminal tab so user sees progress
+    setActiveLeftTab('terminal');
+
+    // Write header to terminal
+    const write = useEditorStore.getState().writeToTerminal;
+    write?.('\r\n\x1b[1;34m  Claude Code: Analyzing...\x1b[0m\r\n');
+
+    // Abort any previous stream
+    abortRef.current?.abort();
+
+    const controller = consumeClaudeStream<ClaudeAnalyzeResponse>(
+      '/api/claude/analyze',
+      payload,
+      {
+        onStderr: (line) => {
+          const w = useEditorStore.getState().writeToTerminal;
+          const formatted = formatStderrLine(line);
+          if (formatted) w?.(formatted + '\r\n');
+        },
+        onResult: (data) => {
+          setSessionId(data.sessionId);
+          setParsedDiffs(data.diffs);
+          setAnalysisSummary(data.summary || '');
+          setClaudeStatus('complete');
+          const w = useEditorStore.getState().writeToTerminal;
+          w?.('\x1b[32m  Analysis complete.\x1b[0m\r\n');
+        },
+        onError: (err) => {
+          setClaudeStatus('error');
+          setClaudeError({ code: (err.code as ClaudeErrorCode) || 'UNKNOWN', message: err.message });
+          const w = useEditorStore.getState().writeToTerminal;
+          w?.(`\x1b[31m  Error: ${err.message}\x1b[0m\r\n`);
+        },
+      },
+    );
+
+    abortRef.current = controller;
+  }, [setClaudeStatus, setClaudeError, setSessionId, setParsedDiffs, setActiveLeftTab]);
+
+  const handleAnalyze = useCallback(async () => {
+    if (!targetUrl || !projectRoot || totalChanges === 0) return;
 
     const changelog = formatChangelog({
       targetUrl,
@@ -71,35 +120,7 @@ export function ClaudeIntegrationPanel() {
       styleChanges,
     });
 
-    try {
-      const res = await fetch('/api/claude/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ changelog, projectRoot }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setClaudeStatus('error');
-        setClaudeError({
-          code: data.code || 'UNKNOWN',
-          message: data.error || `Request failed with status ${res.status}`,
-        });
-        return;
-      }
-
-      const data: ClaudeAnalyzeResponse = await res.json();
-      setSessionId(data.sessionId);
-      setParsedDiffs(data.diffs);
-      setAnalysisSummary(data.summary || '');
-      setClaudeStatus('complete');
-    } catch (err) {
-      setClaudeStatus('error');
-      setClaudeError({
-        code: 'UNKNOWN',
-        message: err instanceof Error ? err.message : 'Network error',
-      });
-    }
+    await runAnalysis({ changelog, projectRoot });
   }, [
     targetUrl,
     projectRoot,
@@ -107,13 +128,30 @@ export function ClaudeIntegrationPanel() {
     currentPagePath,
     activeBreakpoint,
     styleChanges,
-    setClaudeStatus,
-    setClaudeError,
-    setSessionId,
-    setParsedDiffs,
+    runAnalysis,
   ]);
 
-  const showToast = useEditorStore((s) => s.showToast);
+  // Auto-trigger analysis when arriving from "Send to Claude Code" in AI Scan
+  const hasTriggeredScanRef = useRef(false);
+  useEffect(() => {
+    if (
+      aiScanStatus === 'complete' &&
+      aiScanResult?.smartPrompt &&
+      projectRoot &&
+      claudeStatus === 'idle' &&
+      !hasTriggeredScanRef.current
+    ) {
+      hasTriggeredScanRef.current = true;
+      const prompt = aiScanResult.smartPrompt;
+      // Clear the scan result so it doesn't re-trigger
+      resetAiScan();
+      runAnalysis({ smartPrompt: prompt, projectRoot });
+    }
+    // Reset the guard when scan result is cleared
+    if (aiScanStatus !== 'complete') {
+      hasTriggeredScanRef.current = false;
+    }
+  }, [aiScanStatus, aiScanResult, projectRoot, claudeStatus, resetAiScan, runAnalysis]);
 
   const handleApplyAll = useCallback(async () => {
     if (!sessionId || !projectRoot) return;
@@ -164,12 +202,16 @@ export function ClaudeIntegrationPanel() {
   }, [sessionId, projectRoot, setClaudeStatus, setClaudeError, showToast]);
 
   const handleRetry = useCallback(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
     resetClaude();
     setAnalysisSummary('');
     setAppliedFiles([]);
   }, [resetClaude]);
 
   const handleStartOver = useCallback(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
     resetClaude();
     setAnalysisSummary('');
     setAppliedFiles([]);

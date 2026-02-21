@@ -9,8 +9,11 @@ export function PanelTabs() {
   const changeCount = useEditorStore((s) => s.styleChanges.filter((c) => c.breakpoint === activeBreakpoint).length);
   const consoleErrorCount = useEditorStore((s) => s.consoleErrorCount);
 
-  const tabs: Array<{ id: 'design' | 'changes' | 'claude' | 'console'; label: string }> = [
+  const varCount = useEditorStore((s) => Object.keys(s.cssVariableDefinitions).length);
+
+  const tabs: Array<{ id: 'design' | 'variables' | 'changes' | 'claude' | 'console'; label: string }> = [
     { id: 'design', label: 'Design' },
+    { id: 'variables', label: 'Variables' },
     { id: 'changes', label: 'Changes' },
     // { id: 'claude', label: 'Claude' },
     { id: 'console', label: 'Console' },
@@ -32,6 +35,14 @@ export function PanelTabs() {
           }}
         >
           {tab.label}
+          {tab.id === 'variables' && varCount > 0 && (
+            <span
+              className="inline-flex items-center justify-center min-w-4 h-4 px-1 rounded-full text-[10px] font-medium"
+              style={{ background: 'var(--text-muted)', color: '#fff' }}
+            >
+              {varCount}
+            </span>
+          )}
           {tab.id === 'changes' && changeCount > 0 && (
             <span
               className="inline-flex items-center justify-center min-w-4 h-4 px-1 rounded-full text-[10px] font-medium"

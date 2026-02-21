@@ -3,16 +3,24 @@ import { NextRequest, NextResponse } from 'next/server';
 const PROXY_HEADER = 'x-dev-editor-target';
 
 /**
- * Middleware that intercepts /_next/static/* and /_next/image requests
- * originating from the proxied iframe and rewrites them to go through
- * the proxy API route.
+ * Middleware that intercepts asset requests originating from the proxied
+ * iframe and rewrites them to go through the proxy API route.
  *
- * IMPORTANT: We intentionally do NOT match page-level paths (e.g. /works,
- * /about). Those are handled by the proxy's HTML URL rewriting which
- * rewrites <a href="/works"> to <a href="/api/proxy/works?...">. Matching
- * page paths here caused Next.js to track them in its HMR route tree,
- * generating "unrecognized HMR message" errors and infinite reload loops.
+ * Matches /_next/ paths (static assets, images) and common asset paths
+ * (fonts, images, icons, media) that target apps may serve. This ensures
+ * icon font files, images, and other resources load correctly through
+ * the proxy even when CSS url() references aren't rewritten.
+ *
+ * IMPORTANT: We do NOT match page-level paths (e.g. /works, /about).
+ * Those are handled by the proxy's HTML URL rewriting. Matching page
+ * paths pollutes Next.js HMR route tree and causes reload loops.
+ * The referer/fetch-dest check below ensures only iframe-originated
+ * requests are proxied.
  */
+
+// Asset file extensions that should be proxied from the iframe
+const ASSET_EXT_RE = /\.(woff2?|ttf|eot|otf|svg|png|jpe?g|gif|webp|avif|ico|mp4|webm|css|js|json|map)(\?|$)/i;
+
 export function middleware(request: NextRequest) {
   const targetUrl = request.cookies.get(PROXY_HEADER)?.value;
   if (!targetUrl) return NextResponse.next();
@@ -28,6 +36,12 @@ export function middleware(request: NextRequest) {
   const fetchDest = request.headers.get('sec-fetch-dest') || '';
 
   if (!isFromProxy && fetchDest !== 'iframe') {
+    return NextResponse.next();
+  }
+
+  // For the broad matcher, only proxy requests that look like assets
+  // (have a file extension). This prevents page-level paths from being proxied.
+  if (!pathname.startsWith('/_next/') && !ASSET_EXT_RE.test(pathname)) {
     return NextResponse.next();
   }
 
@@ -49,9 +63,18 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Only intercept /_next/ asset paths from the proxied iframe.
-    // Do NOT match page-level paths — those are already rewritten in HTML.
+    // /_next/ asset paths (static files, images, fonts)
     '/_next/static/:path*',
     '/_next/image',
+    // Common asset directories that target apps may serve
+    // (fonts, icons, images, media, static files)
+    '/fonts/:path*',
+    '/webfonts/:path*',
+    '/assets/:path*',
+    '/images/:path*',
+    '/icons/:path*',
+    '/media/:path*',
+    '/static/:path*',
+    '/public/:path*',
   ],
 };
