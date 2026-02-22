@@ -417,6 +417,8 @@ function getInspectorCode(): string {
       }, true);
 
       function selectElement(el) {
+        // Don't select elements when selection mode is disabled (preview mode)
+        if (!selectionModeEnabled) return;
         selectedElement = el;
         // Hide hover overlay when selecting
         hoverOverlay.style.display = 'none';
@@ -809,7 +811,13 @@ function getInspectorCode(): string {
               selectionOverlay.style.display = 'none';
               hoverOverlay.style.display = 'none';
               hoveredElement = null;
+              selectedElement = null;
             }
+            break;
+          }
+          case 'HIDE_HOVER': {
+            hoverOverlay.style.display = 'none';
+            hoveredElement = null;
             break;
           }
           case 'HIDE_SELECTION_OVERLAY': {
@@ -817,7 +825,7 @@ function getInspectorCode(): string {
             break;
           }
           case 'SHOW_SELECTION_OVERLAY': {
-            if (selectedElement) {
+            if (selectionModeEnabled && selectedElement) {
               selectionOverlay.style.display = 'block';
             }
             break;

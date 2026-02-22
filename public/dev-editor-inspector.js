@@ -415,6 +415,8 @@
     }, true);
 
     function selectElement(el) {
+      // Don't select elements when selection mode is disabled (preview mode)
+      if (!selectionModeEnabled) return;
       selectedElement = el;
       var rect = el.getBoundingClientRect();
       selectionOverlay.style.display = 'block';
@@ -868,7 +870,13 @@
             selectionOverlay.style.display = 'none';
             hoverOverlay.style.display = 'none';
             hoveredElement = null;
+            selectedElement = null;
           }
+          break;
+        }
+        case 'HIDE_HOVER': {
+          hoverOverlay.style.display = 'none';
+          hoveredElement = null;
           break;
         }
         case 'HIDE_SELECTION_OVERLAY': {
@@ -876,7 +884,7 @@
           break;
         }
         case 'SHOW_SELECTION_OVERLAY': {
-          if (selectedElement) {
+          if (selectionModeEnabled && selectedElement) {
             var sr = selectedElement.getBoundingClientRect();
             selectionOverlay.style.top = sr.top + 'px';
             selectionOverlay.style.left = sr.left + 'px';
