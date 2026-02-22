@@ -30,6 +30,12 @@ npm-debug.log*
 # TypeScript
 *.tsbuildinfo
 
+# Playwright MCP
+.playwright-mcp/
+
+# Screenshots
+*.png
+
 # Misc
 *.tmp
 coverage/
