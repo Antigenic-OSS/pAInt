@@ -1078,6 +1078,7 @@ async function handleProxy(
       headers,
       body: request.method !== 'GET' && request.method !== 'HEAD' ? await request.arrayBuffer() : undefined,
       signal: controller.signal,
+      redirect: 'manual',
     });
 
     clearTimeout(timeout);
@@ -1098,10 +1099,53 @@ async function handleProxy(
       'content-security-policy-report-only',
       'x-frame-options',
     ]);
+
+    // Handle redirects from the target (e.g. auth middleware redirecting to /login).
+    // Rewrite the Location header to go through the proxy so the browser stays
+    // within the iframe and cookies/auth state are preserved.
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get('location');
+      if (location) {
+        let rewrittenLocation = location;
+        const targetOriginForRedirect = new URL(targetUrl).origin;
+        try {
+          const locUrl = new URL(location, targetUrl);
+          // Only rewrite same-origin redirects (to the target server)
+          if (locUrl.origin === targetOriginForRedirect) {
+            const sep = locUrl.search ? '&' : '?';
+            rewrittenLocation = `/api/proxy${locUrl.pathname}${locUrl.search}${sep}${PROXY_HEADER}=${encodeURIComponent(targetUrl)}${locUrl.hash}`;
+          }
+        } catch {
+          // If URL parsing fails, pass through as-is
+        }
+        const redirectHeaders = new Headers();
+        response.headers.forEach((value, key) => {
+          if (!STRIP_HEADERS.has(key) && key !== 'location') {
+            if (key === 'set-cookie') {
+              redirectHeaders.append(key, value);
+            } else {
+              redirectHeaders.set(key, value);
+            }
+          }
+        });
+        redirectHeaders.set('location', rewrittenLocation);
+        return new NextResponse(null, {
+          status: response.status,
+          headers: redirectHeaders,
+        });
+      }
+    }
     const responseHeaders = new Headers();
     response.headers.forEach((value, key) => {
       if (!STRIP_HEADERS.has(key)) {
-        responseHeaders.set(key, value);
+        // Use append for set-cookie to preserve multiple cookies (e.g. Supabase
+        // auth sends separate access-token, refresh-token, etc. cookies).
+        // Using set() would overwrite all but the last cookie.
+        if (key === 'set-cookie') {
+          responseHeaders.append(key, value);
+        } else {
+          responseHeaders.set(key, value);
+        }
       }
     });
 
@@ -1137,6 +1181,8 @@ async function handleProxy(
       html = html.replace(
         new RegExp(`(href|src|action|poster)=(["'])${escapedOrigin}(/[^"']*)`, 'g'),
         (_match: string, attr: string, quote: string, pathPart: string) => {
+          // Skip /_next/ paths — middleware handles proxying these
+          if (pathPart.startsWith('/_next/')) return _match;
           return `${attr}=${quote}${proxyPath(pathPart)}`;
         }
       );
@@ -1151,11 +1197,17 @@ async function handleProxy(
       );
 
       // Rewrite src, href, action, poster attributes (absolute paths starting with /)
+      // IMPORTANT: Skip /_next/ paths — the middleware already proxies these.
+      // Rewriting them here adds /api/proxy/ prefix and query params to <script src>,
+      // which breaks turbopack's getPathFromScript() chunk path matching and
+      // prevents React from hydrating (modules register but never resolve).
       html = html.replace(
         /(href|src|action|poster)=(["'])(\/[^"']*)/g,
         (_match: string, attr: string, quote: string, originalPath: string) => {
           // Skip already-rewritten paths
           if (originalPath.startsWith('/api/proxy')) return _match;
+          // Skip /_next/ paths — middleware handles proxying these
+          if (originalPath.startsWith('/_next/')) return _match;
           return `${attr}=${quote}${proxyPath(originalPath)}`;
         }
       );
@@ -1282,12 +1334,15 @@ async function handleProxy(
   setTimeout(function(){ sessionStorage.removeItem(rk); }, 3000);
   if (rc > 4) { sessionStorage.removeItem(rk); window.stop(); return; }
 
-  // Mock HMR WebSocket connections
+  // HMR isolation: return dead WebSocket/EventSource mocks for HMR connections.
+  // Turbopack bootstrapping does NOT require the HMR WebSocket — initial module
+  // loading happens via <script> tags. The HMR connection is only for live updates.
+  // Routing it to the target server causes CORS failures and unwanted reloads.
   var OWS = window.WebSocket;
   window.WebSocket = function(u, pr) {
     var s = String(u);
     if (s.indexOf('_next') >= 0 || s.indexOf('hmr') >= 0 || s.indexOf('webpack') >= 0 || s.indexOf('turbopack') >= 0 || s.indexOf('hot-update') >= 0) {
-      var m = {readyState:3, close:function(){}, send:function(){}, addEventListener:function(){}, removeEventListener:function(){}, dispatchEvent:function(){return true}, onopen:null, onclose:null, onmessage:null, onerror:null};
+      var m = {readyState:3, close:function(){}, send:function(){}, addEventListener:function(){}, removeEventListener:function(){}, dispatchEvent:function(){return true}};
       setTimeout(function(){ if(m.onclose) m.onclose({code:1000, reason:'', wasClean:true}); }, 50);
       return m;
     }
@@ -1295,13 +1350,14 @@ async function handleProxy(
   };
   window.WebSocket.CONNECTING=0; window.WebSocket.OPEN=1; window.WebSocket.CLOSING=2; window.WebSocket.CLOSED=3;
 
-  // Mock HMR EventSource
   var OES = window.EventSource;
   if (OES) {
     window.EventSource = function(u, c) {
       var s = String(u);
       if (s.indexOf('hmr') >= 0 || s.indexOf('hot') >= 0 || s.indexOf('turbopack') >= 0 || s.indexOf('webpack') >= 0 || s.indexOf('_next') >= 0) {
-        return {close:function(){}, addEventListener:function(){}, removeEventListener:function(){}, dispatchEvent:function(){return true}, readyState:2, url:s, withCredentials:false, onopen:null, onmessage:null, onerror:null};
+        var m = {readyState:2, close:function(){}, addEventListener:function(){}, removeEventListener:function(){}, dispatchEvent:function(){return true}};
+        setTimeout(function(){ if(m.onerror) m.onerror({}); }, 50);
+        return m;
       }
       return c ? new OES(u, c) : new OES(u);
     };
@@ -1516,6 +1572,15 @@ async function handleProxy(
     if (!val || typeof val !== 'string') return null;
     if (val.indexOf('/api/proxy') === 0) return null;
     if (val.indexOf('data:') === 0 || val.indexOf('blob:') === 0 || val.charAt(0) === '#' || val.indexOf('javascript:') === 0) return null;
+    // Mark /_next/ paths with ?_dp=1 so the middleware can identify them as
+    // iframe-originated requests. We must NOT add the /api/proxy/ prefix
+    // because that corrupts turbopack's getPathFromScript() chunk path matching.
+    // The middleware strips the query string before proxying. Turbopack's
+    // getPathFromScript also strips query strings, so path matching still works.
+    if (val.indexOf('/_next/') === 0) {
+      if (val.indexOf('_dp=') >= 0) return null; // Already marked
+      return val + (val.indexOf('?') >= 0 ? '&' : '?') + '_dp=1';
+    }
     var fragment = '';
     var hashIdx = val.indexOf('#');
     var urlPart = val;

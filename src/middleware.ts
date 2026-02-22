@@ -30,17 +30,21 @@ export function middleware(request: NextRequest) {
   // Never intercept our own editor API routes
   if (pathname.startsWith('/api/')) return NextResponse.next();
 
-  // Check if this request originates from the proxied iframe
+  // Check if this request originates from the proxied iframe.
+  // After the navigation blocker calls history.replaceState, the referer
+  // no longer contains /api/proxy. For dynamically loaded chunks, the
+  // navigation blocker adds ?_dp=1 to /_next/ URLs as a proxy marker.
   const referer = request.headers.get('referer') || '';
   const isFromProxy = referer.includes('/api/proxy');
   const fetchDest = request.headers.get('sec-fetch-dest') || '';
+  const hasDynamicProxyMarker = request.nextUrl.searchParams.has('_dp');
 
-  if (!isFromProxy && fetchDest !== 'iframe') {
+  if (!isFromProxy && fetchDest !== 'iframe' && !hasDynamicProxyMarker) {
     return NextResponse.next();
   }
 
-  // For the broad matcher, only proxy requests that look like assets
-  // (have a file extension). This prevents page-level paths from being proxied.
+  // Only proxy requests that look like assets (have a file extension).
+  // This prevents page-level paths from being proxied.
   if (!pathname.startsWith('/_next/') && !ASSET_EXT_RE.test(pathname)) {
     return NextResponse.next();
   }
@@ -51,9 +55,9 @@ export function middleware(request: NextRequest) {
   const proxyUrl = new URL(`/api/proxy${pathname}`, request.url);
   proxyUrl.searchParams.set(PROXY_HEADER, targetUrl);
 
-  // Preserve original query params
+  // Preserve original query params (strip internal markers)
   request.nextUrl.searchParams.forEach((value, key) => {
-    if (key !== PROXY_HEADER) {
+    if (key !== PROXY_HEADER && key !== '_dp') {
       proxyUrl.searchParams.set(key, value);
     }
   });
@@ -76,5 +80,11 @@ export const config = {
     '/media/:path*',
     '/static/:path*',
     '/public/:path*',
+    '/avatars/:path*',
+    '/uploads/:path*',
+    '/files/:path*',
+    '/content/:path*',
+    '/img/:path*',
+    '/pics/:path*',
   ],
 };
