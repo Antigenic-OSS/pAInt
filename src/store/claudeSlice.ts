@@ -23,6 +23,9 @@ export interface ClaudeSlice {
   aiScanResult: ClaudeScanResponse | null;
   aiScanError: string | null;
 
+  // Client-side directory handle (File System Access API, non-serializable)
+  directoryHandle: FileSystemDirectoryHandle | null;
+
   setClaudeStatus: (status: ClaudeStatus) => void;
   setProjectRoot: (url: string, path: string | null) => void;
   getProjectRootForUrl: (url: string | null) => string | null;
@@ -47,6 +50,9 @@ export interface ClaudeSlice {
   setAiScanResult: (result: ClaudeScanResponse | null) => void;
   setAiScanError: (error: string | null) => void;
   resetAiScan: () => void;
+
+  // Client-side directory handle actions
+  setDirectoryHandle: (handle: FileSystemDirectoryHandle | null) => void;
 }
 
 function persistPortRoots(portRoots: Record<string, string>) {
@@ -79,6 +85,8 @@ export const createClaudeSlice: StateCreator<ClaudeSlice, [], [], ClaudeSlice> =
   aiScanStatus: 'idle',
   aiScanResult: null,
   aiScanError: null,
+
+  directoryHandle: null,
 
   setClaudeStatus: (status) => set({ claudeStatus: status }),
 
@@ -151,6 +159,8 @@ export const createClaudeSlice: StateCreator<ClaudeSlice, [], [], ClaudeSlice> =
     aiScanResult: null,
     aiScanError: null,
   }),
+
+  setDirectoryHandle: (handle) => set({ directoryHandle: handle }),
 
   loadPersistedClaude: () => {
     try {

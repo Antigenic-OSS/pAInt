@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useEditorStore } from '@/store';
 import { ProjectRootSelector } from './ProjectRootSelector';
+import { isEditorOnLocalhost } from '@/hooks/usePostMessage';
 import type { ClaudeStatusResponse } from '@/types/claude';
 
 interface SetupFlowProps {
@@ -15,6 +16,8 @@ export function SetupFlow({ targetUrl, onComplete }: SetupFlowProps) {
   const setCliAvailable = useEditorStore((s) => s.setCliAvailable);
   const portRoots = useEditorStore((s) => s.portRoots);
   const projectRoot = portRoots[targetUrl] ?? null;
+
+  const isLocal = typeof window !== 'undefined' && isEditorOnLocalhost();
 
   const [checking, setChecking] = useState(false);
   const [cliVersion, setCliVersion] = useState<string | null>(null);
@@ -40,16 +43,58 @@ export function SetupFlow({ targetUrl, onComplete }: SetupFlowProps) {
     }
   }, [setCliAvailable]);
 
-  // Auto-check CLI on mount
+  // Auto-check CLI on mount (only when running locally)
   useEffect(() => {
-    if (cliAvailable === null) {
+    if (isLocal && cliAvailable === null) {
       checkCli();
     }
-  }, [cliAvailable, checkCli]);
+  }, [isLocal, cliAvailable, checkCli]);
 
   const handleProjectRootSaved = useCallback(() => {
     onComplete();
   }, [onComplete]);
+
+  // ─── Remote mode (Vercel) ───
+  // Skip CLI check entirely, show project root selector with File System Access API
+  if (!isLocal) {
+    return (
+      <div className="flex flex-col gap-4 p-4">
+        <div className="text-xs font-medium" style={{ color: 'var(--text-primary)' }}>
+          Claude Code
+        </div>
+
+        {/* Remote mode notice */}
+        <div
+          className="flex flex-col gap-1.5 px-3 py-2.5 rounded"
+          style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border)' }}
+        >
+          <div className="text-[11px] font-medium" style={{ color: 'var(--text-secondary)' }}>
+            Running remotely
+          </div>
+          <p className="text-[10px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+            Claude Code CLI features (Analyze, Apply) require running Dev Editor locally.
+            You can still select a project folder to improve changelog accuracy, and copy
+            the changelog to paste into Claude Code.
+          </p>
+        </div>
+
+        {/* Project root setup (uses File System Access API on remote) */}
+        <div className="flex flex-col gap-2">
+          <div className="text-[11px] font-medium" style={{ color: 'var(--text-primary)' }}>
+            Project folder{' '}
+            <span style={{ color: 'var(--text-muted)', fontWeight: 'normal' }}>(optional)</span>
+          </div>
+          <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+            Select your project folder to detect framework, components, and CSS strategy
+            for smarter changelog export.
+          </p>
+          <ProjectRootSelector targetUrl={targetUrl} onSaved={handleProjectRootSaved} />
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Local mode ───
 
   // Still checking CLI on first load
   if (checking && cliAvailable === null) {

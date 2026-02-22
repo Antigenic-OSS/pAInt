@@ -11,6 +11,8 @@ function isAllowedOrigin(origin: string): boolean {
     const url = new URL(origin);
     // Always allow localhost/127.0.0.1 (primary use case)
     if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') return true;
+    // Allow the editor's own origin (same-origin messages, e.g. proxy mode)
+    if (typeof window !== 'undefined' && origin === window.location.origin) return true;
     // Also allow if origin matches the current target URL (for live site editing)
     const targetUrl = useEditorStore.getState().targetUrl;
     if (targetUrl) {

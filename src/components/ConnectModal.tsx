@@ -5,6 +5,8 @@ import { useEditorStore } from '@/store';
 import { normalizeTargetUrl } from '@/lib/utils';
 import { BREAKPOINTS } from '@/lib/constants';
 import { useProjectScan } from '@/hooks/useProjectScan';
+import { pickFolder } from '@/lib/folderPicker';
+import { isEditorOnLocalhost } from '@/hooks/usePostMessage';
 import { ScanAnimation } from './common/ScanAnimation';
 import type { Breakpoint } from '@/types/changelog';
 import type { ScanResult } from '@/hooks/useProjectScan';
@@ -27,7 +29,14 @@ export function ConnectModal() {
   const pendingFolderPath = useEditorStore((s) => s.pendingFolderPath);
   const targetUrl = useEditorStore((s) => s.targetUrl);
 
-  const { triggerScan } = useProjectScan();
+  const setDirectoryHandle = useEditorStore((s) => s.setDirectoryHandle);
+  const directoryHandle = useEditorStore((s) => s.directoryHandle);
+  const { triggerScan, triggerClientScan } = useProjectScan();
+  const [isLocal, setIsLocal] = useState(false);
+
+  useEffect(() => {
+    setIsLocal(isEditorOnLocalhost());
+  }, []);
 
   const portOptions = Array.from({ length: 8 }, (_, i) => 3000 + i);
   const [selectedPort, setSelectedPort] = useState(3000);
@@ -49,12 +58,17 @@ export function ConnectModal() {
   const isConfirming = connectionStatus === 'confirming';
   const isScanning = connectionStatus === 'scanning';
 
-  // Show script tag fallback after 5s of connecting
+  // Show script tag fallback after 5s of connecting (immediately when deployed)
   useEffect(() => {
     if (isConnecting && targetUrl) {
-      fallbackTimerRef.current = setTimeout(() => {
+      if (!isLocal) {
+        // On Vercel, show immediately — proxy won't inject the script
         setShowScriptFallback(true);
-      }, 5000);
+      } else {
+        fallbackTimerRef.current = setTimeout(() => {
+          setShowScriptFallback(true);
+        }, 5000);
+      }
     } else {
       setShowScriptFallback(false);
       if (fallbackTimerRef.current) {
@@ -68,7 +82,7 @@ export function ConnectModal() {
         fallbackTimerRef.current = null;
       }
     };
-  }, [isConnecting, targetUrl]);
+  }, [isConnecting, targetUrl, isLocal]);
 
   // Cleanup auto-advance timer
   useEffect(() => {
@@ -127,15 +141,17 @@ export function ConnectModal() {
     setIsBrowsing(true);
     setFolderError(null);
     try {
-      const res = await fetch('/api/claude/pick-folder');
-      const data = await res.json();
-      if (data.cancelled) {
-        // User cancelled — do nothing
-      } else if (data.path) {
-        setFolderPath(data.path);
-      } else if (data.error) {
-        setFolderError(data.error);
+      const result = await pickFolder();
+      if (result.type === 'path') {
+        setFolderPath(result.path);
+        setDirectoryHandle(null);
+      } else if (result.type === 'handle') {
+        setFolderPath(result.name);
+        setDirectoryHandle(result.handle);
+      } else if (result.type === 'error') {
+        setFolderError(result.message);
       }
+      // type === 'cancelled' — do nothing
     } catch {
       setFolderError('Failed to open folder picker');
     } finally {
@@ -156,7 +172,10 @@ export function ConnectModal() {
 
     if (trimmedFolder) {
       // Save folder and go to confirmation step
-      setProjectRoot(normalized, trimmedFolder);
+      // For client-side handles, store the folder name (not a server path)
+      if (isLocal || !directoryHandle) {
+        setProjectRoot(normalized, trimmedFolder);
+      }
       setPendingConnection(normalized, trimmedFolder);
       addRecentUrl(normalized);
     } else {
@@ -172,7 +191,10 @@ export function ConnectModal() {
     setScanResult(null);
     setScanDone(false);
 
-    const result = await triggerScan(pendingFolderPath);
+    // Use client-side scan when we have a directory handle (Vercel / FSAA mode)
+    const result = directoryHandle
+      ? await triggerClientScan(directoryHandle)
+      : await triggerScan(pendingFolderPath);
     setScanResult(result);
     setScanDone(true);
 
@@ -216,7 +238,7 @@ export function ConnectModal() {
       ? 'Scanning project folder'
       : isConnecting
         ? 'Connecting to your project'
-        : 'Connect to your localhost project';
+        : isLocal ? 'Connect to your localhost project' : 'Connect to your project';
 
   return (
     <div
@@ -731,13 +753,15 @@ export function ConnectModal() {
               className="text-xs font-medium mb-1"
               style={{ color: 'var(--warning)' }}
             >
-              Inspector script not detected
+              {isLocal ? 'Inspector script not detected' : 'Script tag required'}
             </div>
             <div
               className="text-[11px] mb-2"
               style={{ color: 'var(--text-secondary)' }}
             >
-              Add this script tag to your project&apos;s HTML layout:
+              {isLocal
+                ? "Add this script tag to your project's HTML layout:"
+                : "Since the editor is running remotely, add this script tag to your project's HTML layout to enable inspection:"}
             </div>
             <div className="flex items-center gap-2">
               <code

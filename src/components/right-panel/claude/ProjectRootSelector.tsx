@@ -3,6 +3,8 @@
 import { useState, useCallback } from 'react';
 import { useEditorStore } from '@/store';
 import { useProjectScan } from '@/hooks/useProjectScan';
+import { pickFolder } from '@/lib/folderPicker';
+import { isEditorOnLocalhost } from '@/hooks/usePostMessage';
 
 interface ProjectRootSelectorProps {
   targetUrl: string;
@@ -16,7 +18,11 @@ export function ProjectRootSelector({ targetUrl, onSaved }: ProjectRootSelectorP
   const scanStatus = useEditorStore((s) => s.scanStatus);
   const scannedProjectName = useEditorStore((s) => s.scannedProjectName);
   const componentFileMap = useEditorStore((s) => s.componentFileMap);
-  const { triggerScan } = useProjectScan();
+  const setDirectoryHandle = useEditorStore((s) => s.setDirectoryHandle);
+  const directoryHandle = useEditorStore((s) => s.directoryHandle);
+  const { triggerScan, triggerClientScan } = useProjectScan();
+
+  const isLocal = typeof window !== 'undefined' && isEditorOnLocalhost();
 
   const [inputValue, setInputValue] = useState(projectRoot || '');
   const [validating, setValidating] = useState(false);
@@ -24,37 +30,43 @@ export function ProjectRootSelector({ targetUrl, onSaved }: ProjectRootSelectorP
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
   const [picking, setPicking] = useState(false);
 
-  const scanWithFeedback = useCallback(async (rootPath: string) => {
-    await triggerScan(rootPath, {
-      onSuccess: (count, projectName) => {
-        setValidationState('success');
-        setValidationMessage(
-          count > 0
-            ? `Found ${count} components in ${projectName}`
-            : 'No component files found — check folder'
-        );
-      },
-      onError: (message) => {
-        setValidationState('error');
-        setValidationMessage(message);
-      },
-    });
-  }, [triggerScan]);
+  const scanFeedbackCallbacks = {
+    onSuccess: (count: number, projectName: string) => {
+      setValidationState('success');
+      setValidationMessage(
+        count > 0
+          ? `Found ${count} components in ${projectName}`
+          : 'No component files found — check folder'
+      );
+    },
+    onError: (message: string) => {
+      setValidationState('error');
+      setValidationMessage(message);
+    },
+  };
 
   const handlePickFolder = useCallback(async () => {
     setPicking(true);
     try {
-      const res = await fetch('/api/claude/pick-folder');
-      const data = await res.json();
-      if (data.path) {
-        setInputValue(data.path);
+      const result = await pickFolder();
+      if (result.type === 'path') {
+        setInputValue(result.path);
+        setDirectoryHandle(null);
         setValidationState('idle');
         setValidationMessage(null);
+      } else if (result.type === 'handle') {
+        setInputValue(result.name);
+        setDirectoryHandle(result.handle);
+        setValidationState('idle');
+        setValidationMessage(null);
+      } else if (result.type === 'error') {
+        setValidationState('error');
+        setValidationMessage(result.message);
       }
     } catch { /* user cancelled or error */ } finally {
       setPicking(false);
     }
-  }, []);
+  }, [setDirectoryHandle]);
 
   const handleSave = useCallback(async () => {
     const trimmed = inputValue.trim();
@@ -64,17 +76,26 @@ export function ProjectRootSelector({ targetUrl, onSaved }: ProjectRootSelectorP
       return;
     }
 
-    if (!trimmed.startsWith('/')) {
-      setValidationState('error');
-      setValidationMessage('Path must be absolute (start with /)');
-      return;
-    }
-
     setValidating(true);
     setValidationState('idle');
     setValidationMessage(null);
 
     try {
+      // Client-side mode: we have a directory handle from the File System Access API
+      if (directoryHandle) {
+        setProjectRoot(targetUrl, trimmed);
+        await triggerClientScan(directoryHandle, scanFeedbackCallbacks);
+        onSaved?.();
+        return;
+      }
+
+      // Server-side mode: validate path and scan on server
+      if (!trimmed.startsWith('/')) {
+        setValidationState('error');
+        setValidationMessage('Path must be absolute (start with /)');
+        return;
+      }
+
       const res = await fetch('/api/claude/status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -83,8 +104,7 @@ export function ProjectRootSelector({ targetUrl, onSaved }: ProjectRootSelectorP
 
       if (res.ok) {
         setProjectRoot(targetUrl, trimmed);
-        // Trigger scan immediately after saving
-        await scanWithFeedback(trimmed);
+        await triggerScan(trimmed, scanFeedbackCallbacks);
         onSaved?.();
       } else {
         const data = await res.json().catch(() => ({ error: 'Validation failed' }));
@@ -94,12 +114,16 @@ export function ProjectRootSelector({ targetUrl, onSaved }: ProjectRootSelectorP
     } catch {
       // If the POST endpoint doesn't exist yet, fall back to saving and scanning
       setProjectRoot(targetUrl, trimmed);
-      await scanWithFeedback(trimmed);
+      if (directoryHandle) {
+        await triggerClientScan(directoryHandle, scanFeedbackCallbacks);
+      } else {
+        await triggerScan(trimmed, scanFeedbackCallbacks);
+      }
       onSaved?.();
     } finally {
       setValidating(false);
     }
-  }, [inputValue, targetUrl, setProjectRoot, onSaved, scanWithFeedback]);
+  }, [inputValue, targetUrl, setProjectRoot, onSaved, triggerScan, triggerClientScan, directoryHandle]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -127,11 +151,12 @@ export function ProjectRootSelector({ targetUrl, onSaved }: ProjectRootSelectorP
           value={inputValue}
           onChange={(e) => {
             setInputValue(e.target.value);
+            setDirectoryHandle(null);
             setValidationState('idle');
             setValidationMessage(null);
           }}
           onKeyDown={handleKeyDown}
-          placeholder="/path/to/your/project"
+          placeholder={isLocal ? '/path/to/your/project' : 'Click folder icon to browse'}
           className="flex-1 min-w-0 px-2 py-1.5 rounded text-xs font-mono outline-none transition-colors"
           style={{
             background: 'var(--bg-tertiary)',
@@ -144,6 +169,7 @@ export function ProjectRootSelector({ targetUrl, onSaved }: ProjectRootSelectorP
                   : 'var(--border)'
             }`,
           }}
+          readOnly={!isLocal && !!directoryHandle}
         />
         <button
           onClick={handlePickFolder}
