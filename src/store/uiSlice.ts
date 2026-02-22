@@ -9,6 +9,7 @@ export interface Toast {
 }
 
 export type ConnectionStatus = 'disconnected' | 'confirming' | 'scanning' | 'connecting' | 'connected';
+export type BridgeStatus = 'disconnected' | 'checking' | 'connected' | 'unavailable';
 
 export interface UISlice {
   targetUrl: string | null;
@@ -30,6 +31,8 @@ export interface UISlice {
   activeLeftTab: 'layers' | 'pages' | 'components' | 'terminal';
   previewWidth: number;
   toasts: Toast[];
+  bridgeUrl: string | null;
+  bridgeStatus: BridgeStatus;
 
   setTargetUrl: (url: string | null) => void;
   setConnectionStatus: (status: ConnectionStatus) => void;
@@ -53,6 +56,8 @@ export interface UISlice {
   setPreviewWidth: (width: number) => void;
   showToast: (type: Toast['type'], message: string) => void;
   dismissToast: (id: string) => void;
+  setBridgeUrl: (url: string | null) => void;
+  setBridgeStatus: (status: BridgeStatus) => void;
   loadPersistedUI: () => void;
 }
 
@@ -76,6 +81,8 @@ export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (set, get) 
   activeLeftTab: 'layers',
   previewWidth: 1920,
   toasts: [],
+  bridgeUrl: null,
+  bridgeStatus: 'disconnected',
 
   setTargetUrl: (url) => {
     set({ targetUrl: url });
@@ -212,6 +219,19 @@ export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (set, get) 
     });
   },
 
+  setBridgeUrl: (url) => {
+    set({ bridgeUrl: url });
+    try {
+      if (url) {
+        localStorage.setItem('dev-editor:bridge-url', url);
+      } else {
+        localStorage.removeItem('dev-editor:bridge-url');
+      }
+    } catch {}
+  },
+
+  setBridgeStatus: (status) => set({ bridgeStatus: status }),
+
   loadPersistedUI: () => {
     try {
       const urls = localStorage.getItem(LOCAL_STORAGE_KEYS.RECENT_URLS);
@@ -230,6 +250,8 @@ export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (set, get) 
         if (typeof parsed.left === 'boolean') set({ leftPanelOpen: parsed.left });
         if (typeof parsed.right === 'boolean') set({ rightPanelOpen: parsed.right });
       }
+      const bridgeUrl = localStorage.getItem('dev-editor:bridge-url');
+      if (bridgeUrl) set({ bridgeUrl });
     } catch {}
   },
 });

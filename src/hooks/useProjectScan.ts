@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { useEditorStore } from '@/store';
 import { scanProjectClient } from '@/lib/clientProjectScanner';
+import { getApiBase } from '@/lib/apiBase';
 import type { RouteEntry } from '@/types/claude';
 
 export interface ScanCallbacks {
@@ -104,7 +105,7 @@ export function useProjectScan() {
       setScanStatus('scanning');
       setScanError(null);
       try {
-        const res = await fetch('/api/project-scan', {
+        const res = await fetch(`${getApiBase()}/api/project-scan`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ projectRoot: rootPath }),

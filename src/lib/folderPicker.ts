@@ -1,9 +1,12 @@
 /**
  * Client-side folder picker utility.
  *
- * On deployed (non-localhost): uses the File System Access API (showDirectoryPicker).
+ * On deployed (non-localhost): uses the File System Access API (showDirectoryPicker),
+ * or the bridge server's native picker if connected.
  * On localhost: falls back to the server-side /api/claude/pick-folder endpoint.
  */
+
+import { getApiBase } from '@/lib/apiBase';
 
 export type FolderPickResult =
   | { type: 'handle'; handle: FileSystemDirectoryHandle; name: string }
@@ -34,11 +37,17 @@ export async function pickFolder(): Promise<FolderPickResult> {
     return pickFolderServer();
   }
 
-  // On deployed, use File System Access API
+  // On deployed with bridge, use the bridge's native picker
+  const apiBase = getApiBase();
+  if (apiBase) {
+    return pickFolderServer();
+  }
+
+  // On deployed without bridge, use File System Access API
   if (!isFolderPickerSupported()) {
     return {
       type: 'error',
-      message: 'Folder picker requires Chrome or Edge. Use a Chromium-based browser, or run Dev Editor locally.',
+      message: 'Folder picker requires Chrome or Edge, or run the bridge server locally.',
     };
   }
 
@@ -59,7 +68,7 @@ async function pickFolderClient(): Promise<FolderPickResult> {
 
 async function pickFolderServer(): Promise<FolderPickResult> {
   try {
-    const res = await fetch('/api/claude/pick-folder');
+    const res = await fetch(`${getApiBase()}/api/claude/pick-folder`);
     const data = await res.json();
     if (data.cancelled) {
       return { type: 'cancelled' };

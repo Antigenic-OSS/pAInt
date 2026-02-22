@@ -5,6 +5,7 @@ import { useEditorStore } from '@/store';
 import { useProjectScan } from '@/hooks/useProjectScan';
 import { pickFolder } from '@/lib/folderPicker';
 import { isEditorOnLocalhost } from '@/hooks/usePostMessage';
+import { getApiBase } from '@/lib/apiBase';
 
 interface ProjectRootSelectorProps {
   targetUrl: string;
@@ -22,7 +23,9 @@ export function ProjectRootSelector({ targetUrl, onSaved }: ProjectRootSelectorP
   const directoryHandle = useEditorStore((s) => s.directoryHandle);
   const { triggerScan, triggerClientScan } = useProjectScan();
 
+  const bridgeStatus = useEditorStore((s) => s.bridgeStatus);
   const isLocal = typeof window !== 'undefined' && isEditorOnLocalhost();
+  const hasServerAccess = isLocal || bridgeStatus === 'connected';
 
   const [inputValue, setInputValue] = useState(projectRoot || '');
   const [validating, setValidating] = useState(false);
@@ -96,7 +99,7 @@ export function ProjectRootSelector({ targetUrl, onSaved }: ProjectRootSelectorP
         return;
       }
 
-      const res = await fetch('/api/claude/status', {
+      const res = await fetch(`${getApiBase()}/api/claude/status`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ projectRoot: trimmed }),
@@ -156,7 +159,7 @@ export function ProjectRootSelector({ targetUrl, onSaved }: ProjectRootSelectorP
             setValidationMessage(null);
           }}
           onKeyDown={handleKeyDown}
-          placeholder={isLocal ? '/path/to/your/project' : 'Click folder icon to browse'}
+          placeholder={hasServerAccess ? '/path/to/your/project' : 'Click folder icon to browse'}
           className="flex-1 min-w-0 px-2 py-1.5 rounded text-xs font-mono outline-none transition-colors"
           style={{
             background: 'var(--bg-tertiary)',
@@ -169,7 +172,7 @@ export function ProjectRootSelector({ targetUrl, onSaved }: ProjectRootSelectorP
                   : 'var(--border)'
             }`,
           }}
-          readOnly={!isLocal && !!directoryHandle}
+          readOnly={!hasServerAccess && !!directoryHandle}
         />
         <button
           onClick={handlePickFolder}

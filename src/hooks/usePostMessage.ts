@@ -5,6 +5,7 @@ import { useEditorStore } from '@/store';
 import type { InspectorToEditorMessage, EditorToInspectorMessage } from '@/types/messages';
 import { generateId } from '@/lib/utils';
 import { buildTailwindClassMap } from '@/lib/tailwindClassParser';
+import { getApiBase } from '@/lib/apiBase';
 
 function isAllowedOrigin(origin: string): boolean {
   try {
@@ -50,17 +51,26 @@ export function sendViaIframe(message: EditorToInspectorMessage) {
   const iframe = sharedIframeRef.current;
   if (!iframe?.contentWindow) return;
   // In proxy mode (editor on localhost), the iframe is same-origin with the editor.
-  // In direct mode (editor deployed remotely), the iframe loads the target directly,
-  // so we must target the actual localhost origin.
+  // In bridge mode (editor on Vercel, bridge on localhost), the iframe origin is the bridge.
+  // In direct mode (editor deployed remotely, no bridge), the iframe loads the target directly.
   let targetOrigin: string;
   if (isEditorOnLocalhost()) {
     targetOrigin = window.location.origin;
   } else {
-    const targetUrl = useEditorStore.getState().targetUrl;
-    try {
-      targetOrigin = targetUrl ? new URL(targetUrl).origin : '*';
-    } catch {
-      targetOrigin = '*';
+    const store = useEditorStore.getState();
+    const bridgeUrl = store.bridgeUrl;
+    if (bridgeUrl) {
+      try {
+        targetOrigin = new URL(bridgeUrl).origin;
+      } catch {
+        targetOrigin = '*';
+      }
+    } else {
+      try {
+        targetOrigin = store.targetUrl ? new URL(store.targetUrl).origin : '*';
+      } catch {
+        targetOrigin = '*';
+      }
     }
   }
   iframe.contentWindow.postMessage(message, targetOrigin);
@@ -150,7 +160,7 @@ function handleMessage(event: MessageEvent) {
 
       // If the inspector found no variables, try scanning the project folder
       if (varCount === 0 && csProjectRoot) {
-        fetch('/api/project-scan/css-variables', {
+        fetch(`${getApiBase()}/api/project-scan/css-variables`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ projectRoot: csProjectRoot }),
@@ -166,7 +176,7 @@ function handleMessage(event: MessageEvent) {
 
       // Also try Tailwind config parser to supplement with theme colors
       if (csProjectRoot) {
-        fetch('/api/project-scan/tailwind-config', {
+        fetch(`${getApiBase()}/api/project-scan/tailwind-config`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ projectRoot: csProjectRoot }),

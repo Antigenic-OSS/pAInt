@@ -2,6 +2,7 @@
 
 import { useCallback } from 'react';
 import { useEditorStore } from '@/store';
+import { getApiBase } from '@/lib/apiBase';
 import type { ClaudeAnalyzeResponse, ClaudeApplyResponse, ClaudeStatusResponse } from '@/types/claude';
 
 export function useClaudeAPI() {
@@ -14,7 +15,7 @@ export function useClaudeAPI() {
 
   const checkStatus = useCallback(async (): Promise<boolean> => {
     try {
-      const res = await fetch('/api/claude/status');
+      const res = await fetch(`${getApiBase()}/api/claude/status`);
       const data: ClaudeStatusResponse = await res.json();
       setCliAvailable(data.available);
       return data.available;
@@ -30,7 +31,7 @@ export function useClaudeAPI() {
       setClaudeStatus('analyzing');
 
       try {
-        const res = await fetch('/api/claude/analyze', {
+        const res = await fetch(`${getApiBase()}/api/claude/analyze`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ changelog, projectRoot }),
@@ -66,7 +67,7 @@ export function useClaudeAPI() {
       setClaudeStatus('applying');
 
       try {
-        const res = await fetch('/api/claude/apply', {
+        const res = await fetch(`${getApiBase()}/api/claude/apply`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ sessionId, projectRoot }),

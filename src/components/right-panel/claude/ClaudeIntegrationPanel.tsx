@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useEditorStore } from '@/store';
 import { formatChangelog } from '@/lib/utils';
 import { BREAKPOINTS } from '@/lib/constants';
+import { getApiBase } from '@/lib/apiBase';
 import { consumeClaudeStream, formatStderrLine } from '@/lib/claude-stream';
 import { SetupFlow } from './SetupFlow';
 import { ClaudeProgressIndicator } from './ClaudeProgressIndicator';
@@ -160,7 +161,7 @@ export function ClaudeIntegrationPanel() {
     setClaudeError(null);
 
     try {
-      const res = await fetch('/api/claude/apply', {
+      const res = await fetch(`${getApiBase()}/api/claude/apply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId, projectRoot }),

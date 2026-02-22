@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev --port 4000 --turbopack",
     "dev:terminal": "bun run src/server/terminal-server.ts",
-    "dev:all": "bun run src/server/terminal-server.ts & next dev --port 4000 --turbopack",
+    "dev:all": "bun run src/server/terminal-server.ts & bun run src/bridge/server.ts & next dev --port 4000 --turbopack",
+    "bridge": "bun run src/bridge/server.ts",
     "build": "next build",
     "start": "next start --port 4000",
     "lint": "next lint"

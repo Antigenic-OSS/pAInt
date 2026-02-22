@@ -881,31 +881,26 @@ function GridControls({
 
       {/* Gap */}
       <div className="flex items-center gap-2">
-        <span className="text-[11px] w-[58px] flex-shrink-0" style={{ color: 'var(--text-secondary)' }}>
+        <span className="text-[11px] w-[58px] flex-shrink-0 flex items-center gap-1" style={{ color: 'var(--text-secondary)' }}>
           Gap
+          <button
+            type="button"
+            onClick={() => setGapLinked(!gapLinked)}
+            className="flex items-center justify-center w-4 h-4 rounded transition-colors"
+            style={{ color: gapLinked ? 'var(--accent)' : 'var(--text-muted)' }}
+            title={gapLinked ? 'Unlink column/row gap' : 'Link column/row gap'}
+          >
+            <LockIcon locked={gapLinked} />
+          </button>
         </span>
-        <div className="flex-1">
-          <div className="flex items-center gap-1.5">
-            <div className="flex-1">
-              <GapInput value={columnGap} property="columnGap" onChange={handleGapChange} />
-            </div>
-            <div className="flex-1">
-              <GapInput value={rowGap} property="rowGap" onChange={handleGapChange} />
-            </div>
-            <button
-              type="button"
-              onClick={() => setGapLinked(!gapLinked)}
-              className="flex items-center justify-center w-5 h-5 rounded transition-colors"
-              style={{ color: gapLinked ? 'var(--accent)' : 'var(--text-muted)' }}
-              title={gapLinked ? 'Unlink column/row gap' : 'Link column/row gap'}
-            >
-              <LockIcon locked={gapLinked} />
-            </button>
+        <div className="grid grid-cols-2 gap-2 flex-1">
+          <div>
+            <GapInput value={columnGap} property="columnGap" onChange={handleGapChange} />
+            <div className="text-[9px] text-center mt-0.5" style={{ color: 'var(--text-muted)' }}>Columns</div>
           </div>
-          <div className="flex gap-1.5 mt-0.5">
-            <div className="flex-1 text-[9px] text-center" style={{ color: 'var(--text-muted)' }}>Columns</div>
-            <div className="flex-1 text-[9px] text-center" style={{ color: 'var(--text-muted)' }}>Rows</div>
-            <div className="w-5" />
+          <div>
+            <GapInput value={rowGap} property="rowGap" onChange={handleGapChange} />
+            <div className="text-[9px] text-center mt-0.5" style={{ color: 'var(--text-muted)' }}>Rows</div>
           </div>
         </div>
       </div>

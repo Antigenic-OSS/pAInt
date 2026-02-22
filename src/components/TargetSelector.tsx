@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useEditorStore } from '@/store';
 import { normalizeTargetUrl } from '@/lib/utils';
 import { LOCAL_STORAGE_KEYS } from '@/lib/constants';
+import { isEditorOnLocalhost } from '@/hooks/usePostMessage';
 
 export function TargetSelector() {
   const targetUrl = useEditorStore((s) => s.targetUrl);
@@ -11,6 +12,8 @@ export function TargetSelector() {
   const setTargetUrl = useEditorStore((s) => s.setTargetUrl);
   const setConnectionStatus = useEditorStore((s) => s.setConnectionStatus);
   const addRecentUrl = useEditorStore((s) => s.addRecentUrl);
+  const bridgeStatus = useEditorStore((s) => s.bridgeStatus);
+  const isRemote = typeof window !== 'undefined' && !isEditorOnLocalhost();
 
   const portOptions = Array.from({ length: 8 }, (_, i) => 3000 + i);
   const getPortFromUrl = (url: string | null) => {
@@ -161,6 +164,36 @@ export function TargetSelector() {
             ? 'Connecting...'
             : 'Connect'}
       </button>
+
+      {/* Bridge status indicator (shown when running on Vercel) */}
+      {isRemote && (
+        <div
+          className="flex items-center gap-1 flex-shrink-0"
+          title={
+            bridgeStatus === 'connected'
+              ? 'Bridge connected'
+              : bridgeStatus === 'checking'
+                ? 'Detecting bridge...'
+                : 'Bridge not detected — run: bun run bridge'
+          }
+        >
+          <div
+            className="w-1.5 h-1.5 rounded-full"
+            style={{
+              background: bridgeStatus === 'connected'
+                ? 'var(--accent)'
+                : bridgeStatus === 'checking'
+                  ? 'var(--warning)'
+                  : 'var(--text-muted)',
+            }}
+          />
+          <span className="text-[10px]" style={{
+            color: bridgeStatus === 'connected' ? 'var(--accent)' : 'var(--text-muted)',
+          }}>
+            {bridgeStatus === 'connected' ? 'Bridge' : bridgeStatus === 'checking' ? '...' : 'No bridge'}
+          </span>
+        </div>
+      )}
 
       {/* Error message */}
       {error && (

@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useEditorStore } from '@/store';
 import { ProjectRootSelector } from './ProjectRootSelector';
 import { isEditorOnLocalhost } from '@/hooks/usePostMessage';
+import { getApiBase } from '@/lib/apiBase';
 import type { ClaudeStatusResponse } from '@/types/claude';
 
 interface SetupFlowProps {
@@ -17,7 +18,10 @@ export function SetupFlow({ targetUrl, onComplete }: SetupFlowProps) {
   const portRoots = useEditorStore((s) => s.portRoots);
   const projectRoot = portRoots[targetUrl] ?? null;
 
+  const bridgeStatus = useEditorStore((s) => s.bridgeStatus);
   const isLocal = typeof window !== 'undefined' && isEditorOnLocalhost();
+  const hasBridge = bridgeStatus === 'connected';
+  const hasServerAccess = isLocal || hasBridge;
 
   const [checking, setChecking] = useState(false);
   const [cliVersion, setCliVersion] = useState<string | null>(null);
@@ -27,7 +31,7 @@ export function SetupFlow({ targetUrl, onComplete }: SetupFlowProps) {
     setChecking(true);
     setCheckError(null);
     try {
-      const res = await fetch('/api/claude/status');
+      const res = await fetch(`${getApiBase()}/api/claude/status`);
       const data: ClaudeStatusResponse = await res.json();
       setCliAvailable(data.available);
       if (data.available && data.version) {
@@ -43,20 +47,20 @@ export function SetupFlow({ targetUrl, onComplete }: SetupFlowProps) {
     }
   }, [setCliAvailable]);
 
-  // Auto-check CLI on mount (only when running locally)
+  // Auto-check CLI on mount (when running locally or bridge is connected)
   useEffect(() => {
-    if (isLocal && cliAvailable === null) {
+    if (hasServerAccess && cliAvailable === null) {
       checkCli();
     }
-  }, [isLocal, cliAvailable, checkCli]);
+  }, [hasServerAccess, cliAvailable, checkCli]);
 
   const handleProjectRootSaved = useCallback(() => {
     onComplete();
   }, [onComplete]);
 
-  // ─── Remote mode (Vercel) ───
-  // Skip CLI check entirely, show project root selector with File System Access API
-  if (!isLocal) {
+  // ─── Remote mode without bridge (Vercel) ───
+  // Skip CLI check, show project root selector with File System Access API
+  if (!hasServerAccess) {
     return (
       <div className="flex flex-col gap-4 p-4">
         <div className="text-xs font-medium" style={{ color: 'var(--text-primary)' }}>
@@ -72,9 +76,11 @@ export function SetupFlow({ targetUrl, onComplete }: SetupFlowProps) {
             Running remotely
           </div>
           <p className="text-[10px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-            Claude Code CLI features (Analyze, Apply) require running Dev Editor locally.
-            You can still select a project folder to improve changelog accuracy, and copy
-            the changelog to paste into Claude Code.
+            Start the bridge server locally for full CLI access:{' '}
+            <code className="font-mono px-1 rounded" style={{ background: 'var(--bg-primary)' }}>bun run bridge</code>
+          </p>
+          <p className="text-[10px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+            Or select a project folder below to improve changelog accuracy.
           </p>
         </div>
 

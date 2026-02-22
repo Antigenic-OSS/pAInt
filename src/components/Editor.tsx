@@ -4,6 +4,7 @@ import { Suspense, useCallback } from 'react';
 import { useEditorStore } from '@/store';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { usePostMessage } from '@/hooks/usePostMessage';
+import { useBridge } from '@/hooks/useBridge';
 import { TopBar } from './TopBar';
 import { LeftPanel } from './left-panel/LeftPanel';
 import { RightPanel } from './right-panel/RightPanel';
@@ -35,6 +36,7 @@ export function Editor() {
   const { sendToInspector } = usePostMessage();
 
   useKeyboardShortcuts();
+  useBridge();
 
   // Hide iframe hover overlay when interacting with any panel outside the canvas
   const hideHover = useCallback(() => {

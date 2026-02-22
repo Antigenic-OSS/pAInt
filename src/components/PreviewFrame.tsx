@@ -19,6 +19,18 @@ function buildProxyUrl(targetUrl: string, pagePath: string): string {
 }
 
 /**
+ * Build the bridge proxy URL for the iframe. Routes through the bridge server
+ * running on the user's machine. The bridge injects the inspector script
+ * and strips security headers, just like the local proxy.
+ * Used when the editor is deployed remotely and a bridge is connected.
+ */
+function buildBridgeUrl(bridgeUrl: string, targetUrl: string, pagePath: string): string {
+  const path = pagePath === '/' ? '' : pagePath;
+  const encoded = encodeURIComponent(targetUrl);
+  return `${bridgeUrl}${path}?${PROXY_HEADER}=${encoded}`;
+}
+
+/**
  * Build the direct URL for the iframe. Loads the target page directly
  * without the proxy. Used when the editor is deployed remotely (e.g. Vercel)
  * and can't proxy to the user's localhost.
@@ -30,11 +42,17 @@ function buildDirectUrl(targetUrl: string, pagePath: string): string {
 }
 
 /**
- * Build the appropriate iframe URL based on whether the editor is local or remote.
+ * Build the appropriate iframe URL based on whether the editor is local,
+ * has a bridge connection, or is remote without bridge.
  */
 function buildIframeUrl(targetUrl: string, pagePath: string): string {
   if (isEditorOnLocalhost()) {
     return buildProxyUrl(targetUrl, pagePath);
+  }
+  // Check for bridge connection
+  const bridgeUrl = useEditorStore.getState().bridgeUrl;
+  if (bridgeUrl) {
+    return buildBridgeUrl(bridgeUrl, targetUrl, pagePath);
   }
   return buildDirectUrl(targetUrl, pagePath);
 }
