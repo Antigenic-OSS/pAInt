@@ -35,12 +35,33 @@ let listenerRegistered = false;
 let heartbeatResolve: (() => void) | null = null;
 let componentRescanTimer: ReturnType<typeof setTimeout> | null = null;
 
+/**
+ * Returns true when the editor is running on localhost (proxy mode).
+ * When false, the editor is deployed remotely and must use direct iframe loading.
+ */
+export function isEditorOnLocalhost(): boolean {
+  const h = window.location.hostname;
+  return h === 'localhost' || h === '127.0.0.1';
+}
+
 export function sendViaIframe(message: EditorToInspectorMessage) {
   const iframe = sharedIframeRef.current;
   if (!iframe?.contentWindow) return;
-  // The iframe loads through the proxy (/api/proxy/...) so it's same-origin.
-  // Use window.location.origin to match the proxy-served page's origin.
-  iframe.contentWindow.postMessage(message, window.location.origin);
+  // In proxy mode (editor on localhost), the iframe is same-origin with the editor.
+  // In direct mode (editor deployed remotely), the iframe loads the target directly,
+  // so we must target the actual localhost origin.
+  let targetOrigin: string;
+  if (isEditorOnLocalhost()) {
+    targetOrigin = window.location.origin;
+  } else {
+    const targetUrl = useEditorStore.getState().targetUrl;
+    try {
+      targetOrigin = targetUrl ? new URL(targetUrl).origin : '*';
+    } catch {
+      targetOrigin = '*';
+    }
+  }
+  iframe.contentWindow.postMessage(message, targetOrigin);
 }
 
 function handleMessage(event: MessageEvent) {

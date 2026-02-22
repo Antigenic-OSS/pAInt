@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { useEditorStore } from '@/store';
-import { usePostMessage } from '@/hooks/usePostMessage';
+import { usePostMessage, isEditorOnLocalhost } from '@/hooks/usePostMessage';
 import { PREVIEW_WIDTH_MIN, PREVIEW_WIDTH_MAX, PROXY_HEADER } from '@/lib/constants';
 import { ResponsiveToolbar } from './ResponsiveToolbar';
 
@@ -10,11 +10,33 @@ import { ResponsiveToolbar } from './ResponsiveToolbar';
  * Build the proxy URL for the iframe. Routes through /api/proxy/
  * so the proxy can inject the inspector script and strip security
  * headers (COEP, CSP, X-Frame-Options) that would block the editor.
+ * Used only when the editor runs on localhost.
  */
 function buildProxyUrl(targetUrl: string, pagePath: string): string {
   const path = pagePath === '/' ? '' : pagePath;
   const encoded = encodeURIComponent(targetUrl);
   return `/api/proxy${path}?${PROXY_HEADER}=${encoded}`;
+}
+
+/**
+ * Build the direct URL for the iframe. Loads the target page directly
+ * without the proxy. Used when the editor is deployed remotely (e.g. Vercel)
+ * and can't proxy to the user's localhost.
+ * Requires the user to manually add the inspector script tag to their project.
+ */
+function buildDirectUrl(targetUrl: string, pagePath: string): string {
+  const path = pagePath === '/' ? '' : pagePath;
+  return `${targetUrl}${path}`;
+}
+
+/**
+ * Build the appropriate iframe URL based on whether the editor is local or remote.
+ */
+function buildIframeUrl(targetUrl: string, pagePath: string): string {
+  if (isEditorOnLocalhost()) {
+    return buildProxyUrl(targetUrl, pagePath);
+  }
+  return buildDirectUrl(targetUrl, pagePath);
 }
 
 export function PreviewFrame() {
@@ -36,7 +58,7 @@ export function PreviewFrame() {
     const iframe = iframeRef.current;
     if (!iframe) return;
 
-    const newSrc = buildProxyUrl(targetUrl, currentPagePath);
+    const newSrc = buildIframeUrl(targetUrl, currentPagePath);
 
     if (lastSrcRef.current !== newSrc) {
       lastSrcRef.current = newSrc;
@@ -61,7 +83,7 @@ export function PreviewFrame() {
     const iframe = iframeRef.current;
     if (!iframe) return;
 
-    const newSrc = buildProxyUrl(targetUrl, currentPagePath);
+    const newSrc = buildIframeUrl(targetUrl, currentPagePath);
 
     if (lastSrcRef.current !== newSrc) {
       lastSrcRef.current = newSrc;
