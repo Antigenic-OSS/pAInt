@@ -33,11 +33,12 @@ export function middleware(request: NextRequest) {
   // Check if this request originates from the proxied iframe.
   // After the navigation blocker calls history.replaceState, the referer
   // no longer contains /api/proxy. For dynamically loaded chunks, the
-  // navigation blocker adds ?_dp=1 to /_next/ URLs as a proxy marker.
+  // navigation blocker adds ?_devproxy=1 to /_next/ URLs as a proxy marker.
+  // NOTE: Do NOT use "_dp" — Next.js uses ?_dp=1 internally for CSS preloading.
   const referer = request.headers.get('referer') || '';
   const isFromProxy = referer.includes('/api/proxy');
   const fetchDest = request.headers.get('sec-fetch-dest') || '';
-  const hasDynamicProxyMarker = request.nextUrl.searchParams.has('_dp');
+  const hasDynamicProxyMarker = request.nextUrl.searchParams.has('_devproxy');
 
   if (!isFromProxy && fetchDest !== 'iframe' && !hasDynamicProxyMarker) {
     return NextResponse.next();
@@ -57,7 +58,7 @@ export function middleware(request: NextRequest) {
 
   // Preserve original query params (strip internal markers)
   request.nextUrl.searchParams.forEach((value, key) => {
-    if (key !== PROXY_HEADER && key !== '_dp') {
+    if (key !== PROXY_HEADER && key !== '_devproxy') {
       proxyUrl.searchParams.set(key, value);
     }
   });

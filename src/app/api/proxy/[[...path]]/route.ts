@@ -1580,14 +1580,15 @@ async function handleProxy(
     if (!val || typeof val !== 'string') return null;
     if (val.indexOf('/api/proxy') === 0) return null;
     if (val.indexOf('data:') === 0 || val.indexOf('blob:') === 0 || val.charAt(0) === '#' || val.indexOf('javascript:') === 0) return null;
-    // Mark /_next/ paths with ?_dp=1 so the middleware can identify them as
+    // Mark /_next/ paths with ?_devproxy=1 so the middleware can identify them as
     // iframe-originated requests. We must NOT add the /api/proxy/ prefix
     // because that corrupts turbopack's getPathFromScript() chunk path matching.
     // The middleware strips the query string before proxying. Turbopack's
     // getPathFromScript also strips query strings, so path matching still works.
+    // NOTE: Do NOT use "_dp" — Next.js uses ?_dp=1 internally for CSS preloading.
     if (val.indexOf('/_next/') === 0) {
-      if (val.indexOf('_dp=') >= 0) return null; // Already marked
-      return val + (val.indexOf('?') >= 0 ? '&' : '?') + '_dp=1';
+      if (val.indexOf('_devproxy=') >= 0) return null; // Already marked
+      return val + (val.indexOf('?') >= 0 ? '&' : '?') + '_devproxy=1';
     }
     var fragment = '';
     var hashIdx = val.indexOf('#');
@@ -1695,10 +1696,10 @@ async function handleProxy(
       // injected scripts from being interpreted as special replacement patterns
       // ($' = text after match, $& = matched text, etc.).
       const headInjection = navigationBlockerScript + urlInterceptorScript;
-      if (html.includes('<head>')) {
-        html = html.replace('<head>', () => '<head>' + headInjection);
-      } else if (html.includes('<head ')) {
-        html = html.replace(/<head\s[^>]*>/, (match) => match + headInjection);
+      if (/<head>/i.test(html)) {
+        html = html.replace(/<head>/i, (match) => match + headInjection);
+      } else if (/<head\s/i.test(html)) {
+        html = html.replace(/<head\s[^>]*>/i, (match) => match + headInjection);
       } else {
         html = headInjection + html;
       }
@@ -1706,9 +1707,12 @@ async function handleProxy(
       // Set cookie on the response for dynamic resource loading
       responseHeaders.append('Set-Cookie', `${PROXY_HEADER}=${encodeURIComponent(targetUrl)}; Path=/; SameSite=Strict; Max-Age=86400`);
 
-      // Inject inspector script before </body>
-      if (html.includes('</body>')) {
-        html = html.replace('</body>', () => INSPECTOR_SCRIPT + '</body>');
+      // Strip CSP meta tags that could block the inline inspector script
+      html = html.replace(/<meta\s+http-equiv=["']?Content-Security-Policy["']?[^>]*>/gi, '');
+
+      // Inject inspector script before </body> (case-insensitive)
+      if (/<\/body>/i.test(html)) {
+        html = html.replace(/<\/body>/i, () => INSPECTOR_SCRIPT + '</body>');
       } else {
         html += INSPECTOR_SCRIPT;
       }
@@ -1755,7 +1759,7 @@ async function handleProxy(
         }
       );
       responseHeaders.set('content-type', 'text/css; charset=utf-8');
-      responseHeaders.set('cache-control', 'public, max-age=3600');
+      responseHeaders.set('cache-control', 'no-cache, no-store, must-revalidate');
       responseHeaders.delete('content-length');
       return new NextResponse(css, {
         status: response.status,

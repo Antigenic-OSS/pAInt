@@ -578,6 +578,7 @@ export function ColorPicker({ value, onChange, onSelectVariable, label }: ColorP
           <div
             ref={popoverRef}
             className="absolute left-0 rounded-lg shadow-xl z-50"
+            onMouseDown={(e) => e.stopPropagation()}
             style={{
               background: 'var(--bg-secondary, #252525)',
               border: '1px solid var(--border)',

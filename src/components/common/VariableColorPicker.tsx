@@ -307,7 +307,6 @@ export function VariableColorPicker({
   const handleCustomColorPick = (val: string) => {
     if (varExpression) onDetach();
     onChange(property, val);
-    setIsOpen(false);
   };
 
   const toggleFamily = (prefix: string) => {
@@ -375,6 +374,7 @@ export function VariableColorPicker({
         <div
           ref={panelRef}
           className="absolute left-0 right-0 rounded-lg shadow-xl z-[9999] flex flex-col"
+          onMouseDown={(e) => e.stopPropagation()}
           style={{
             background: 'var(--bg-secondary)',
             border: '1px solid var(--border)',
