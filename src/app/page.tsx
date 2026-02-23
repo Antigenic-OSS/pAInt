@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Editor } from '@/components/Editor';
 import { useEditorStore } from '@/store';
 
@@ -8,7 +8,20 @@ export default function Home() {
   const loadPersistedUI = useEditorStore((s) => s.loadPersistedUI);
   const loadPersistedClaude = useEditorStore((s) => s.loadPersistedClaude);
 
+  // Safety net: if the Dev Editor's own page loads inside an iframe,
+  // it means the proxy's navigation blocker failed and the iframe
+  // escaped to localhost:4000. Notify the parent editor so it can recover.
+  const [isRecursiveEmbed, setIsRecursiveEmbed] = useState(false);
+
   useEffect(() => {
+    if (window.self !== window.top) {
+      setIsRecursiveEmbed(true);
+      try {
+        window.parent.postMessage({ type: 'RECURSIVE_EMBED_DETECTED' }, '*');
+      } catch (e) { /* cross-origin */ }
+      return;
+    }
+
     loadPersistedUI();
     loadPersistedClaude();
 
@@ -23,6 +36,8 @@ export default function Home() {
     window.addEventListener('unhandledrejection', suppressHmrErrors);
     return () => window.removeEventListener('unhandledrejection', suppressHmrErrors);
   }, [loadPersistedUI, loadPersistedClaude]);
+
+  if (isRecursiveEmbed) return null;
 
   return <Editor />;
 }

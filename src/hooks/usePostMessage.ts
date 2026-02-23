@@ -252,6 +252,22 @@ function handleMessage(event: MessageEvent) {
       store.addConsoleEntry(msg.payload);
       break;
 
+    case 'RECURSIVE_EMBED_DETECTED': {
+      // The iframe loaded the Dev Editor's own page instead of the target.
+      // This happens when the navigation blocker failed to intercept a
+      // programmatic navigation after history.replaceState. Reload the iframe
+      // with the correct proxy URL to recover.
+      console.warn('[DevEditor] Recursive embed detected — reloading iframe through proxy');
+      const iframe = sharedIframeRef.current;
+      const recoverTarget = store.targetUrl;
+      if (iframe && recoverTarget) {
+        const encoded = encodeURIComponent(recoverTarget);
+        const pagePath = store.currentPagePath === '/' ? '' : store.currentPagePath;
+        iframe.src = `/api/proxy${pagePath}?x-dev-editor-target=${encoded}`;
+      }
+      break;
+    }
+
     case 'TEXT_CHANGED': {
       const { selectorPath: textSelector, originalText, newText } = msg.payload;
       const textProperty = '__text_content__';

@@ -248,6 +248,10 @@ export interface NavigateToMessage {
   };
 }
 
+export interface RecursiveEmbedDetectedMessage {
+  type: 'RECURSIVE_EMBED_DETECTED';
+}
+
 // Union types
 export type InspectorToEditorMessage =
   | InspectorReadyMessage
@@ -262,7 +266,8 @@ export type InspectorToEditorMessage =
   | VariantAppliedMessage
   | PageNavigateMessage
   | TextChangedMessage
-  | ConsoleMessageMessage;
+  | ConsoleMessageMessage
+  | RecursiveEmbedDetectedMessage;
 
 export type EditorToInspectorMessage =
   | SelectElementMessage

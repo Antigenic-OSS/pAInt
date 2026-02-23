@@ -1342,16 +1342,33 @@ async function handleProxy(
   setTimeout(function(){ sessionStorage.removeItem(rk); }, 3000);
   if (rc > 4) { sessionStorage.removeItem(rk); window.stop(); return; }
 
-  // HMR isolation: return dead WebSocket/EventSource mocks for HMR connections.
-  // Turbopack bootstrapping does NOT require the HMR WebSocket — initial module
-  // loading happens via <script> tags. The HMR connection is only for live updates.
-  // Routing it to the target server causes CORS failures and unwanted reloads.
+  // HMR isolation: return alive-looking WebSocket/EventSource mocks for HMR
+  // connections. Turbopack bootstrapping does NOT require the HMR WebSocket —
+  // initial module loading happens via <script> tags. The HMR connection is
+  // only for live updates. Routing it to the target server causes CORS failures.
+  // IMPORTANT: Mocks must report readyState=1 (OPEN) and fire the 'open' event
+  // so the HMR client believes it's connected. Previous mocks reported CLOSED
+  // and fired close/error, causing the HMR client to enter a reconnection loop
+  // that eventually triggered window.location.reload() every ~40 seconds.
   var OWS = window.WebSocket;
   window.WebSocket = function(u, pr) {
     var s = String(u);
     if (s.indexOf('_next') >= 0 || s.indexOf('hmr') >= 0 || s.indexOf('webpack') >= 0 || s.indexOf('turbopack') >= 0 || s.indexOf('hot-update') >= 0) {
-      var m = {readyState:3, close:function(){}, send:function(){}, addEventListener:function(){}, removeEventListener:function(){}, dispatchEvent:function(){return true}};
-      setTimeout(function(){ if(m.onclose) m.onclose({code:1000, reason:'', wasClean:true}); }, 50);
+      var _wl = {};
+      var m = {
+        readyState: 1,
+        bufferedAmount: 0, extensions: '', protocol: '', url: s, binaryType: 'blob',
+        close: function(){ m.readyState = 3; },
+        send: function(){},
+        addEventListener: function(t, fn){ if(!_wl[t]) _wl[t]=[]; _wl[t].push(fn); },
+        removeEventListener: function(t, fn){ if(_wl[t]) _wl[t]=_wl[t].filter(function(f){return f!==fn;}); },
+        dispatchEvent: function(){ return true; }
+      };
+      setTimeout(function(){
+        var ev = {type:'open'};
+        if (m.onopen) try { m.onopen(ev); } catch(e) {}
+        if (_wl.open) for (var i=0; i<_wl.open.length; i++) try { _wl.open[i](ev); } catch(e) {}
+      }, 10);
       return m;
     }
     return pr !== undefined ? new OWS(u, pr) : new OWS(u);
@@ -1363,8 +1380,19 @@ async function handleProxy(
     window.EventSource = function(u, c) {
       var s = String(u);
       if (s.indexOf('hmr') >= 0 || s.indexOf('hot') >= 0 || s.indexOf('turbopack') >= 0 || s.indexOf('webpack') >= 0 || s.indexOf('_next') >= 0) {
-        var m = {readyState:2, close:function(){}, addEventListener:function(){}, removeEventListener:function(){}, dispatchEvent:function(){return true}};
-        setTimeout(function(){ if(m.onerror) m.onerror({}); }, 50);
+        var _el = {};
+        var m = {
+          readyState: 1, url: s, withCredentials: false,
+          close: function(){ m.readyState = 2; },
+          addEventListener: function(t, fn){ if(!_el[t]) _el[t]=[]; _el[t].push(fn); },
+          removeEventListener: function(t, fn){ if(_el[t]) _el[t]=_el[t].filter(function(f){return f!==fn;}); },
+          dispatchEvent: function(){ return true; }
+        };
+        setTimeout(function(){
+          var ev = {type:'open'};
+          if (m.onopen) try { m.onopen(ev); } catch(e) {}
+          if (_el.open) for (var i=0; i<_el.open.length; i++) try { _el.open[i](ev); } catch(e) {}
+        }, 10);
         return m;
       }
       return c ? new OES(u, c) : new OES(u);
@@ -1372,30 +1400,39 @@ async function handleProxy(
     window.EventSource.CONNECTING=0; window.EventSource.OPEN=1; window.EventSource.CLOSED=2;
   }
 
-  // Intercept full-page navigations via Navigation API.
-  // IMPORTANT: Only intercept user-initiated navigations (link clicks, form submits).
-  // Programmatic navigations from SPA routers (Expo Router, Next.js, React Router)
-  // must NOT be intercepted — they cause bootstrap navigation events that would
-  // create infinite reload loops: router boots → navigates → intercepted → page reload → repeat.
+  // Intercept navigations via Navigation API to prevent the iframe from
+  // escaping the proxy. After history.replaceState changes the URL to the
+  // target path (e.g. http://localhost:4000/), any unintercepted navigation
+  // would load the Dev Editor's own page instead of the target — causing
+  // the "recursive embed" bug where the setup modal appears inside the iframe.
   if (window.navigation) {
     window.navigation.addEventListener('navigate', function(e) {
       if (e.hashChange) return;
-      // Skip programmatic navigations (SPA router internal route changes)
-      if (!e.userInitiated) return;
       try {
         var d = new URL(e.destination.url);
+        // Already going through proxy — allow
         if (d.pathname.indexOf('/api/proxy') === 0) return;
+        // Cross-origin navigation — allow (external links)
         if (d.origin !== window.location.origin) return;
+        // Same-origin, not through proxy — must intercept to prevent
+        // loading the Dev Editor's own page (recursive embed)
         if (e.canIntercept) {
           e.intercept({
             handler: function() {
-              // Notify parent of page change (UI update only — no iframe reload)
-              window.parent.postMessage({type:'PAGE_NAVIGATE', payload:{path:d.pathname}}, window.location.origin);
-              // Navigate within the iframe to the proxy URL instead of
-              // letting the editor set iframe.src (which causes a full reload)
-              var sep = d.search ? '&' : '?';
-              window.location.replace('/api/proxy' + d.pathname + d.search + sep + pH + '=' + eT);
-              return new Promise(function() {});
+              // User-initiated (link click, form submit) or reload:
+              // redirect through the proxy so the target page loads correctly
+              if (e.userInitiated || e.navigationType === 'reload') {
+                if (e.userInitiated) {
+                  window.parent.postMessage({type:'PAGE_NAVIGATE', payload:{path:d.pathname}}, window.location.origin);
+                }
+                var sep = d.search ? '&' : '?';
+                window.location.replace('/api/proxy' + d.pathname + d.search + sep + pH + '=' + eT);
+                return new Promise(function() {});
+              }
+              // Programmatic push/replace (SPA router internal navigation):
+              // resolve immediately without full navigation to prevent
+              // infinite reload loops while keeping the router functional
+              return Promise.resolve();
             }
           });
         }
