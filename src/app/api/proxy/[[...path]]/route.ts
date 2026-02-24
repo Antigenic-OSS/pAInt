@@ -1189,8 +1189,13 @@ async function handleProxy(
       html = html.replace(
         new RegExp(`(href|src|action|poster)=(["'])${escapedOrigin}(/[^"']*)`, 'g'),
         (_match: string, attr: string, quote: string, pathPart: string) => {
-          // Skip /_next/ paths — middleware handles proxying these
-          if (pathPart.startsWith('/_next/')) return _match;
+          // Tag /_next/ paths with _devproxy marker so middleware can identify
+          // them as iframe-originated after history.replaceState changes the referer.
+          // Do NOT add /api/proxy/ prefix — that breaks Turbopack chunk path matching.
+          if (pathPart.startsWith('/_next/')) {
+            const sep = pathPart.includes('?') ? '&' : '?';
+            return `${attr}=${quote}${pathPart}${sep}_devproxy=1`;
+          }
           return `${attr}=${quote}${proxyPath(pathPart)}`;
         }
       );
@@ -1205,17 +1210,24 @@ async function handleProxy(
       );
 
       // Rewrite src, href, action, poster attributes (absolute paths starting with /)
-      // IMPORTANT: Skip /_next/ paths — the middleware already proxies these.
-      // Rewriting them here adds /api/proxy/ prefix and query params to <script src>,
-      // which breaks turbopack's getPathFromScript() chunk path matching and
-      // prevents React from hydrating (modules register but never resolve).
+      // Tag /_next/ paths with ?_devproxy=1 so the middleware can proxy them to
+      // the target server. Without this marker, after history.replaceState changes
+      // the URL, the referer no longer contains /api/proxy and the middleware
+      // skips the request — loading the Dev Editor's own chunks instead of the
+      // target's, which prevents React from hydrating.
+      // Do NOT add /api/proxy/ prefix — that breaks Turbopack chunk path matching.
+      // Turbopack's getPathFromScript() strips query strings, so the marker is safe.
       html = html.replace(
         /(href|src|action|poster)=(["'])(\/[^"']*)/g,
         (_match: string, attr: string, quote: string, originalPath: string) => {
           // Skip already-rewritten paths
           if (originalPath.startsWith('/api/proxy')) return _match;
-          // Skip /_next/ paths — middleware handles proxying these
-          if (originalPath.startsWith('/_next/')) return _match;
+          // Tag /_next/ paths with _devproxy marker for middleware identification
+          if (originalPath.startsWith('/_next/')) {
+            if (originalPath.includes('_devproxy=')) return _match;
+            const sep = originalPath.includes('?') ? '&' : '?';
+            return `${attr}=${quote}${originalPath}${sep}_devproxy=1`;
+          }
           return `${attr}=${quote}${proxyPath(originalPath)}`;
         }
       );

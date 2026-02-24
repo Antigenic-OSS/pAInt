@@ -64,6 +64,7 @@ export function PreviewFrame() {
   const setPreviewWidth = useEditorStore((s) => s.setPreviewWidth);
   const currentPagePath = useEditorStore((s) => s.currentPagePath);
   const setConnectionStatus = useEditorStore((s) => s.setConnectionStatus);
+  const viewMode = useEditorStore((s) => s.viewMode);
   const { iframeRef, sendToInspector } = usePostMessage();
   const containerRef = useRef<HTMLDivElement>(null);
   const lastSrcRef = useRef<string | null>(null);
@@ -108,6 +109,30 @@ export function PreviewFrame() {
       iframe.src = newSrc;
     }
   }, [targetUrl, connectionStatus, currentPagePath, iframeRef]);
+
+  // Preview mode — load iframe directly (no proxy) so target JS hydrates
+  // normally and all interactions work. Reloads through proxy on exit.
+  useEffect(() => {
+    if (!targetUrl || connectionStatus !== 'connected') return;
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+
+    if (viewMode) {
+      // Switch to direct URL — full interactivity
+      const directSrc = buildDirectUrl(targetUrl, currentPagePath);
+      if (lastSrcRef.current !== directSrc) {
+        lastSrcRef.current = directSrc;
+        iframe.src = directSrc;
+      }
+    } else {
+      // Switch back to proxy URL — inspector features
+      const proxySrc = buildIframeUrl(targetUrl, currentPagePath);
+      if (lastSrcRef.current !== proxySrc) {
+        lastSrcRef.current = proxySrc;
+        iframe.src = proxySrc;
+      }
+    }
+  }, [viewMode, targetUrl, connectionStatus, currentPagePath, iframeRef]);
 
   // Drag resize logic — symmetric from center
   const dragStateRef = useRef<{ startX: number; startWidth: number; side: 'left' | 'right' } | null>(null);
