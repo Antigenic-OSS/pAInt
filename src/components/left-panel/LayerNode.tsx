@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, type ReactElement } from 'react';
 import { useEditorStore } from '@/store';
 import { usePostMessage } from '@/hooks/usePostMessage';
+import { useChangeTracker } from '@/hooks/useChangeTracker';
 import type { TreeNode } from '@/types/tree';
 
 interface LayerNodeProps {
@@ -10,6 +11,7 @@ interface LayerNodeProps {
   depth: number;
   searchQuery: string;
   changedSelectors?: Set<string>;
+  deletedSelectors?: Set<string>;
 }
 
 // --- Element categorization ---
@@ -198,12 +200,16 @@ function matchesSearch(node: TreeNode, query: string): boolean {
 
 // --- Component ---
 
-export function LayerNode({ node, depth, searchQuery, changedSelectors }: LayerNodeProps) {
+export function LayerNode({ node, depth, searchQuery, changedSelectors, deletedSelectors }: LayerNodeProps) {
   const selectorPath = useEditorStore((s) => s.selectorPath);
   const highlightedNodeId = useEditorStore((s) => s.highlightedNodeId);
   const toggleNodeExpanded = useEditorStore((s) => s.toggleNodeExpanded);
   const expandToNode = useEditorStore((s) => s.expandToNode);
+  const styleChanges = useEditorStore((s) => s.styleChanges);
   const { sendToInspector } = usePostMessage();
+  const { revertChange } = useChangeTracker();
+
+  const isDeleted = deletedSelectors?.has(node.id) ?? false;
 
   const rowRef = useRef<HTMLDivElement>(null);
 
@@ -239,30 +245,47 @@ export function LayerNode({ node, depth, searchQuery, changedSelectors }: LayerN
     [node.id, toggleNodeExpanded]
   );
 
+  const handleRevertDelete = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      const deleteChange = styleChanges.find(
+        (c) => c.elementSelector === node.id && c.property === '__element_deleted__'
+      );
+      if (deleteChange) {
+        revertChange(deleteChange.id, deleteChange.elementSelector, deleteChange.property);
+      }
+    },
+    [node.id, styleChanges, revertChange]
+  );
+
   if (searchQuery && !matchesSearch(node, searchQuery)) {
     const matchingChildren = node.children.filter((c) => matchesSearch(c, searchQuery));
     if (matchingChildren.length === 0) return null;
     return (
       <>
         {matchingChildren.map((child) => (
-          <LayerNode key={child.id} node={child} depth={depth} searchQuery={searchQuery} changedSelectors={changedSelectors} />
+          <LayerNode key={child.id} node={child} depth={depth} searchQuery={searchQuery} changedSelectors={changedSelectors} deletedSelectors={deletedSelectors} />
         ))}
       </>
     );
   }
 
   // Resolve colors
-  const iconColor = isSelected
-    ? 'var(--accent)'
-    : isGreen
-      ? '#4ade80'
-      : 'var(--text-muted)';
+  const iconColor = isDeleted
+    ? 'var(--error)'
+    : isSelected
+      ? 'var(--accent)'
+      : isGreen
+        ? '#4ade80'
+        : 'var(--text-muted)';
 
-  const labelColor = isSelected
-    ? 'var(--accent)'
-    : isGreen
-      ? '#4ade80'
-      : 'var(--text-primary)';
+  const labelColor = isDeleted
+    ? 'var(--error)'
+    : isSelected
+      ? 'var(--accent)'
+      : isGreen
+        ? '#4ade80'
+        : 'var(--text-primary)';
 
   return (
     <div className="relative">
@@ -328,7 +351,11 @@ export function LayerNode({ node, depth, searchQuery, changedSelectors }: LayerN
         {/* Label */}
         <span
           className="text-[11px] ml-1 leading-none whitespace-nowrap"
-          style={{ color: labelColor }}
+          style={{
+            color: labelColor,
+            textDecoration: isDeleted ? 'line-through' : 'none',
+            opacity: isDeleted ? 0.7 : 1,
+          }}
         >
           {label}
         </span>
@@ -337,10 +364,25 @@ export function LayerNode({ node, depth, searchQuery, changedSelectors }: LayerN
         {node.className && node.tagName !== 'div' && node.tagName !== 'body' && label !== node.tagName && (
           <span
             className="text-[9px] ml-1.5 flex-shrink-0 opacity-50"
-            style={{ color: 'var(--text-muted)' }}
+            style={{ color: isDeleted ? 'var(--error)' : 'var(--text-muted)' }}
           >
             {node.tagName}
           </span>
+        )}
+
+        {/* Revert button for deleted elements */}
+        {isDeleted && (
+          <button
+            onClick={handleRevertDelete}
+            className="ml-auto mr-1 flex items-center justify-center w-5 h-5 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/10"
+            style={{ color: 'var(--text-muted)' }}
+            title="Restore element"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="1 4 1 10 7 10" />
+              <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+            </svg>
+          </button>
         )}
       </div>
 
@@ -354,6 +396,7 @@ export function LayerNode({ node, depth, searchQuery, changedSelectors }: LayerN
               depth={depth + 1}
               searchQuery={searchQuery}
               changedSelectors={changedSelectors}
+              deletedSelectors={deletedSelectors}
             />
           ))}
         </div>

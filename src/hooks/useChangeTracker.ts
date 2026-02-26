@@ -13,7 +13,9 @@ export function performUndo() {
   const action = useEditorStore.getState().popUndo();
   if (!action) return;
 
-  if (action.property === '__text_content__') {
+  if (action.property === '__element_deleted__') {
+    sendViaIframe({ type: 'REVERT_DELETE', payload: { selectorPath: action.elementSelector, originalDisplay: action.beforeValue } });
+  } else if (action.property === '__text_content__') {
     if (action.wasNewChange) {
       sendViaIframe({ type: 'REVERT_TEXT_CONTENT', payload: { selectorPath: action.elementSelector, originalText: action.beforeValue } });
     } else {
@@ -26,7 +28,7 @@ export function performUndo() {
   }
 
   // Update local computedStyles for undo
-  if (action.property !== '__text_content__') {
+  if (action.property !== '__text_content__' && action.property !== '__element_deleted__') {
     const store = useEditorStore.getState();
     store.updateComputedStyles({
       ...store.computedStyles,
@@ -52,7 +54,9 @@ export function performRedo() {
   const action = useEditorStore.getState().popRedo();
   if (!action) return;
 
-  if (action.property === '__text_content__') {
+  if (action.property === '__element_deleted__') {
+    sendViaIframe({ type: 'PREVIEW_CHANGE', payload: { selectorPath: action.elementSelector, property: 'display', value: 'none' } });
+  } else if (action.property === '__text_content__') {
     sendViaIframe({ type: 'SET_TEXT_CONTENT', payload: { selectorPath: action.elementSelector, text: action.afterValue } });
   } else if (willAutoRemove) {
     // Value returned to original — revert inline style entirely
@@ -62,7 +66,7 @@ export function performRedo() {
   }
 
   // Update local computedStyles for redo
-  if (action.property !== '__text_content__') {
+  if (action.property !== '__text_content__' && action.property !== '__element_deleted__') {
     const store = useEditorStore.getState();
     store.updateComputedStyles({
       ...store.computedStyles,
@@ -84,6 +88,15 @@ export function performRevertAll() {
     sendViaIframe({
       type: 'REVERT_TEXT_CONTENT',
       payload: { selectorPath: tc.elementSelector, originalText: tc.originalValue },
+    });
+  }
+  const deleteChanges = state.styleChanges.filter(
+    (c) => c.property === '__element_deleted__'
+  );
+  for (const dc of deleteChanges) {
+    sendViaIframe({
+      type: 'REVERT_DELETE',
+      payload: { selectorPath: dc.elementSelector, originalDisplay: dc.originalValue },
     });
   }
 
@@ -236,7 +249,15 @@ export function useChangeTracker() {
 
   const revertChange = useCallback(
     (changeId: string, selectorPath: string, property: string) => {
-      if (property === '__text_content__') {
+      if (property === '__element_deleted__') {
+        const change = useEditorStore.getState().styleChanges.find((c) => c.id === changeId);
+        if (change) {
+          sendToInspector({
+            type: 'REVERT_DELETE',
+            payload: { selectorPath, originalDisplay: change.originalValue },
+          });
+        }
+      } else if (property === '__text_content__') {
         const change = useEditorStore.getState().styleChanges.find((c) => c.id === changeId);
         if (change) {
           sendToInspector({
@@ -256,7 +277,7 @@ export function useChangeTracker() {
   );
 
   const revertAll = useCallback(() => {
-    // Revert text changes before clearing (iframe reload handles style changes)
+    // Revert text and delete changes before clearing (iframe reload handles style changes)
     const state = useEditorStore.getState();
     const textChanges = state.styleChanges.filter(
       (c) => c.property === '__text_content__'
@@ -265,6 +286,15 @@ export function useChangeTracker() {
       sendToInspector({
         type: 'REVERT_TEXT_CONTENT',
         payload: { selectorPath: tc.elementSelector, originalText: tc.originalValue },
+      });
+    }
+    const deleteChanges = state.styleChanges.filter(
+      (c) => c.property === '__element_deleted__'
+    );
+    for (const dc of deleteChanges) {
+      sendToInspector({
+        type: 'REVERT_DELETE',
+        payload: { selectorPath: dc.elementSelector, originalDisplay: dc.originalValue },
       });
     }
 

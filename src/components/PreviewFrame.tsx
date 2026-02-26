@@ -110,28 +110,21 @@ export function PreviewFrame() {
     }
   }, [targetUrl, connectionStatus, currentPagePath, iframeRef]);
 
-  // Preview mode — load iframe directly (no proxy) so target JS hydrates
-  // normally and all interactions work. Reloads through proxy on exit.
+  // Preview mode — stay on proxy URL but disable inspector overlays.
+  // Previously this switched to the direct URL for full JS interactivity,
+  // but that breaks when the target page embeds the external inspector script
+  // (e.g. from Vercel): the external inspector starts with selection ON and
+  // can't receive SET_SELECTION_MODE:false due to cross-origin postMessage
+  // restrictions. Keeping the proxy URL ensures the only inspector running
+  // is the proxy-injected one (same-origin, fully controllable).
+  // The proxy already preserves enough scripts for most apps (Expo/RN Web
+  // bundles load fine through the proxy).
   useEffect(() => {
     if (!targetUrl || connectionStatus !== 'connected') return;
-    const iframe = iframeRef.current;
-    if (!iframe) return;
 
-    if (viewMode) {
-      // Switch to direct URL — full interactivity
-      const directSrc = buildDirectUrl(targetUrl, currentPagePath);
-      if (lastSrcRef.current !== directSrc) {
-        lastSrcRef.current = directSrc;
-        iframe.src = directSrc;
-      }
-    } else {
-      // Switch back to proxy URL — inspector features
-      const proxySrc = buildIframeUrl(targetUrl, currentPagePath);
-      if (lastSrcRef.current !== proxySrc) {
-        lastSrcRef.current = proxySrc;
-        iframe.src = proxySrc;
-      }
-    }
+    // Selection mode is managed by TopBar via sendToInspector.
+    // When exiting preview, TopBar re-enables selection and the proxy
+    // iframe is still loaded — no reload needed.
   }, [viewMode, targetUrl, connectionStatus, currentPagePath, iframeRef]);
 
   // Drag resize logic — symmetric from center

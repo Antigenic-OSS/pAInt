@@ -121,7 +121,9 @@ function buildSingleElementLog(snapshot: ElementSnapshot, changes: StyleChange[]
 
   lines.push('CHANGES');
   for (const c of changes) {
-    if (c.property === '__text_content__') {
+    if (c.property === '__element_deleted__') {
+      lines.push(`  element deleted (was display: ${c.originalValue})`);
+    } else if (c.property === '__text_content__') {
       lines.push(`  text content: "${c.originalValue}" → "${c.newValue}"`);
     } else {
       const cInfo = getBreakpointDeviceInfo(c.breakpoint);
@@ -189,7 +191,9 @@ function buildElementSection(snapshot: ElementSnapshot, changes: StyleChange[], 
 
   lines.push('CHANGES');
   for (const c of changes) {
-    if (c.property === '__text_content__') {
+    if (c.property === '__element_deleted__') {
+      lines.push(`  element deleted (was display: ${c.originalValue})`);
+    } else if (c.property === '__text_content__') {
       lines.push(`  text content: "${c.originalValue}" → "${c.newValue}"`);
     } else {
       const cInfo = getBreakpointDeviceInfo(c.breakpoint);
@@ -423,13 +427,15 @@ function ElementAccordion({
           {/* Per-change undo buttons */}
           <div className="space-y-1">
             {changes.map((change) => {
-              const displayVal = (liveStyles && change.property !== '__text_content__')
+              const displayVal = (liveStyles && change.property !== '__text_content__' && change.property !== '__element_deleted__')
                 ? (liveStyles[change.property] ?? change.newValue)
                 : change.newValue;
               return (
               <div key={change.id} className="flex items-center justify-between text-xs">
                 <span className="truncate" style={{ color: 'var(--text-muted)' }}>
-                  {change.property === '__text_content__' ? (
+                  {change.property === '__element_deleted__' ? (
+                    <span style={{ color: 'var(--error)' }}>element deleted</span>
+                  ) : change.property === '__text_content__' ? (
                     <>
                       text: <span style={{ color: 'var(--text-muted)', textDecoration: 'line-through' }}>{truncateText(change.originalValue, 20)}</span>
                       {' → '}

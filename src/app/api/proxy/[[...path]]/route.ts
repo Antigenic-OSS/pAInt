@@ -15,10 +15,11 @@ function getInspectorCode(): string {
   return `
     // Inspector bootstrap - sends INSPECTOR_READY and sets up message handling
     var DEV_EDITOR_INSPECTOR = (function() {
-      var parentOrigin = window.location.origin;
+      var parentOrigin = '*';
+      try { parentOrigin = window.parent.location.origin; } catch(e) { parentOrigin = '*'; }
 
       function send(message) {
-        window.parent.postMessage(message, parentOrigin);
+        try { window.parent.postMessage(message, parentOrigin); } catch(e) {}
       }
 
       function generateSelectorPath(element) {
@@ -409,10 +410,23 @@ function getInspectorCode(): string {
       // When off, let clicks through so links and buttons work normally.
       document.addEventListener('click', function(e) {
         if (!selectionModeEnabled) return;
+
+        // If text editing is active, clicking outside commits the edit
+        if (textEditingActive) {
+          var clickedEl = document.elementFromPoint(e.clientX, e.clientY);
+          if (clickedEl !== textEditTarget) {
+            e.preventDefault();
+            e.stopPropagation();
+            commitTextEdit();
+          }
+          return;
+        }
+
         e.preventDefault();
         e.stopPropagation();
         var el = document.elementFromPoint(e.clientX, e.clientY);
-        if (!el || el === selectionOverlay) return;
+        if (!el || el === selectionOverlay || el === hoverOverlay || el === hoverLabel) return;
+        hoverOverlay.style.display = 'none';
         selectElement(el);
       }, true);
 
@@ -494,6 +508,143 @@ function getInspectorCode(): string {
       }
       window.addEventListener('scroll', updateOverlays, true);
       window.addEventListener('resize', updateOverlays, true);
+
+      // --- Inline Text Editing ---
+      var textEditingActive = false;
+      var originalTextContent = null;
+      var textEditTarget = null;
+      var SKIP_TEXT_EDIT_TAGS = { INPUT: 1, TEXTAREA: 1, SELECT: 1, IMG: 1, VIDEO: 1, IFRAME: 1, SVG: 1, CANVAS: 1 };
+
+      function commitTextEdit() {
+        if (!textEditingActive || !textEditTarget) return;
+        var newText = textEditTarget.textContent || '';
+        var el = textEditTarget;
+        var selectorPath = generateSelectorPath(el);
+
+        el.contentEditable = 'false';
+        el.style.removeProperty('outline');
+        el.style.removeProperty('outline-offset');
+        el.style.removeProperty('min-width');
+        textEditingActive = false;
+        textEditTarget = null;
+
+        observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'id', 'style'] });
+
+        selectionOverlay.style.display = 'block';
+        updateOverlays();
+
+        if (newText !== originalTextContent) {
+          send({
+            type: 'TEXT_CHANGED',
+            payload: {
+              selectorPath: selectorPath,
+              originalText: originalTextContent || '',
+              newText: newText
+            }
+          });
+        }
+        originalTextContent = null;
+      }
+
+      function cancelTextEdit() {
+        if (!textEditingActive || !textEditTarget) return;
+        textEditTarget.textContent = originalTextContent;
+        textEditTarget.contentEditable = 'false';
+        textEditTarget.style.removeProperty('outline');
+        textEditTarget.style.removeProperty('outline-offset');
+        textEditTarget.style.removeProperty('min-width');
+        textEditingActive = false;
+        textEditTarget = null;
+        originalTextContent = null;
+
+        observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'id', 'style'] });
+
+        selectionOverlay.style.display = 'block';
+        updateOverlays();
+      }
+
+      document.addEventListener('dblclick', function(e) {
+        if (!selectionModeEnabled) return;
+        e.preventDefault();
+        e.stopPropagation();
+
+        var el = document.elementFromPoint(e.clientX, e.clientY);
+        if (!el || el === selectionOverlay) return;
+
+        if (el.children.length > 0) return;
+        if (SKIP_TEXT_EDIT_TAGS[el.tagName]) return;
+        var text = el.textContent;
+        if (text === null || text === undefined) return;
+
+        textEditingActive = true;
+        textEditTarget = el;
+        originalTextContent = text;
+
+        observer.disconnect();
+
+        selectionOverlay.style.display = 'none';
+
+        el.contentEditable = 'true';
+        el.style.setProperty('outline', '2px solid #4a9eff', 'important');
+        el.style.setProperty('outline-offset', '2px', 'important');
+        el.style.setProperty('min-width', '20px', 'important');
+        el.focus();
+
+        var range = document.createRange();
+        range.selectNodeContents(el);
+        var sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }, true);
+
+      document.addEventListener('keydown', function(e) {
+        if (textEditingActive) {
+          e.stopPropagation();
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            commitTextEdit();
+          } else if (e.key === 'Escape') {
+            e.preventDefault();
+            cancelTextEdit();
+          }
+          return;
+        }
+
+        // Delete selected element (Delete or Backspace when not editing text)
+        if ((e.key === 'Delete' || e.key === 'Backspace') && selectionModeEnabled && selectedElement) {
+          e.preventDefault();
+          e.stopPropagation();
+          var delEl = selectedElement;
+          var computed = window.getComputedStyle(delEl);
+          var origDisplay = computed.getPropertyValue('display');
+          var delSelector = generateSelectorPath(delEl);
+
+          var delAttrs = {};
+          for (var dai = 0; dai < delEl.attributes.length; dai++) {
+            var da = delEl.attributes[dai];
+            delAttrs[da.name] = da.value;
+          }
+
+          // Hide the element
+          delEl.style.setProperty('display', 'none', 'important');
+          selectionOverlay.style.display = 'none';
+          selectedElement = null;
+
+          send({
+            type: 'ELEMENT_DELETED',
+            payload: {
+              selectorPath: delSelector,
+              originalDisplay: origDisplay,
+              tagName: delEl.tagName.toLowerCase(),
+              className: delEl.className && typeof delEl.className === 'string' ? delEl.className : null,
+              elementId: delEl.id || null,
+              innerText: (delEl.innerText || '').substring(0, 500) || null,
+              attributes: delAttrs,
+              computedStyles: getComputedStylesForElement(delEl)
+            }
+          });
+        }
+      }, true);
 
       // --- Component Detection ---
       var SEMANTIC_COMPONENTS = {
@@ -940,6 +1091,29 @@ function getInspectorCode(): string {
                     rvEl.style.removeProperty(msg.payload.pseudoProperties[rppi]);
                   }
                 }
+              }
+            } catch(err) {}
+            break;
+          }
+          case 'SET_TEXT_CONTENT': {
+            try {
+              var stEl = document.querySelector(msg.payload.selectorPath);
+              if (stEl) stEl.textContent = msg.payload.text;
+            } catch(err) {}
+            break;
+          }
+          case 'REVERT_TEXT_CONTENT': {
+            try {
+              var rtEl = document.querySelector(msg.payload.selectorPath);
+              if (rtEl) rtEl.textContent = msg.payload.originalText;
+            } catch(err) {}
+            break;
+          }
+          case 'REVERT_DELETE': {
+            try {
+              var rdEl = document.querySelector(msg.payload.selectorPath);
+              if (rdEl) {
+                rdEl.style.removeProperty('display');
               }
             } catch(err) {}
             break;

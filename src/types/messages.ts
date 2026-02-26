@@ -109,6 +109,20 @@ export interface TextChangedMessage {
   };
 }
 
+export interface ElementDeletedMessage {
+  type: 'ELEMENT_DELETED';
+  payload: {
+    selectorPath: string;
+    originalDisplay: string;
+    tagName: string;
+    className: string | null;
+    elementId: string | null;
+    innerText: string | null;
+    attributes: Record<string, string>;
+    computedStyles: Record<string, string>;
+  };
+}
+
 export type ConsoleLevel = 'log' | 'info' | 'warn' | 'error';
 
 export interface ConsoleMessageMessage {
@@ -229,6 +243,14 @@ export interface RevertTextContentMessage {
   };
 }
 
+export interface RevertDeleteMessage {
+  type: 'REVERT_DELETE';
+  payload: {
+    selectorPath: string;
+    originalDisplay: string;
+  };
+}
+
 export interface HideSelectionOverlayMessage {
   type: 'HIDE_SELECTION_OVERLAY';
 }
@@ -266,6 +288,7 @@ export type InspectorToEditorMessage =
   | VariantAppliedMessage
   | PageNavigateMessage
   | TextChangedMessage
+  | ElementDeletedMessage
   | ConsoleMessageMessage
   | RecursiveEmbedDetectedMessage;
 
@@ -285,6 +308,7 @@ export type EditorToInspectorMessage =
   | RevertVariantMessage
   | SetTextContentMessage
   | RevertTextContentMessage
+  | RevertDeleteMessage
   | HideSelectionOverlayMessage
   | ShowSelectionOverlayMessage
   | HideHoverMessage

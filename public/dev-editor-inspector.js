@@ -21,18 +21,19 @@
   if (window.parent === window) return;
 
   // --- Origin Detection ---
-  // Try to detect editor origin from this script's src attribute.
-  // Falls back to '*' (wildcard) and locks in the real origin after handshake.
-  var scriptSrc = document.currentScript && document.currentScript.src;
-  if (!scriptSrc) {
-    var scripts = document.querySelectorAll('script[src*="dev-editor-inspector"]');
-    if (scripts.length > 0) scriptSrc = scripts[scripts.length - 1].src;
-  }
+  // Determine the editor (parent) window's origin for postMessage.
+  // Strategy: try same-origin access first (works when loaded via proxy),
+  // then fall back to '*' (works for cross-origin / direct URL loading).
+  // Note: postMessage does NOT throw on origin mismatch — it silently
+  // drops the message. So we must detect the correct origin upfront.
   var parentOrigin = '*';
   try {
-    if (scriptSrc) parentOrigin = new URL(scriptSrc).origin;
+    // Same-origin: can access parent's location directly
+    parentOrigin = window.parent.location.origin;
   } catch(e) {
-    // Could not parse script src — will discover origin via handshake
+    // Cross-origin: can't access parent's origin.
+    // Use '*' — safe for localhost dev tool use case.
+    parentOrigin = '*';
   }
 
   // Track whether the editor has acknowledged our connection
@@ -41,12 +42,7 @@
   function send(message) {
     try {
       window.parent.postMessage(message, parentOrigin);
-    } catch(e) {
-      // If specific origin fails, retry with wildcard
-      if (parentOrigin !== '*') {
-        try { window.parent.postMessage(message, '*'); } catch(e2) {}
-      }
-    }
+    } catch(e) {}
   }
 
   // --- Console Interception (no DOM dependency, runs immediately) ---
@@ -560,15 +556,51 @@
     }, true);
 
     document.addEventListener('keydown', function(e) {
-      if (!textEditingActive) return;
-      e.stopPropagation();
+      if (textEditingActive) {
+        e.stopPropagation();
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          commitTextEdit();
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          cancelTextEdit();
+        }
+        return;
+      }
 
-      if (e.key === 'Enter' && !e.shiftKey) {
+      // Delete selected element (Delete or Backspace when not editing text)
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectionModeEnabled && selectedElement) {
         e.preventDefault();
-        commitTextEdit();
-      } else if (e.key === 'Escape') {
-        e.preventDefault();
-        cancelTextEdit();
+        e.stopPropagation();
+        var delEl = selectedElement;
+        var computed = window.getComputedStyle(delEl);
+        var origDisplay = computed.getPropertyValue('display');
+        var delSelector = generateSelectorPath(delEl);
+
+        var delAttrs = {};
+        for (var dai = 0; dai < delEl.attributes.length; dai++) {
+          var da = delEl.attributes[dai];
+          delAttrs[da.name] = da.value;
+        }
+
+        // Hide the element
+        delEl.style.setProperty('display', 'none', 'important');
+        selectionOverlay.style.display = 'none';
+        selectedElement = null;
+
+        send({
+          type: 'ELEMENT_DELETED',
+          payload: {
+            selectorPath: delSelector,
+            originalDisplay: origDisplay,
+            tagName: delEl.tagName.toLowerCase(),
+            className: delEl.className && typeof delEl.className === 'string' ? delEl.className : null,
+            elementId: delEl.id || null,
+            innerText: (delEl.innerText || '').substring(0, 500) || null,
+            attributes: delAttrs,
+            computedStyles: getComputedStylesForElement(delEl)
+          }
+        });
       }
     }, true);
 
@@ -1008,6 +1040,15 @@
           try {
             var rtEl = document.querySelector(msg.payload.selectorPath);
             if (rtEl) rtEl.textContent = msg.payload.originalText;
+          } catch(err) {}
+          break;
+        }
+        case 'REVERT_DELETE': {
+          try {
+            var rdEl = document.querySelector(msg.payload.selectorPath);
+            if (rdEl) {
+              rdEl.style.removeProperty('display');
+            }
           } catch(err) {}
           break;
         }

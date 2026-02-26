@@ -10,12 +10,16 @@ export function LayersPanel() {
   const searchQuery = useEditorStore((s) => s.searchQuery);
   const styleChanges = useEditorStore((s) => s.styleChanges);
 
-  const changedSelectors = useMemo(() => {
-    const set = new Set<string>();
+  const { changedSelectors, deletedSelectors } = useMemo(() => {
+    const changed = new Set<string>();
+    const deleted = new Set<string>();
     for (const change of styleChanges) {
-      set.add(change.elementSelector);
+      changed.add(change.elementSelector);
+      if (change.property === '__element_deleted__') {
+        deleted.add(change.elementSelector);
+      }
     }
-    return set;
+    return { changedSelectors: changed, deletedSelectors: deleted };
   }, [styleChanges]);
 
   if (!rootNode) {
@@ -34,7 +38,7 @@ export function LayersPanel() {
       <LayerSearch />
       <div className="flex-1 overflow-auto py-1">
         <div style={{ minWidth: 'max-content' }}>
-          <LayerNode node={rootNode} depth={0} searchQuery={searchQuery} changedSelectors={changedSelectors} />
+          <LayerNode node={rootNode} depth={0} searchQuery={searchQuery} changedSelectors={changedSelectors} deletedSelectors={deletedSelectors} />
         </div>
       </div>
     </div>

@@ -50,13 +50,20 @@ export function isEditorOnLocalhost(): boolean {
 export function sendViaIframe(message: EditorToInspectorMessage) {
   const iframe = sharedIframeRef.current;
   if (!iframe?.contentWindow) return;
-  // In proxy mode (editor on localhost), the iframe is same-origin with the editor.
-  // In bridge mode (editor on Vercel, bridge on localhost), the iframe origin is the bridge.
-  // In direct mode (editor deployed remotely, no bridge), the iframe loads the target directly.
+  // Detect the iframe's actual origin by trying same-origin access.
+  // This correctly handles all modes without relying on store state
+  // (which may not yet reflect the iframe's actual URL):
+  // - Proxy mode (same-origin): contentWindow.location.origin succeeds
+  // - Preview/direct mode (cross-origin): throws, fall back to target origin or '*'
+  // - Bridge mode (cross-origin): throws, fall back to bridge or target origin
+  // Note: postMessage silently drops messages on origin mismatch (no throw),
+  // so we must determine the correct origin upfront.
   let targetOrigin: string;
-  if (isEditorOnLocalhost()) {
-    targetOrigin = window.location.origin;
-  } else {
+  try {
+    // Same-origin: can read iframe's location directly
+    targetOrigin = iframe.contentWindow.location.origin;
+  } catch {
+    // Cross-origin: fall back based on configuration
     const store = useEditorStore.getState();
     const bridgeUrl = store.bridgeUrl;
     if (bridgeUrl) {
@@ -65,12 +72,14 @@ export function sendViaIframe(message: EditorToInspectorMessage) {
       } catch {
         targetOrigin = '*';
       }
-    } else {
+    } else if (store.targetUrl) {
       try {
-        targetOrigin = store.targetUrl ? new URL(store.targetUrl).origin : '*';
+        targetOrigin = new URL(store.targetUrl).origin;
       } catch {
         targetOrigin = '*';
       }
+    } else {
+      targetOrigin = '*';
     }
   }
   iframe.contentWindow.postMessage(message, targetOrigin);
@@ -314,6 +323,61 @@ function handleMessage(event: MessageEvent) {
         timestamp: Date.now(),
         changeScope: store.changeScope,
       });
+      break;
+    }
+
+    case 'ELEMENT_DELETED': {
+      const {
+        selectorPath: delSelector,
+        originalDisplay,
+        tagName: delTag,
+        className: delClass,
+        elementId: delId,
+        innerText: delText,
+        attributes: delAttrs,
+        computedStyles: delStyles,
+      } = msg.payload;
+      const delProperty = '__element_deleted__';
+
+      // Push undo action
+      store.pushUndo({
+        elementSelector: delSelector,
+        property: delProperty,
+        beforeValue: originalDisplay,
+        afterValue: 'deleted',
+        breakpoint: store.activeBreakpoint,
+        wasNewChange: true,
+        changeScope: store.changeScope,
+      });
+
+      // Save element snapshot
+      store.saveElementSnapshot({
+        selectorPath: delSelector,
+        tagName: delTag || 'unknown',
+        className: delClass ?? null,
+        elementId: delId ?? null,
+        attributes: delAttrs || {},
+        innerText: delText,
+        computedStyles: delStyles ? { ...delStyles } : {},
+        pagePath: store.currentPagePath,
+        changeScope: store.changeScope,
+        sourceInfo: null,
+      });
+
+      // Track the deletion
+      store.addStyleChange({
+        id: generateId(),
+        elementSelector: delSelector,
+        property: delProperty,
+        originalValue: originalDisplay,
+        newValue: 'deleted',
+        breakpoint: store.activeBreakpoint,
+        timestamp: Date.now(),
+        changeScope: store.changeScope,
+      });
+
+      // Clear selection since the element is now hidden
+      store.clearSelection();
       break;
     }
   }
