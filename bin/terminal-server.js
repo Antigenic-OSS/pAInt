@@ -1,15 +1,14 @@
-import http from 'node:http'
-import { URL } from 'node:url'
-import pty from 'node-pty'
-import { WebSocketServer } from 'ws'
+#!/usr/bin/env node
+
+const http = require('node:http')
+const { URL } = require('node:url')
+const pty = require('node-pty')
+const { WebSocketServer } = require('ws')
 
 const TERMINAL_PORT = Number(process.env.TERMINAL_PORT) || 4001
 
 const server = http.createServer((req, res) => {
-  const url = new URL(
-    req.url || '/',
-    `http://${req.headers.host || 'localhost'}`,
-  )
+  const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`)
 
   if (url.pathname === '/health') {
     res.writeHead(200, {
@@ -37,10 +36,7 @@ const server = http.createServer((req, res) => {
 const wss = new WebSocketServer({ noServer: true })
 
 server.on('upgrade', (req, socket, head) => {
-  const url = new URL(
-    req.url || '/',
-    `http://${req.headers.host || 'localhost'}`,
-  )
+  const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`)
   if (url.pathname !== '/ws') {
     socket.destroy()
     return
@@ -58,10 +54,10 @@ wss.on('connection', (ws) => {
     cols: 80,
     rows: 24,
     cwd: process.env.HOME || process.cwd(),
-    env: process.env as Record<string, string>,
+    env: process.env,
   })
 
-  term.onData((data: string) => {
+  term.onData((data) => {
     if (ws.readyState === ws.OPEN) {
       ws.send(data)
     }
@@ -77,6 +73,8 @@ wss.on('connection', (ws) => {
 
   ws.on('message', (message) => {
     const str = Buffer.isBuffer(message) ? message.toString() : String(message)
+
+    // Resize messages prefixed with \x01
     if (str.startsWith('\x01')) {
       try {
         const { cols, rows } = JSON.parse(str.slice(1))
@@ -102,7 +100,6 @@ wss.on('connection', (ws) => {
 })
 
 server.listen(TERMINAL_PORT, () => {
-  console.log(
-    `Terminal WebSocket server running on ws://localhost:${TERMINAL_PORT}/ws`,
-  )
+  // eslint-disable-next-line no-console
+  console.log(`Terminal WebSocket server running on ws://localhost:${TERMINAL_PORT}/ws`)
 })

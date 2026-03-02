@@ -44,9 +44,9 @@
   "packageManager": "bun@1.3.9",
   "scripts": {
     "dev": "next dev --port 4000 --turbopack",
-    "dev:terminal": "bun run src/server/terminal-server.ts",
-    "dev:all": "bun run src/server/terminal-server.ts & bun run src/bridge/server.ts & next dev --port 4000 --turbopack",
-    "bridge": "bun run src/bridge/server.ts",
+    "dev:terminal": "node ./bin/terminal-server.js",
+    "dev:all": "node ./bin/terminal-server.js & node ./bin/bridge-server.js & next dev --port 4000 --turbopack",
+    "bridge": "node ./bin/bridge-server.js",
     "build": "next build",
     "start": "next start --port 4000",
     "lint": "biome lint .",
@@ -69,13 +69,13 @@
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "tailwindcss": "4.2.1",
+    "tsx": "^4.20.6",
     "typescript": "^5.9.3",
+    "ws": "^8.18.3",
     "zustand": "^5.0.11"
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.5",
-    "@changesets/cli": "^2.29.7",
-    "@types/bun": "^1.3.9",
-    "bun-types": "^1.3.2"
+    "@changesets/cli": "^2.29.7"
   }
 }

@@ -3,7 +3,9 @@
 [![License](https://img.shields.io/github/license/Antigenic-OSS/pAInt)](https://github.com/Antigenic-OSS/pAInt/blob/main/LICENSE)
 [![Stars](https://img.shields.io/github/stars/Antigenic-OSS/pAInt?style=social)](https://github.com/Antigenic-OSS/pAInt/stargazers)
 [![Issues](https://img.shields.io/github/issues/Antigenic-OSS/pAInt)](https://github.com/Antigenic-OSS/pAInt/issues)
-[![Bun](https://img.shields.io/badge/runtime-Bun-000000)](https://bun.sh)
+[![npm version](https://img.shields.io/npm/v/@antigenic-oss/paint)](https://www.npmjs.com/package/@antigenic-oss/paint)
+[![npm downloads](https://img.shields.io/npm/dm/@antigenic-oss/paint)](https://www.npmjs.com/package/@antigenic-oss/paint)
+[![Node.js](https://img.shields.io/badge/runtime-Node.js-5FA04E)](https://nodejs.org)
 [![Next.js](https://img.shields.io/badge/framework-Next.js-000000)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/language-TypeScript-3178C6)](https://www.typescriptlang.org)
 
@@ -43,17 +45,28 @@ pnpm add -g @antigenic-oss/paint
 bun add -g @antigenic-oss/paint
 ```
 
+Requires Node.js `>=20.9.0`.
+
 Then use:
 
 ```bash
-paint start             # Builds on first run, then starts server
-paint status            # Show pid, URL, and log path
-paint stop              # Stop background server
+paint start             # Builds on first run, then starts web server
+paint status            # Show web status
+paint stop              # Stop web server
 paint restart --rebuild # Force a rebuild before start
-paint logs              # Print server logs
+paint logs              # Print web logs
+paint terminal start    # Start terminal websocket server
+paint terminal restart
+paint terminal status
+paint terminal stop
+paint bridge start      # Start bridge server
+paint bridge restart
+paint bridge status
+paint bridge stop
 ```
 
 Default URL: `http://127.0.0.1:4000`
+Terminal WS (when started): `ws://localhost:4001/ws`
 
 ## What You Can Do
 
@@ -68,14 +81,14 @@ Default URL: `http://127.0.0.1:4000`
 
 ## Prerequisites
 
-- [Bun](https://bun.sh)
+- Global CLI runtime: Node.js `>=20.9.0`
 - A localhost app running in development mode (Next.js, Vite, Astro, CRA, etc.)
 
 ## Quick Start
 
 ```bash
-bun install
-bun dev
+npm install
+npm run dev
 ```
 
 Open `http://localhost:4000`, then:
@@ -104,7 +117,7 @@ If auto-injection is not detected, add this script tag to your app layout and re
 If the UI is hosted on Vercel, run the local bridge server:
 
 ```bash
-bun run bridge
+paint bridge start
 ```
 
 Bridge default: `http://localhost:4002`
@@ -126,19 +139,19 @@ Bridge default: `http://localhost:4002`
 ## Commands
 
 ```bash
-bun install          # Install dependencies
-bun dev              # Start UI (localhost:4000)
-bun run bridge       # Start bridge server (localhost:4002)
-bun run dev:terminal # Start terminal server
-bun run dev:all      # Start terminal + bridge + next dev
-bun run build        # Production build
-bun run start        # Production server (port 4000)
-bun run lint         # Biome check
+npm install                # or: pnpm install / bun install
+npm run dev                # Start UI (localhost:4000)
+npm run bridge             # Start bridge server (localhost:4002)
+npm run dev:terminal       # Start terminal server
+npm run dev:all            # Start terminal + bridge + Next.js dev server
+npm run build              # Production build
+npm run start              # Production server (port 4000)
+npm run lint               # Biome check
 ```
 
 ## Architecture Summary
 
-- Next.js App Router frontend running on Bun
+- Next.js App Router frontend running on Node.js
 - Proxy API route at `/api/proxy/*` for target-page loading and injection
 - Inspector script communicates with editor via `window.postMessage`
 - State managed with Zustand slices
@@ -168,11 +181,11 @@ See `CONTRIBUTING.md` for setup, workflow, and pull request expectations.
 - Versioning and release PRs are managed with Changesets.
 - CI workflow: `.github/workflows/ci.yml`
 - Release workflow: `.github/workflows/release.yml`
-- Publishing requires `NPM_TOKEN` in GitHub repository secrets.
+- Publishing uses npm Trusted Publishing (OIDC) from the `release` GitHub Environment.
 - To queue a release, add a changeset:
 
 ```bash
-bun run changeset
+npm run changeset
 ```
 
 ## License

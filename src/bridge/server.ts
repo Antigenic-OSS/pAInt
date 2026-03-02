@@ -1,22 +1,24 @@
 /**
- * pAInt Bridge Server
+ * pAInt Bridge Server (Node runtime)
  *
- * A lightweight Bun HTTP server that runs on the user's machine.
+ * A lightweight HTTP server that runs on the user's machine.
  * When pAInt is deployed on Vercel, it connects to this bridge
  * to proxy localhost pages, scan project directories, and run Claude CLI.
- *
- * Usage:
- *   bun run src/bridge/server.ts
- *   # or
- *   bun run bridge
  */
 
-import { readFileSync, existsSync } from 'node:fs'
-import { join } from 'node:path'
-import { handleProxy } from './proxy-handler'
+import { existsSync, readFileSync } from 'node:fs'
+import {
+  createServer,
+  type IncomingMessage,
+  type ServerResponse,
+} from 'node:http'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { handleAPI } from './api-handlers'
+import { handleProxy } from './proxy-handler'
 
 const BRIDGE_PORT = Number(process.env.BRIDGE_PORT) || 4002
+const BRIDGE_HOST = process.env.BRIDGE_HOST || '127.0.0.1'
 
 const ALLOWED_ORIGIN_PATTERNS = [
   'https://dev-editor-flow.vercel.app',
@@ -51,63 +53,157 @@ function corsHeaders(requestOrigin: string | null): Record<string, string> {
 
 // Cache the inspector script at startup
 let inspectorScript: string | null = null
-const inspectorPath = join(
-  import.meta.dir,
-  '../../public/dev-editor-inspector.js',
-)
+const thisDir = dirname(fileURLToPath(import.meta.url))
+const inspectorPath = join(thisDir, '../../public/dev-editor-inspector.js')
 if (existsSync(inspectorPath)) {
   inspectorScript = readFileSync(inspectorPath, 'utf-8')
 }
 
-Bun.serve({
-  port: BRIDGE_PORT,
+function toRequest(req: IncomingMessage): Request {
+  const protocol = 'http'
+  const host = req.headers.host || `${BRIDGE_HOST}:${BRIDGE_PORT}`
+  const url = new URL(req.url || '/', `${protocol}://${host}`)
 
-  async fetch(req) {
+  const headers = new Headers()
+  for (const [key, value] of Object.entries(req.headers)) {
+    if (typeof value === 'undefined') continue
+    if (Array.isArray(value)) {
+      for (const v of value) headers.append(key, v)
+    } else {
+      headers.set(key, value)
+    }
+  }
+
+  const method = req.method || 'GET'
+  if (method === 'GET' || method === 'HEAD') {
+    return new Request(url, { method, headers })
+  }
+
+  return new Request(url, {
+    method,
+    headers,
+    body: req as unknown as BodyInit,
+    duplex: 'half',
+  } as RequestInit)
+}
+
+async function writeResponse(
+  res: ServerResponse,
+  response: Response,
+): Promise<void> {
+  res.statusCode = response.status
+  response.headers.forEach((value, key) => {
+    res.setHeader(key, value)
+  })
+
+  // Preserve multiple Set-Cookie headers when available.
+  const getSetCookie = (
+    response.headers as Headers & { getSetCookie?: () => string[] }
+  ).getSetCookie
+  if (typeof getSetCookie === 'function') {
+    const cookies = getSetCookie.call(response.headers)
+    if (cookies.length > 0) {
+      res.setHeader('set-cookie', cookies)
+    }
+  }
+
+  if (!response.body) {
+    res.end()
+    return
+  }
+
+  const reader = response.body.getReader()
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    if (!value || value.length === 0) continue
+    if (!res.write(Buffer.from(value))) {
+      await new Promise<void>((resolve) => {
+        res.once('drain', resolve)
+      })
+    }
+  }
+  res.end()
+}
+
+const server = createServer(async (incomingReq, outgoingRes) => {
+  try {
+    const req = toRequest(incomingReq)
     const url = new URL(req.url)
     const origin = req.headers.get('origin')
     const cors = corsHeaders(origin)
 
     // CORS preflight
     if (req.method === 'OPTIONS') {
-      return new Response(null, { status: 204, headers: cors })
+      await writeResponse(
+        outgoingRes,
+        new Response(null, { status: 204, headers: cors }),
+      )
+      return
     }
 
     // Health check (used for auto-discovery from Vercel editor)
     if (url.pathname === '/health') {
-      return Response.json(
-        { status: 'ok', version: '1.0.0', bridge: true },
-        { headers: cors },
+      await writeResponse(
+        outgoingRes,
+        Response.json(
+          { status: 'ok', version: '1.0.0', bridge: true },
+          { headers: cors },
+        ),
       )
+      return
     }
 
     // Serve the inspector script
     if (url.pathname === '/dev-editor-inspector.js') {
       if (!inspectorScript) {
-        return new Response('Inspector script not found', {
-          status: 404,
-          headers: cors,
-        })
+        await writeResponse(
+          outgoingRes,
+          new Response('Inspector script not found', {
+            status: 404,
+            headers: cors,
+          }),
+        )
+        return
       }
-      return new Response(inspectorScript, {
-        headers: {
-          ...cors,
-          'Content-Type': 'application/javascript',
-          'Cache-Control': 'public, max-age=3600',
-        },
-      })
+      await writeResponse(
+        outgoingRes,
+        new Response(inspectorScript, {
+          headers: {
+            ...cors,
+            'Content-Type': 'application/javascript',
+            'Cache-Control': 'public, max-age=3600',
+          },
+        }),
+      )
+      return
     }
 
     // API routes
     if (url.pathname.startsWith('/api/')) {
-      return handleAPI(req, url, cors)
+      await writeResponse(outgoingRes, await handleAPI(req, url, cors))
+      return
     }
 
     // Everything else: proxy to target localhost
-    return handleProxy(req, url, cors, inspectorScript)
-  },
+    await writeResponse(
+      outgoingRes,
+      await handleProxy(req, url, cors, inspectorScript),
+    )
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : 'Unknown bridge error'
+    outgoingRes.statusCode = 500
+    outgoingRes.setHeader('Content-Type', 'application/json')
+    outgoingRes.end(JSON.stringify({ error: message }))
+  }
 })
 
-console.log(`\n  pAInt Bridge running on http://localhost:${BRIDGE_PORT}`)
-console.log(
-  `  Connect from: https://dev-editor-flow.vercel.app?bridge=localhost:${BRIDGE_PORT}\n`,
-)
+server.listen(BRIDGE_PORT, BRIDGE_HOST, () => {
+  console.log(
+    `\n  pAInt Bridge running on http://${BRIDGE_HOST}:${BRIDGE_PORT}`,
+  )
+  console.log(
+    `  Connect from: https://dev-editor-flow.vercel.app?bridge=${BRIDGE_HOST}:${BRIDGE_PORT}\n`,
+  )
+})

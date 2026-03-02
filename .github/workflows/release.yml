@@ -37,6 +37,52 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Build app
+        run: bun run build
+
+      - name: CLI smoke test
+        run: node ./bin/paint.js help
+
+      - name: CLI lifecycle smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          node ./bin/paint.js stop || true
+          node ./bin/paint.js start --port 4100
+          trap 'node ./bin/paint.js stop || true' EXIT
+          curl --retry 25 --retry-delay 1 --retry-connrefused -fsS http://127.0.0.1:4100/api/claude/status > /dev/null
+          node ./bin/paint.js status
+          node ./bin/paint.js stop
+          node ./bin/paint.js status
+
+      - name: Terminal lifecycle smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          node ./bin/paint.js terminal stop || true
+          node ./bin/paint.js terminal start --terminal-port 4101
+          trap 'node ./bin/paint.js terminal stop || true' EXIT
+          curl --retry 25 --retry-delay 1 --retry-connrefused -fsS http://127.0.0.1:4101/health > /dev/null
+          node ./bin/paint.js terminal status
+          node ./bin/paint.js terminal restart --terminal-port 4101
+          curl --retry 25 --retry-delay 1 --retry-connrefused -fsS http://127.0.0.1:4101/health > /dev/null
+          node ./bin/paint.js terminal stop
+          node ./bin/paint.js terminal status
+
+      - name: Bridge lifecycle smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          node ./bin/paint.js bridge stop || true
+          node ./bin/paint.js bridge start --bridge-port 4102
+          trap 'node ./bin/paint.js bridge stop || true' EXIT
+          curl --retry 25 --retry-delay 1 --retry-connrefused -fsS http://127.0.0.1:4102/health > /dev/null
+          node ./bin/paint.js bridge status
+          node ./bin/paint.js bridge restart --bridge-port 4102
+          curl --retry 25 --retry-delay 1 --retry-connrefused -fsS http://127.0.0.1:4102/health > /dev/null
+          node ./bin/paint.js bridge stop
+          node ./bin/paint.js bridge status
+
       - name: Create release PR or publish
         uses: changesets/action@v1
         with:
