@@ -74,3 +74,13 @@ jobs:
           curl --retry 25 --retry-delay 1 --retry-connrefused -fsS http://127.0.0.1:4102/health > /dev/null
           node ./bin/paint.js bridge stop
           node ./bin/paint.js bridge status
+
+      - name: Verify npm package contents
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm pack --dry-run > /tmp/npm-pack.txt
+          grep -q "README.md" /tmp/npm-pack.txt
+          grep -q "bin/paint.js" /tmp/npm-pack.txt
+          grep -q "bin/terminal-server.js" /tmp/npm-pack.txt
+          grep -q "bin/bridge-server.js" /tmp/npm-pack.txt

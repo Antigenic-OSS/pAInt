@@ -86,6 +86,17 @@ jobs:
           node ./bin/paint.js bridge stop
           node ./bin/paint.js bridge status
 
+      - name: Verify npm package contents
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm pack --dry-run > /tmp/npm-pack.txt
+          cat /tmp/npm-pack.txt
+          grep -q "README.md" /tmp/npm-pack.txt
+          grep -q "bin/paint.js" /tmp/npm-pack.txt
+          grep -q "bin/terminal-server.js" /tmp/npm-pack.txt
+          grep -q "bin/bridge-server.js" /tmp/npm-pack.txt
+
       - name: Create release PR or publish
         uses: changesets/action@v1
         with:
