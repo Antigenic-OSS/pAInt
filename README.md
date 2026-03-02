@@ -170,6 +170,13 @@ bun run lint         # Run ESLint
 - **Script stripping** — All `<script>` tags are removed from proxied HTML to prevent target-page JS from interfering with the editor.
 - **No shell injection** — Claude CLI is spawned via `Bun.spawn` / `execFile` only, never through shell strings.
 
+## Contributing and Support
+
+- Contributing guide: `CONTRIBUTING.md`
+- Code of conduct: `CODE_OF_CONDUCT.md`
+- Security reporting: `SECURITY.md`
+- Support and maintainer details: `SUPPORT.md`
+
 ## License
 
-Private project.
+Licensed under Apache License 2.0. See `LICENSE`.
