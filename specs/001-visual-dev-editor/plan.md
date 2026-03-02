@@ -1,4 +1,4 @@
-# Implementation Plan: Visual Dev Editor
+# Implementation Plan: Visual pAInt
 
 **Branch**: `001-visual-dev-editor` | **Date**: 2026-02-14 | **Spec**: [spec.md](./spec.md)
 **Input**: Feature specification from `/specs/001-visual-dev-editor/spec.md`

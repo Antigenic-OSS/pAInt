@@ -1,4 +1,4 @@
-# Dev Editor - Features
+# pAInt - Features
 
 ## UI Theme
 

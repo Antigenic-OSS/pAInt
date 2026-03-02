@@ -43,7 +43,7 @@ A user opens the "Add Element" tab and sees a clear, organized palette of dragga
 
 After adding elements to the page, the user wants those additions tracked so they can be exported in the changelog. Every element insertion is recorded with the parent element, tag type, and insertion position. The user can review added elements in the Changes tab and undo individual insertions.
 
-**Why this priority**: Change tracking is essential for the Dev Editor's core workflow (edit → review → export to Claude Code), but the feature is still useful for visual prototyping without it.
+**Why this priority**: Change tracking is essential for the pAInt's core workflow (edit → review → export to Claude Code), but the feature is still useful for visual prototyping without it.
 
 **Independent Test**: Can be tested by adding an element, switching to the Changes tab, verifying the addition is listed, undoing it, and confirming the element is removed from the preview.
 

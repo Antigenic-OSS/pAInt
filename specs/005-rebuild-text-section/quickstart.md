@@ -6,7 +6,7 @@
 ## Prerequisites
 
 - Bun installed
-- Dev Editor repo cloned
+- pAInt repo cloned
 - A localhost target app running (e.g., `http://localhost:3000`)
 
 ## Setup
@@ -73,7 +73,7 @@ const updateShadow = (index, updates) => {
 
 ## Testing
 
-1. Start Dev Editor: `bun dev`
+1. Start pAInt: `bun dev`
 2. Connect to a localhost target
 3. Select a text element (heading, paragraph, etc.)
 4. Verify all core fields populate with computed values

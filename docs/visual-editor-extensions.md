@@ -61,7 +61,7 @@
 
 ## Key Recommendations by Use Case
 
-- **Edit running React app visually** → Onlook (closest to Dev Editor's approach)
+- **Edit running React app visually** → Onlook (closest to pAInt's approach)
 - **Build a custom page editor** → Puck or Craft.js
 - **Embeddable HTML builder** → GrapesJS
 - **Component development** → Storybook
@@ -70,11 +70,11 @@
 - **VS Code visual editing** → SculptUI (React) or Fusion (AI-powered)
 - **Write once, multi-framework** → Mitosis
 
-## How Dev Editor Differs
+## How pAInt Differs
 
-Dev Editor takes a unique approach compared to the tools above:
+pAInt takes a unique approach compared to the tools above:
 
-| Aspect | Dev Editor | Webflow | Onlook | GrapesJS |
+| Aspect | pAInt | Webflow | Onlook | GrapesJS |
 |--------|-----------|---------|--------|----------|
 | **Layout** | Three-column: Left (Layers) + Center (Preview) + Right (Style) | Three-column (same pattern) | Single canvas + side panel | Single canvas + panels |
 | **Architecture** | Next.js web app with iframe proxy, Bun runtime | Cloud SaaS | Electron desktop app | Embeddable JS library |

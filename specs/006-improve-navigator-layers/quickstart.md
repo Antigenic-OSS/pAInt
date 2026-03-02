@@ -45,7 +45,7 @@ This feature improves the Navigator (Layers) panel with 5 changes:
 
 1. `bun dev` on port 4000
 2. Start a target project (e.g., Next.js on port 3000)
-3. Connect Dev Editor to target
+3. Connect pAInt to target
 4. Verify Navigator shows tag names (footer, header, h2, etc.)
 5. Verify component elements are purple-pink
 6. Edit a style property, verify the tree node turns amber

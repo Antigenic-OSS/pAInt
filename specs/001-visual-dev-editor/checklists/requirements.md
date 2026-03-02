@@ -1,4 +1,4 @@
-# Specification Quality Checklist: Visual Dev Editor
+# Specification Quality Checklist: Visual pAInt
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-02-14

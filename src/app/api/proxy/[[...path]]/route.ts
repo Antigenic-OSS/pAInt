@@ -455,11 +455,11 @@ function getInspectorCode(): string {
         var text = (el.innerText || '').substring(0, 500) || null;
 
         var varUsages = detectCSSVariablesOnElement(el);
-        console.log('[DevEditor] CSS variable usages for', el.tagName, el.className, varUsages);
+        console.log('[pAInt] CSS variable usages for', el.tagName, el.className, varUsages);
 
         var sourceInfo = getReactSourceInfo(el);
         if (sourceInfo) {
-          console.log('[DevEditor] sourceInfo:', sourceInfo.fileName + ':' + sourceInfo.lineNumber, 'component:', sourceInfo.componentName, 'chain:', sourceInfo.componentChain.join(' > '));
+          console.log('[pAInt] sourceInfo:', sourceInfo.fileName + ':' + sourceInfo.lineNumber, 'component:', sourceInfo.componentName, 'chain:', sourceInfo.componentChain.join(' > '));
         }
 
         send({
@@ -1158,7 +1158,7 @@ function getInspectorCode(): string {
           case 'REQUEST_CSS_VARIABLES': {
             var result = scanCSSVariableDefinitions();
             initialVarCount = Object.keys(result.definitions).length;
-            console.log('[DevEditor] CSS variable definitions found:', initialVarCount, result.definitions);
+            console.log('[pAInt] CSS variable definitions found:', initialVarCount, result.definitions);
             send({ type: 'CSS_VARIABLES', payload: { definitions: result.definitions, isExplicit: result.isExplicit, scopes: result.scopes || [] } });
             break;
           }
@@ -1612,7 +1612,7 @@ async function handleProxy(
     if (contentType.includes('text/html')) {
       let html = await response.text();
 
-      // Strip any existing Dev Editor inspector scripts the target app may
+      // Strip any existing pAInt inspector scripts the target app may
       // have added manually. The proxy injects its own inspector, so these
       // duplicates cause multiple overlays and conflicting message handlers.
       html = html.replace(/<script[^>]*src=["'][^"']*dev-editor-inspector\.js["'][^>]*><\/script>/gi, '');
@@ -1664,7 +1664,7 @@ async function handleProxy(
       // Tag /_next/ paths with ?_devproxy=1 so the middleware can proxy them to
       // the target server. Without this marker, after history.replaceState changes
       // the URL, the referer no longer contains /api/proxy and the middleware
-      // skips the request — loading the Dev Editor's own chunks instead of the
+      // skips the request — loading pAInt's own chunks instead of the
       // target's, which prevents React from hydrating.
       // Do NOT add /api/proxy/ prefix — that breaks Turbopack chunk path matching.
       // Turbopack's getPathFromScript() strips query strings, so the marker is safe.
@@ -1885,7 +1885,7 @@ async function handleProxy(
   // Intercept navigations via Navigation API to prevent the iframe from
   // escaping the proxy. After history.replaceState changes the URL to the
   // target path (e.g. http://localhost:4000/), any unintercepted navigation
-  // would load the Dev Editor's own page instead of the target — causing
+  // would load pAInt's own page instead of the target — causing
   // the "recursive embed" bug where the setup modal appears inside the iframe.
   if (window.navigation) {
     window.navigation.addEventListener('navigate', function(e) {
@@ -1897,7 +1897,7 @@ async function handleProxy(
         // Cross-origin navigation — allow (external links)
         if (d.origin !== window.location.origin) return;
         // Same-origin, not through proxy — must intercept to prevent
-        // loading the Dev Editor's own page (recursive embed)
+        // loading pAInt's own page (recursive embed)
         if (e.canIntercept) {
           e.intercept({
             handler: function() {

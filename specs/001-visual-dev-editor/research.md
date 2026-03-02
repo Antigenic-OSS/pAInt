@@ -1,4 +1,4 @@
-# Research: Visual Dev Editor
+# Research: Visual pAInt
 
 **Branch**: `001-visual-dev-editor` | **Date**: 2026-02-14
 

@@ -49,7 +49,7 @@ export function TopBar() {
         className="text-sm font-semibold tracking-tight whitespace-nowrap"
         style={{ color: 'var(--text-primary)' }}
       >
-        Dev Editor
+        pAInt
       </span>
 
       {/* Separator */}

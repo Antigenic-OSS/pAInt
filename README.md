@@ -1,4 +1,4 @@
-# Dev Editor
+# pAInt
 
 A visual design editor for localhost web projects. Inspect elements, edit styles, manage CSS variables, and generate changelogs for [Claude Code](https://claude.ai/claude-code) — all from a Webflow-style dark UI.
 
@@ -33,7 +33,7 @@ A visual design editor for localhost web projects. Inspect elements, edit styles
 # Install dependencies
 bun install
 
-# Start the Dev Editor (runs on http://localhost:4000)
+# Start the pAInt (runs on http://localhost:4000)
 bun dev
 ```
 
@@ -48,7 +48,7 @@ Then:
 
 ### Method 1: Automatic (Reverse Proxy) — Recommended
 
-When you click **Connect**, the Dev Editor loads your target page through a built-in reverse proxy that automatically injects the inspector script. No setup needed — works out of the box.
+When you click **Connect**, the pAInt loads your target page through a built-in reverse proxy that automatically injects the inspector script. No setup needed — works out of the box.
 
 ### Method 2: Manual Script Tag
 
@@ -62,7 +62,7 @@ Paste this into your project's root HTML layout (e.g., `layout.tsx`, `index.html
 
 ### Method 3: Vercel Deployment (Bridge Mode)
 
-When the Dev Editor is deployed to Vercel, run the local bridge server to proxy your localhost pages:
+When the pAInt is deployed to Vercel, run the local bridge server to proxy your localhost pages:
 
 ```bash
 bun run bridge       # Bridge server on http://localhost:4002
@@ -90,10 +90,10 @@ Use the Variables panel to view and edit CSS custom properties defined in your p
 
 ### Claude Code Workflow
 
-The primary output of Dev Editor is a structured changelog that Claude Code understands:
+The primary output of pAInt is a structured changelog that Claude Code understands:
 
 ```
-Open Dev Editor → Connect to your localhost project
+Open pAInt → Connect to your localhost project
        ↓
 Inspect and select elements (hover/click in preview or Layers tree)
        ↓

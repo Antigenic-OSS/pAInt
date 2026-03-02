@@ -1,4 +1,4 @@
-# Data Model: Visual Dev Editor
+# Data Model: Visual pAInt
 
 **Branch**: `001-visual-dev-editor` | **Date**: 2026-02-14
 

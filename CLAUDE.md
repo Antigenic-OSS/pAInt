@@ -1,4 +1,4 @@
-# Dev Editor — Development Guidelines
+# pAInt — Development Guidelines
 
 Visual design editor for localhost web projects. Inspect elements,
 edit styles, manage CSS variables, and generate changelogs for
@@ -8,18 +8,18 @@ Claude Code — all from a Webflow-style three-column dark UI.
 
 ### Quick Start
 
-1. Start the Dev Editor: `bun dev` (runs on `http://localhost:4000` by default)
+1. Start the pAInt: `bun dev` (runs on `http://localhost:4000` by default)
 2. Start your target project's dev server (e.g., `http://localhost:3000`)
-3. Open the Dev Editor in your browser
+3. Open the pAInt in your browser
 4. Select your target's localhost port from the dropdown in the top bar and click **Connect**
 5. The target page loads in the center iframe — start inspecting and editing
 
 ### Connecting to Your Project
 
-There are **three ways** to connect the Dev Editor to your project:
+There are **three ways** to connect the pAInt to your project:
 
 #### Method 1: Automatic (Reverse Proxy) — Recommended
-When you click **Connect**, the Dev Editor loads your target page through a built-in reverse proxy. The proxy automatically injects the inspector script into the HTML — no setup needed. This is the default behavior and works out of the box.
+When you click **Connect**, the pAInt loads your target page through a built-in reverse proxy. The proxy automatically injects the inspector script into the HTML — no setup needed. This is the default behavior and works out of the box.
 
 #### Method 2: Manual Script Tag
 If the automatic connection takes longer than 5 seconds (the inspector script hasn't been detected), you'll see a banner:
@@ -31,12 +31,12 @@ If the automatic connection takes longer than 5 seconds (the inspector script ha
 Click **Copy**, paste the script tag into your project's root HTML layout (e.g., `layout.tsx`, `index.html`), and the editor will connect once the page reloads.
 
 #### Method 3: Vercel Deployment (Bridge Mode)
-When the Dev Editor is deployed to Vercel, run the local bridge server (`bun run bridge`) on port 4002. The bridge handles proxy requests, project scanning, and Claude CLI execution on the user's machine.
+When the pAInt is deployed to Vercel, run the local bridge server (`bun run bridge`) on port 4002. The bridge handles proxy requests, project scanning, and Claude CLI execution on the user's machine.
 
 ### Typical Workflow
 
 ```
-Open Dev Editor → Connect to localhost project
+Open pAInt → Connect to localhost project
        ↓
 Inspect elements (hover/click in preview or click in Layers tree)
        ↓

@@ -1,4 +1,4 @@
-# Quickstart: Visual Dev Editor
+# Quickstart: Visual pAInt
 
 **Branch**: `001-visual-dev-editor` | **Date**: 2026-02-14
 

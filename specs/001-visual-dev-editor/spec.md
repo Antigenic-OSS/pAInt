@@ -1,4 +1,4 @@
-# Feature Specification: Visual Dev Editor
+# Feature Specification: Visual pAInt
 
 **Feature Branch**: `001-visual-dev-editor`
 **Created**: 2026-02-14
@@ -9,15 +9,15 @@
 
 ### User Story 1 — Connect & Preview (Priority: P1)
 
-A developer has a running localhost project (any framework — Next.js, Vite, CRA, Astro, etc.). They open Dev Editor, type their localhost URL into the address bar, click Connect, and see their live site rendered inside the editor's center preview panel. The left panel populates with a DOM tree and the right panel is ready for property editing.
+A developer has a running localhost project (any framework — Next.js, Vite, CRA, Astro, etc.). They open pAInt, type their localhost URL into the address bar, click Connect, and see their live site rendered inside the editor's center preview panel. The left panel populates with a DOM tree and the right panel is ready for property editing.
 
 **Why this priority**: Nothing else in the editor works until a target page is loaded. This is the foundational entry point that unlocks all subsequent features.
 
-**Independent Test**: Start a localhost dev server, open Dev Editor, enter the URL, press Connect. Verify the page renders in the center iframe, the connection dot turns green, the DOM tree appears in the left panel, and the URL is saved to recent URLs.
+**Independent Test**: Start a localhost dev server, open pAInt, enter the URL, press Connect. Verify the page renders in the center iframe, the connection dot turns green, the DOM tree appears in the left panel, and the URL is saved to recent URLs.
 
 **Acceptance Scenarios**:
 
-1. **Given** Dev Editor is open with no target connected, **When** the developer enters `http://localhost:3000` and clicks Connect, **Then** the center preview loads the proxied page, the connection dot turns green, and the left panel shows the DOM tree.
+1. **Given** pAInt is open with no target connected, **When** the developer enters `http://localhost:3000` and clicks Connect, **Then** the center preview loads the proxied page, the connection dot turns green, and the left panel shows the DOM tree.
 2. **Given** the developer previously connected to `http://localhost:3000`, **When** they click the URL input dropdown, **Then** the recent URL appears and can be selected for quick reconnection.
 3. **Given** the developer enters `https://google.com`, **When** they click Connect, **Then** validation rejects the URL with "Only localhost URLs are supported."
 4. **Given** the target dev server is not running, **When** the developer connects, **Then** the dot turns red and a message reads "Cannot connect — check that your dev server is running."

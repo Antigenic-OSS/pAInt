@@ -278,7 +278,7 @@ export function ConnectModal() {
               className="text-sm font-semibold"
               style={{ color: 'var(--text-primary)' }}
             >
-              Dev Editor
+              pAInt
             </span>
           </div>
           <p

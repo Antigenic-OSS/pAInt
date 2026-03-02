@@ -1,7 +1,7 @@
 /**
- * Dev Editor Inspector — Standalone Script
+ * pAInt Inspector — Standalone Script
  *
- * Add this script to your project to enable Dev Editor inspection.
+ * Add this script to your project to enable pAInt inspection.
  * Works with both local and Vercel-hosted editors automatically.
  *
  * Next.js App Router:

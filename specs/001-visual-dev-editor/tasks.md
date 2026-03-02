@@ -1,8 +1,8 @@
 ---
-description: "Task list for Visual Dev Editor feature implementation"
+description: "Task list for Visual pAInt feature implementation"
 ---
 
-# Tasks: Visual Dev Editor
+# Tasks: Visual pAInt
 
 **Input**: Design documents from `/specs/001-visual-dev-editor/`
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/
@@ -75,7 +75,7 @@ description: "Task list for Visual Dev Editor feature implementation"
 
 **Goal**: Developer can enter a localhost URL and see their project rendered in the editor's center preview.
 
-**Independent Test**: Start a localhost dev server, open Dev Editor, enter the URL, click Connect. Verify the page renders, the connection dot turns green, and the URL is saved to recent URLs.
+**Independent Test**: Start a localhost dev server, open pAInt, enter the URL, click Connect. Verify the page renders, the connection dot turns green, and the URL is saved to recent URLs.
 
 ### Implementation for User Story 1
 

@@ -11,8 +11,8 @@ import {
 } from './DocsClient';
 
 export const metadata: Metadata = {
-  title: 'Dev Editor — Setup Guide',
-  description: 'Framework-specific setup instructions for connecting Dev Editor to your localhost project.',
+  title: 'pAInt — Setup Guide',
+  description: 'Framework-specific setup instructions for connecting pAInt to your localhost project.',
 };
 
 const SCRIPT_TAG = '<script src="https://dev-editor-flow.vercel.app/dev-editor-inspector.js"></script>';
@@ -37,7 +37,7 @@ export default function DocsPage() {
             className="text-3xl font-semibold mb-3"
             style={{ color: 'var(--text-primary)' }}
           >
-            Dev Editor — Setup Guide
+            pAInt — Setup Guide
           </h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', lineHeight: 1.6 }}>
             Connect the visual editor to your localhost project in seconds.
@@ -53,7 +53,7 @@ export default function DocsPage() {
         {/* How It Works */}
         <Section id="how-it-works" title="How It Works">
           <p style={bodyText}>
-            Dev Editor is a visual design tool that sits alongside your localhost
+            pAInt is a visual design tool that sits alongside your localhost
             dev server. It gives you a Webflow-style interface for inspecting
             elements, editing CSS, and repositioning components — all without
             touching your source files directly.
@@ -120,7 +120,7 @@ export default function DocsPage() {
         <Section id="quick-start" title="Quick Start">
           <ol className="list-none p-0 m-0 flex flex-col gap-5">
             <Step number={1}>
-              <strong style={{ color: 'var(--text-primary)', fontSize: '1rem' }}>Open the Dev Editor</strong>
+              <strong style={{ color: 'var(--text-primary)', fontSize: '1rem' }}>Open pAInt</strong>
               <p style={{ ...bodyText, marginTop: '0.25rem' }}>
                 Go to{' '}
                 <a
@@ -147,7 +147,7 @@ export default function DocsPage() {
             <Step number={3}>
               <strong style={{ color: 'var(--text-primary)', fontSize: '1rem' }}>Connect</strong>
               <p style={{ ...bodyText, marginTop: '0.25rem' }}>
-                Open the Dev Editor in your browser, select your project&apos;s
+                Open pAInt in your browser, select your project&apos;s
                 port from the dropdown, and click{' '}
                 <strong style={{ color: 'var(--text-primary)' }}>Connect</strong>.
                 The inspector activates automatically.
@@ -173,7 +173,7 @@ export default function DocsPage() {
           >
             <span style={{ color: 'var(--accent)' }}>Note:</span>
             <span>
-              The snippets below use the hosted URL. If running Dev Editor locally,
+              The snippets below use the hosted URL. If running pAInt locally,
               replace{' '}
               <code style={{ ...inlineCodeStyle, fontSize: '0.8em' }}>https://dev-editor-flow.vercel.app</code>{' '}
               with{' '}
@@ -450,14 +450,14 @@ export default defineNuxtConfig({
               <p>
                 If the banner appears after 5 seconds, the automatic proxy
                 injection didn&apos;t work for your setup. Add the script tag
-                manually using the framework guides above. Make sure your Dev
-                Editor is running on the port shown in the script URL.
+                manually using the framework guides above. Make sure pAInt
+                is running on the port shown in the script URL.
               </p>
             </TroubleshootItem>
 
             <TroubleshootItem title="CORS or Cross-Origin errors">
               <p>
-                The Dev Editor proxy runs on a different port than your project.
+                The pAInt proxy runs on a different port than your project.
                 If your project sets strict CORS headers, the proxy may be
                 blocked. The automatic method handles this by serving everything
                 from the same origin. For the manual method, ensure your dev
@@ -480,7 +480,7 @@ export default defineNuxtConfig({
             <TroubleshootItem title="Infinite iframe reload">
               <p>
                 This happens when the target page&apos;s client-side router
-                detects the proxy URL and redirects. The Dev Editor&apos;s proxy
+                detects the proxy URL and redirects. pAInt&apos;s proxy
                 strips <code style={inlineCodeStyle}>&lt;script&gt;</code> tags
                 to prevent this. If you still see reloads, check that no inline
                 scripts or meta-refresh tags are causing navigation.
@@ -505,15 +505,15 @@ export default defineNuxtConfig({
               <p>
                 Yes. The inspector script is a lightweight, read-only observer
                 that listens for hover/click events and reports element metadata
-                (tag name, styles, bounding box) back to the Dev Editor via{' '}
+                (tag name, styles, bounding box) back to pAInt via{' '}
                 <code style={inlineCodeStyle}>postMessage</code>. It does not
                 modify your source code, send data to external servers, or
-                execute arbitrary code. It only communicates with the Dev Editor
+                execute arbitrary code. It only communicates with the pAInt
                 origin.
               </p>
             </FaqSection>
 
-            <FaqSection id="faq-source" question="Does the Dev Editor have access to my source files?">
+            <FaqSection id="faq-source" question="Does pAInt have access to my source files?">
               <p>
                 Not directly. The editor works with the rendered HTML/CSS in the
                 browser — it never reads or writes your project&apos;s source files
@@ -539,7 +539,7 @@ export default defineNuxtConfig({
               <p>
                 Yes. The inspector script is intended for local development only.
                 Remove it (or wrap it in an environment check) before deploying.
-                If you forget, the script will try to connect to the Dev Editor
+                If you forget, the script will try to connect to the pAInt
                 origin and silently fail — it won&apos;t affect your users — but
                 it&apos;s best practice to keep it out of production builds.
               </p>
@@ -547,12 +547,12 @@ export default defineNuxtConfig({
 
             <FaqSection id="faq-network" question="Can other people on my network see my project through the editor?">
               <p>
-                By default, both the Dev Editor and your dev server run on{' '}
+                By default, both pAInt and your dev server run on{' '}
                 <code style={inlineCodeStyle}>localhost</code>, which is only
                 accessible from your machine. If you&apos;ve configured your dev
                 server to listen on <code style={inlineCodeStyle}>0.0.0.0</code>,
                 other devices on your network could access it directly, but the
-                Dev Editor&apos;s proxy still only connects to localhost.
+                pAInt&apos;s proxy still only connects to localhost.
               </p>
             </FaqSection>
 
@@ -580,7 +580,7 @@ export default defineNuxtConfig({
             color: 'var(--text-muted)',
           }}
         >
-          Dev Editor &middot;{' '}
+          pAInt &middot;{' '}
           <Link
             href="/"
             className="no-underline"

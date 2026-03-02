@@ -272,11 +272,11 @@ function handleMessage(event: MessageEvent) {
       break;
 
     case 'RECURSIVE_EMBED_DETECTED': {
-      // The iframe loaded the Dev Editor's own page instead of the target.
+      // The iframe loaded pAInt's own page instead of the target.
       // This happens when the navigation blocker failed to intercept a
       // programmatic navigation after history.replaceState. Reload the iframe
       // with the correct proxy URL to recover.
-      console.warn('[DevEditor] Recursive embed detected — reloading iframe through proxy');
+      console.warn('[pAInt] Recursive embed detected — reloading iframe through proxy');
       const iframe = sharedIframeRef.current;
       const recoverTarget = store.targetUrl;
       if (iframe && recoverTarget) {

@@ -8,7 +8,7 @@ export default function Home() {
   const loadPersistedUI = useEditorStore((s) => s.loadPersistedUI);
   const loadPersistedClaude = useEditorStore((s) => s.loadPersistedClaude);
 
-  // Safety net: if the Dev Editor's own page loads inside an iframe,
+  // Safety net: if pAInt's own page loads inside an iframe,
   // it means the proxy's navigation blocker failed and the iframe
   // escaped to localhost:4000. Notify the parent editor so it can recover.
   const [isRecursiveEmbed, setIsRecursiveEmbed] = useState(false);

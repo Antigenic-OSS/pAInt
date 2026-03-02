@@ -16,13 +16,13 @@
   Follow-up TODOs: None
 -->
 
-# Dev Editor Constitution
+# pAInt Constitution
 
 ## Core Principles
 
 ### I. Dark Mode Only
 
-Dev Editor ships a single dark theme. There MUST NOT be a light mode
+pAInt ships a single dark theme. There MUST NOT be a light mode
 toggle or theme switcher. All UI surfaces — panels, top bar, inputs,
 dialogs, overlays — MUST use the dark color palette defined in the
 design system (`#1e1e1e` backgrounds, `#e0e0e0` text, `#4a9eff`
@@ -61,7 +61,7 @@ producing "unrecognized HMR message" errors and potential reload loops.
 
 ### III. Localhost Only
 
-Dev Editor MUST only connect to `localhost` or `127.0.0.1` origins.
+pAInt MUST only connect to `localhost` or `127.0.0.1` origins.
 URL validation MUST reject any non-local address before the proxy
 forwards a request. This is a security boundary — the reverse proxy
 MUST NOT be used as an open relay to external hosts.

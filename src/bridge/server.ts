@@ -1,8 +1,8 @@
 /**
- * Dev Editor Bridge Server
+ * pAInt Bridge Server
  *
  * A lightweight Bun HTTP server that runs on the user's machine.
- * When the Dev Editor is deployed on Vercel, it connects to this bridge
+ * When pAInt is deployed on Vercel, it connects to this bridge
  * to proxy localhost pages, scan project directories, and run Claude CLI.
  *
  * Usage:
@@ -100,5 +100,5 @@ Bun.serve({
   },
 });
 
-console.log(`\n  Dev Editor Bridge running on http://localhost:${BRIDGE_PORT}`);
+console.log(`\n  pAInt Bridge running on http://localhost:${BRIDGE_PORT}`);
 console.log(`  Connect from: https://dev-editor-flow.vercel.app?bridge=localhost:${BRIDGE_PORT}\n`);

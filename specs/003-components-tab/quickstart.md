@@ -6,7 +6,7 @@
 ## Prerequisites
 
 - Bun installed (`bun --version`)
-- Dev Editor running (`bun dev`)
+- pAInt running (`bun dev`)
 - A localhost project running (e.g., `bun dev` on port 3001)
 
 ## Development Setup
@@ -63,7 +63,7 @@ Follow this sequence — each step builds on the previous:
 bun run build
 ```
 
-1. Open Dev Editor, connect to a localhost page
+1. Open pAInt, connect to a localhost page
 2. Click "Comps" tab in left panel — components should list
 3. Click a component — iframe highlights it, right panel shows styles
 4. Change a variant dropdown — element updates in iframe

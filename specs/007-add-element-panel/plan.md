@@ -5,7 +5,7 @@
 
 ## Summary
 
-Add an "Add Element" tab to the left panel of the Dev Editor that provides a palette of 9 draggable HTML element types (div, section, h1–h6, p) grouped into Structure and Text categories. Users can drag elements from the palette onto the preview iframe to insert them into the target page DOM, or click to insert at the currently selected element. All insertions are tracked as changes with full undo/redo support and changelog export.
+Add an "Add Element" tab to the left panel of the pAInt that provides a palette of 9 draggable HTML element types (div, section, h1–h6, p) grouped into Structure and Text categories. Users can drag elements from the palette onto the preview iframe to insert them into the target page DOM, or click to insert at the currently selected element. All insertions are tracked as changes with full undo/redo support and changelog export.
 
 **Technical approach**: Extend the existing left panel tab system (IconSidebar + LeftPanel) with a new `add-element` tab. Use HTML5 Drag and Drop API for cross-iframe drag (palette → iframe). The inspector script (injected via proxy) handles drop target detection, DOM insertion, and sends `ELEMENT_INSERTED` messages back to the editor. Change tracking reuses the existing `__sentinel_property__` pattern (like `__element_deleted__` and `__text_content__`).
 

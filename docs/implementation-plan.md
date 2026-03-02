@@ -1,4 +1,4 @@
-# Dev Editor - Next.js Visual Editor Web App
+# pAInt - Next.js Visual Editor Web App
 
 ## Context
 
@@ -8,7 +8,7 @@ You have multiple Next.js + Tailwind CSS projects in `/Users/jehcyadorna/My Reac
 
 ```
 +---------------------------------------------------+
-|              Next.js App (Dev Editor)              |
+|              Next.js App (pAInt)              |
 |              Dark Mode | Bun Runtime               |
 |                                                     |
 |  +-----------+  +-------------+  +-------------+  |
@@ -44,7 +44,7 @@ You have multiple Next.js + Tailwind CSS projects in `/Users/jehcyadorna/My Reac
 
 ```
 +-------------------------------------------------------------------------------------------+
-| [Logo] Dev Editor   [ http://localhost:3000   ▾ ] [Connect]  [●]   [ M | T | D ]          |
+| [Logo] pAInt   [ http://localhost:3000   ▾ ] [Connect]  [●]   [ M | T | D ]          |
 |  Page: [Homepage v]   [DRAG▾]   [APPLY]                                                   |
 +-------------+-------------------------------------------------------------+---------------+
 |             |                                           |               |

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Dev Editor',
+  title: 'pAInt',
   description: 'Visual design editor for localhost projects',
 };
 

@@ -2,7 +2,7 @@
 
 ## Context
 
-When a user selects an element in the Dev Editor preview, the right panel shows SOURCE (page/layout file) and COMPONENT (the React component file). Currently, COMPONENT is always empty in proxy mode because React fibers aren't available (scripts are stripped to prevent reload loops).
+When a user selects an element in the pAInt preview, the right panel shows SOURCE (page/layout file) and COMPONENT (the React component file). Currently, COMPONENT is always empty in proxy mode because React fibers aren't available (scripts are stripped to prevent reload loops).
 
 **Solution**: Scan the target project's file system for component files, then match selected elements to those files using reliable signals (IDs, data attributes, class patterns). Pure file system operations — no Claude CLI, no AI tokens.
 

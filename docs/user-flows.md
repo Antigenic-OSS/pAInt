@@ -1,11 +1,11 @@
-# Dev Editor - User Flows & Scenarios
+# pAInt - User Flows & Scenarios
 
 ## Flow 1: First-Time Setup & Connect to Target
 
 **Actor:** Developer with a running localhost project
 
-1. Developer runs `bun dev` to start the Dev Editor app (e.g., on `http://localhost:4000`)
-2. Developer opens the Dev Editor in their browser
+1. Developer runs `bun dev` to start the pAInt app (e.g., on `http://localhost:4000`)
+2. Developer opens the pAInt in their browser
 3. The editor loads in **dark mode** with a three-column layout: left panel (empty), center (empty placeholder: "Enter a localhost URL to get started"), right panel (empty)
 4. The **target URL input** in the top bar is focused and ready for input
 5. Developer types their project URL: `http://localhost:3000`

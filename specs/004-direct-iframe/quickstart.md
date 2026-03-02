@@ -5,7 +5,7 @@
 
 ## Prerequisites
 
-- Dev Editor running: `bun dev` (port 4000)
+- pAInt running: `bun dev` (port 4000)
 - A target localhost project running on another port (e.g., 3001)
 
 ## Setup
@@ -20,9 +20,9 @@ Add this `<script>` tag to your target project's HTML layout (e.g., `layout.tsx`
 
 Place it before `</body>` or at the end of `<head>`. The script auto-detects it's in an iframe and does nothing when the page is loaded directly.
 
-### 2. Connect from Dev Editor
+### 2. Connect from pAInt
 
-1. Open the Dev Editor at `http://localhost:4000`
+1. Open the pAInt at `http://localhost:4000`
 2. Enter your target URL (e.g., `http://localhost:3001`) in the URL bar
 3. Click Connect
 4. The connection dot turns green when the inspector establishes communication

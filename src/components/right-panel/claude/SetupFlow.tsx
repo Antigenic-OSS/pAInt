@@ -160,7 +160,7 @@ export function SetupFlow({ targetUrl, onComplete }: SetupFlowProps) {
             </li>
             <li className="flex gap-1.5">
               <span style={{ color: 'var(--text-muted)' }}>&bull;</span>
-              <span>Restart the Dev Editor after installing the CLI</span>
+              <span>Restart pAInt after installing the CLI</span>
             </li>
             <li className="flex gap-1.5">
               <span style={{ color: 'var(--text-muted)' }}>&bull;</span>
