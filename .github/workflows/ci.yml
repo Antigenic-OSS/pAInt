@@ -79,7 +79,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npm pack --dry-run > /tmp/npm-pack.txt
+          npm pack --dry-run > /tmp/npm-pack.txt 2>&1
+          cat /tmp/npm-pack.txt
           grep -q "README.md" /tmp/npm-pack.txt
           grep -q "bin/paint.js" /tmp/npm-pack.txt
           grep -q "bin/terminal-server.js" /tmp/npm-pack.txt

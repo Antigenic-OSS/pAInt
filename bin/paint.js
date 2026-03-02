@@ -7,7 +7,8 @@ const http = require('node:http')
 const https = require('node:https')
 const { spawn, spawnSync } = require('node:child_process')
 
-const APP_ROOT = path.resolve(__dirname, '..')
+const ENTRY_REAL_PATH = fs.realpathSync(__filename)
+const APP_ROOT = path.resolve(path.dirname(ENTRY_REAL_PATH), '..')
 const STATE_DIR = path.join(os.homedir(), '.paint')
 
 const APP_STATE_FILE = path.join(STATE_DIR, 'server.json')
@@ -18,14 +19,27 @@ const WEB_LOG_FILE = path.join(STATE_DIR, 'web.log')
 const TERMINAL_LOG_FILE = path.join(STATE_DIR, 'terminal.log')
 const BRIDGE_LOG_FILE = path.join(STATE_DIR, 'bridge.log')
 
-const NEXT_BIN = path.join(
-  APP_ROOT,
-  'node_modules',
-  'next',
-  'dist',
-  'bin',
-  'next',
-)
+function resolveNextBin() {
+  const directPath = path.join(
+    APP_ROOT,
+    'node_modules',
+    'next',
+    'dist',
+    'bin',
+    'next',
+  )
+  if (fs.existsSync(directPath)) {
+    return directPath
+  }
+
+  try {
+    return require.resolve('next/dist/bin/next', { paths: [APP_ROOT] })
+  } catch {
+    return null
+  }
+}
+
+const NEXT_BIN = resolveNextBin()
 const TERMINAL_SERVER_BIN = path.join(APP_ROOT, 'bin', 'terminal-server.js')
 const BRIDGE_SERVER_BIN = path.join(APP_ROOT, 'bin', 'bridge-server.js')
 
@@ -236,10 +250,11 @@ async function waitForHttp(url, timeoutMs = 30000, validator) {
 }
 
 function ensureNextInstalled() {
-  if (!fs.existsSync(NEXT_BIN)) {
+  if (!NEXT_BIN || !fs.existsSync(NEXT_BIN)) {
     console.error(
       'pAInt runtime is missing Next.js binaries. Reinstall the package.',
     )
+    console.error(`Resolved app root: ${APP_ROOT}`)
     process.exit(1)
   }
 }
