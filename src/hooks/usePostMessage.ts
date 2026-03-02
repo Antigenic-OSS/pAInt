@@ -114,7 +114,16 @@ function handleMessage(event: MessageEvent) {
       const persisted = useEditorStore.getState().styleChanges;
       if (persisted.length > 0) {
         for (const change of persisted) {
-          if (change.property === '__text_content__' || change.property === '__component_creation__') continue;
+          if (change.property === '__element_deleted__') {
+            // Re-hide deleted elements by sending DELETE_ELEMENT (without re-tracking,
+            // the inspector will send ELEMENT_DELETED but we deduplicate below)
+            sendViaIframe({
+              type: 'DELETE_ELEMENT',
+              payload: { selectorPath: change.elementSelector },
+            });
+            continue;
+          }
+          if (change.property === '__text_content__' || change.property === '__component_creation__' || change.property === '__element_inserted__' || change.property === '__element_moved__') continue;
           sendViaIframe({
             type: 'PREVIEW_CHANGE',
             payload: {
@@ -154,6 +163,7 @@ function handleMessage(event: MessageEvent) {
         msg.payload.computedStyles = merged;
       }
       store.selectElement(msg.payload);
+      store.expandToNode(msg.payload.selectorPath);
       store.setCSSVariableUsages(msg.payload.cssVariableUsages || {});
       // Build Tailwind class → CSS property → variable mapping
       const twMap = buildTailwindClassMap(msg.payload.className, store.cssVariableDefinitions);
@@ -326,6 +336,117 @@ function handleMessage(event: MessageEvent) {
       break;
     }
 
+    case 'ELEMENT_INSERTED': {
+      const {
+        selectorPath: insSelector,
+        parentSelectorPath: insParent,
+        tagName: insTag,
+        insertionIndex: insIndex,
+        placeholderText: insText,
+        defaultStyles: insDefaultStyles,
+      } = msg.payload;
+      const insProperty = '__element_inserted__';
+
+      // Push undo action
+      store.pushUndo({
+        elementSelector: insSelector,
+        property: insProperty,
+        beforeValue: '',
+        afterValue: 'inserted',
+        breakpoint: store.activeBreakpoint,
+        wasNewChange: true,
+        changeScope: store.changeScope,
+      });
+
+      // Save element snapshot with default styles as computedStyles
+      store.saveElementSnapshot({
+        selectorPath: insSelector,
+        tagName: insTag,
+        className: null,
+        elementId: null,
+        attributes: {},
+        innerText: insText || null,
+        computedStyles: insDefaultStyles ? { ...insDefaultStyles } : {},
+        pagePath: store.currentPagePath,
+        changeScope: store.changeScope,
+        sourceInfo: null,
+      });
+
+      // Track the insertion
+      store.addStyleChange({
+        id: generateId(),
+        elementSelector: insSelector,
+        property: insProperty,
+        originalValue: `parent:${insParent}|index:${insIndex}`,
+        newValue: 'inserted',
+        breakpoint: store.activeBreakpoint,
+        timestamp: Date.now(),
+        changeScope: store.changeScope,
+      });
+
+      // Record each default style as an individual style change
+      if (insDefaultStyles) {
+        const insTimestamp = Date.now();
+        for (const [prop, val] of Object.entries(insDefaultStyles)) {
+          store.addStyleChange({
+            id: generateId(),
+            elementSelector: insSelector,
+            property: prop,
+            originalValue: '',
+            newValue: val,
+            breakpoint: store.activeBreakpoint,
+            timestamp: insTimestamp,
+            changeScope: store.changeScope,
+          });
+        }
+      }
+      break;
+    }
+
+    case 'ELEMENT_MOVED': {
+      const {
+        selectorPath: mvOldSelector,
+        newSelectorPath: mvNewSelector,
+        oldParentSelectorPath: mvOldParent,
+        newParentSelectorPath: mvNewParent,
+        oldIndex: mvOldIndex,
+        newIndex: mvNewIndex,
+      } = msg.payload;
+      const mvProperty = '__element_moved__';
+
+      // Push undo action
+      store.pushUndo({
+        elementSelector: mvNewSelector,
+        property: mvProperty,
+        beforeValue: `parent:${mvOldParent}|index:${mvOldIndex}|selector:${mvOldSelector}`,
+        afterValue: `parent:${mvNewParent}|index:${mvNewIndex}`,
+        breakpoint: store.activeBreakpoint,
+        wasNewChange: true,
+        changeScope: store.changeScope,
+      });
+
+      // Track the move
+      store.addStyleChange({
+        id: generateId(),
+        elementSelector: mvNewSelector,
+        property: mvProperty,
+        originalValue: `parent:${mvOldParent}|index:${mvOldIndex}|selector:${mvOldSelector}`,
+        newValue: `parent:${mvNewParent}|index:${mvNewIndex}`,
+        breakpoint: store.activeBreakpoint,
+        timestamp: Date.now(),
+        changeScope: store.changeScope,
+      });
+
+      // Update selected element path if it changed — re-select via inspector
+      if (store.selectorPath === mvOldSelector && mvOldSelector !== mvNewSelector) {
+        sendViaIframe({ type: 'SELECT_ELEMENT', payload: { selectorPath: mvNewSelector } });
+      }
+
+      // Request updated DOM tree
+      sendViaIframe({ type: 'REQUEST_DOM_TREE' });
+      break;
+    }
+
     case 'ELEMENT_DELETED': {
       const {
         selectorPath: delSelector,
@@ -338,6 +459,12 @@ function handleMessage(event: MessageEvent) {
         computedStyles: delStyles,
       } = msg.payload;
       const delProperty = '__element_deleted__';
+
+      // Skip if already tracked (e.g., replayed on reconnect)
+      const existingDelete = store.styleChanges.find(
+        (c) => c.elementSelector === delSelector && c.property === delProperty
+      );
+      if (existingDelete) break;
 
       // Push undo action
       store.pushUndo({

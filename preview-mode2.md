@@ -1,0 +1,293 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e5]:
+      - button "☰" [ref=e6]
+      - generic [ref=e7]: Dev Editor
+      - generic [ref=e9]:
+        - generic "connected" [ref=e100]
+        - button "Switch to URL input" [ref=e11]:
+          - img [ref=e12]
+        - generic "http://localhost:3001" [ref=e101]
+        - button "Disconnect" [ref=e102]
+      - button "Refresh preview" [ref=e103]:
+        - img [ref=e104]
+      - generic [ref=e108]:
+        - button "Mobile" [ref=e109]
+        - button "Tablet" [ref=e110]
+        - button "Desktop" [ref=e111]
+        - generic [ref=e112]: Wide · 1920px
+      - generic [ref=e114]:
+        - button "Select" [ref=e115]:
+          - img [ref=e116]
+          - text: Select
+        - button "Preview" [active] [ref=e119]:
+          - img [ref=e120]
+          - text: Preview
+      - button "Undo (Cmd+Z)" [disabled] [ref=e123]:
+        - img [ref=e124]
+      - button "Redo (Cmd+Shift+Z)" [disabled] [ref=e127]:
+        - img [ref=e128]
+      - link "Docs" [ref=e17] [cursor=pointer]:
+        - /url: /docs
+      - button "☰" [ref=e18]
+    - generic [ref=e19]:
+      - generic [ref=e22]:
+        - generic [ref=e23]:
+          - button "Navigator" [ref=e24]
+          - button "Pages" [ref=e25]
+          - button "Comps" [ref=e26]
+          - button "Terminal" [ref=e27]
+        - generic [ref=e8019]:
+          - generic [ref=e8020]: 1 page found
+          - generic [ref=e8021]:
+            - button "Home /" [ref=e8022]:
+              - img [ref=e8023]
+              - generic [ref=e8025]:
+                - generic [ref=e8026]: Home
+                - generic [ref=e8027]: /
+            - generic [ref=e8029]: No additional pages found
+      - generic [ref=e31]:
+        - generic [ref=e4126]:
+          - button "Wide" [ref=e4128]:
+            - img [ref=e4129]
+            - generic [ref=e4131]: Wide
+            - img [ref=e4132]
+          - generic [ref=e4134]:
+            - textbox [ref=e4135]: "1920"
+            - generic [ref=e4136]: px
+          - slider [ref=e4137] [cursor=pointer]: "1920"
+        - iframe [ref=e4140]:
+          - generic [ref=f3e5]:
+            - generic [ref=f3e10]:
+              - generic [ref=f3e15]:
+                - generic [ref=f3e17]:
+                  - img [ref=f3e19]
+                  - generic [ref=f3e20]:
+                    - generic [ref=f3e21] [cursor=pointer]:
+                      - img [ref=f3e22]
+                      - generic [ref=f3e25]: 5 mi
+                      - img [ref=f3e26]
+                    - button "Notifications" [ref=f3e29] [cursor=pointer]:
+                      - img [ref=f3e30]
+                - generic [ref=f3e36]:
+                  - generic [ref=f3e38] [cursor=pointer]:
+                    - generic [ref=f3e39]:
+                      - img [ref=f3e41]
+                      - generic [ref=f3e43]:
+                        - generic [ref=f3e45]: Live
+                        - generic [ref=f3e46]: "342"
+                      - img [ref=f3e50]
+                    - generic [ref=f3e51]: Blue
+                  - generic [ref=f3e53] [cursor=pointer]:
+                    - generic [ref=f3e54]:
+                      - img [ref=f3e56]
+                      - generic [ref=f3e58]:
+                        - generic [ref=f3e60]: Premiere
+                        - generic [ref=f3e61]: "891"
+                      - img [ref=f3e65]
+                    - generic [ref=f3e66]: Savory
+                  - generic [ref=f3e68] [cursor=pointer]:
+                    - generic [ref=f3e69]:
+                      - img [ref=f3e71]
+                      - generic [ref=f3e74]: 1.2K
+                      - img [ref=f3e78]
+                    - generic [ref=f3e79]: The
+                  - generic [ref=f3e81] [cursor=pointer]:
+                    - generic [ref=f3e82]:
+                      - img [ref=f3e84]
+                      - generic [ref=f3e86]:
+                        - generic [ref=f3e88]: Live
+                        - generic [ref=f3e89]: "567"
+                      - img [ref=f3e93]
+                    - generic [ref=f3e94]: Lumi
+                  - generic [ref=f3e96] [cursor=pointer]:
+                    - generic [ref=f3e97]:
+                      - img [ref=f3e99]
+                      - generic [ref=f3e101]:
+                        - generic [ref=f3e103]: New
+                        - generic [ref=f3e104]: 2.1K
+                      - img [ref=f3e108]
+                    - generic [ref=f3e109]: Napoli
+                  - generic [ref=f3e111] [cursor=pointer]:
+                    - generic [ref=f3e112]:
+                      - img [ref=f3e114]
+                      - generic [ref=f3e117]: "445"
+                      - img [ref=f3e121]
+                    - generic [ref=f3e122]: Green
+                  - generic [ref=f3e124] [cursor=pointer]:
+                    - generic [ref=f3e125]:
+                      - img [ref=f3e127]
+                      - generic [ref=f3e129]:
+                        - generic [ref=f3e131]: Live
+                        - generic [ref=f3e132]: "234"
+                      - img [ref=f3e136]
+                    - generic [ref=f3e137]: Fresh
+                  - generic [ref=f3e139] [cursor=pointer]:
+                    - generic [ref=f3e140]:
+                      - img [ref=f3e142]
+                      - generic [ref=f3e144]:
+                        - generic [ref=f3e146]: Premiere
+                        - generic [ref=f3e147]: "678"
+                      - img [ref=f3e151]
+                    - generic [ref=f3e152]: Zen
+                - generic [ref=f3e154]:
+                  - generic [ref=f3e157]:
+                    - img [ref=f3e159]
+                    - generic [ref=f3e161]:
+                      - generic [ref=f3e163]: Live
+                      - generic [ref=f3e165]: "342"
+                    - generic [ref=f3e166]:
+                      - generic [ref=f3e167]:
+                        - img [ref=f3e169]
+                        - generic [ref=f3e170]:
+                          - generic [ref=f3e171]: Blue Horizon Cafe
+                          - generic [ref=f3e172]: Downtown Arts District
+                      - generic [ref=f3e173]: Start your morning right with our signature lavender latte art. Crafted with locally roasted beans.
+                      - generic [ref=f3e174]:
+                        - generic [ref=f3e175]: 342 likes
+                        - generic [ref=f3e176]: 28 comments
+                  - generic [ref=f3e179]:
+                    - img [ref=f3e182]
+                    - generic [ref=f3e184]:
+                      - generic [ref=f3e186]: Premiere
+                      - generic [ref=f3e188]: "891"
+                    - generic [ref=f3e189]:
+                      - generic [ref=f3e190]:
+                        - img [ref=f3e193]
+                        - generic [ref=f3e194]:
+                          - generic [ref=f3e195]: Savory Kitchen
+                          - generic [ref=f3e196]: Midtown Square
+                      - generic [ref=f3e197]: Behind the scenes at our new tasting menu launch! 5 courses of pure magic coming this weekend.
+                      - generic [ref=f3e198]:
+                        - generic [ref=f3e199]: 891 likes
+                        - generic [ref=f3e200]: 64 comments
+                  - generic [ref=f3e203]:
+                    - img [ref=f3e206]
+                    - generic [ref=f3e210]: 1.2k
+                    - generic [ref=f3e211]:
+                      - generic [ref=f3e212]:
+                        - img [ref=f3e215]
+                        - generic [ref=f3e216]:
+                          - generic [ref=f3e217]: The Burger Yard
+                          - generic [ref=f3e218]: Harbor Walk
+                      - generic [ref=f3e219]: Our wagyu smash burger just won Best Burger in the city. Come taste what the judges loved.
+                      - generic [ref=f3e220]:
+                        - generic [ref=f3e221]: 1.2k likes
+                        - generic [ref=f3e222]: 89 comments
+                  - generic [ref=f3e225]:
+                    - img [ref=f3e228]
+                    - generic [ref=f3e230]:
+                      - generic [ref=f3e232]: New
+                      - generic [ref=f3e234]: "567"
+                    - generic [ref=f3e235]:
+                      - generic [ref=f3e236]:
+                        - img [ref=f3e239]
+                        - generic [ref=f3e240]:
+                          - generic [ref=f3e241]: Lumi Jewels
+                          - generic [ref=f3e242]: Old Town Market
+                      - generic [ref=f3e243]: Each piece is handcrafted from recycled metals. Luxury that loves the planet.
+                      - generic [ref=f3e244]:
+                        - generic [ref=f3e245]: 567 likes
+                        - generic [ref=f3e246]: 41 comments
+                        - generic [ref=f3e247]: Eco
+                  - generic [ref=f3e250]:
+                    - img [ref=f3e253]
+                    - generic [ref=f3e255]:
+                      - generic [ref=f3e257]: Live
+                      - generic [ref=f3e259]: 2.1k
+                    - generic [ref=f3e260]:
+                      - generic [ref=f3e261]:
+                        - img [ref=f3e264]
+                        - generic [ref=f3e265]:
+                          - generic [ref=f3e266]: Napoli Flames
+                          - generic [ref=f3e267]: Little Italy
+                      - generic [ref=f3e268]: 800°F wood-fired. San Marzano tomatoes. Fresh mozzarella. 90 seconds to perfection.
+                      - generic [ref=f3e269]:
+                        - generic [ref=f3e270]: 2.1k likes
+                        - generic [ref=f3e271]: 156 comments
+              - generic [ref=f3e275]:
+                - generic [ref=f3e276] [cursor=pointer]:
+                  - img [ref=f3e277]
+                  - generic [ref=f3e279]: Home
+                - generic [ref=f3e280] [cursor=pointer]:
+                  - img [ref=f3e281]
+                  - generic [ref=f3e285]: Discover
+                - img [ref=f3e288] [cursor=pointer]
+                - generic [ref=f3e289] [cursor=pointer]:
+                  - img [ref=f3e290]
+                  - generic [ref=f3e295]: Wallet
+                - generic [ref=f3e296] [cursor=pointer]:
+                  - img [ref=f3e297]
+                  - generic [ref=f3e298]: Menu
+            - generic:
+              - generic:
+                - generic:
+                  - generic: Done
+              - generic:
+                - generic:
+                  - generic:
+                    - generic: Q
+                  - generic:
+                    - generic: W
+                  - generic:
+                    - generic: E
+                  - generic:
+                    - generic: R
+                  - generic:
+                    - generic: T
+                  - generic:
+                    - generic: "Y"
+                  - generic:
+                    - generic: U
+                  - generic:
+                    - generic: I
+                  - generic:
+                    - generic: O
+                  - generic:
+                    - generic: P
+                - generic:
+                  - generic:
+                    - generic: A
+                  - generic:
+                    - generic: S
+                  - generic:
+                    - generic: D
+                  - generic:
+                    - generic: F
+                  - generic:
+                    - generic: G
+                  - generic:
+                    - generic: H
+                  - generic:
+                    - generic: J
+                  - generic:
+                    - generic: K
+                  - generic:
+                    - generic: L
+                - generic:
+                  - generic:
+                    - generic: ⇧
+                  - generic:
+                    - generic: Z
+                  - generic:
+                    - generic: X
+                  - generic:
+                    - generic: C
+                  - generic:
+                    - generic: V
+                  - generic:
+                    - generic: B
+                  - generic:
+                    - generic: "N"
+                  - generic:
+                    - generic: M
+                  - generic:
+                    - generic: ⌫
+                - generic:
+                  - generic:
+                    - generic: "123"
+                  - generic:
+                    - generic: return
+  - button "Open Next.js Dev Tools" [ref=e96] [cursor=pointer]:
+    - img [ref=e97]
+  - alert [ref=e90]

@@ -471,7 +471,7 @@
     var textEditingActive = false;
     var originalTextContent = null;
     var textEditTarget = null;
-    var SKIP_TEXT_EDIT_TAGS = { INPUT: 1, TEXTAREA: 1, SELECT: 1, IMG: 1, VIDEO: 1, IFRAME: 1, SVG: 1, CANVAS: 1 };
+    var SKIP_TEXT_EDIT_TAGS = { INPUT: 1, TEXTAREA: 1, SELECT: 1, IMG: 1, VIDEO: 1, IFRAME: 1, SVG: 1, svg: 1, CANVAS: 1 };
 
     function commitTextEdit() {
       if (!textEditingActive || !textEditTarget) return;
@@ -521,16 +521,73 @@
       updateSelectionOverlay();
     }
 
+    // Find the best editable text target from a starting element.
+    // Walks down through wrappers to find a leaf text node,
+    // or returns the element itself if it has direct text content.
+    // Handles: <button><svg/>Submit</button>, <a><svg/><span>text</span><svg/></a>, etc.
+    function findTextTarget(el) {
+      if (!el || SKIP_TEXT_EDIT_TAGS[el.tagName]) return null;
+      // Leaf node with text — ideal target
+      if (el.children.length === 0) {
+        return (el.textContent && el.textContent.trim()) ? el : null;
+      }
+      // Single child — recurse into it (common: <button><span>text</span></button>)
+      if (el.children.length === 1) {
+        var child = el.children[0];
+        if (SKIP_TEXT_EDIT_TAGS[child.tagName]) {
+          return hasDirectTextNodes(el) ? el : null;
+        }
+        return findTextTarget(child);
+      }
+      // Multiple children — find the single non-skippable text-bearing child
+      // (handles: <a><svg/><span>Book a Call</span><svg/></a>)
+      var textChild = null;
+      for (var i = 0; i < el.children.length; i++) {
+        var ch = el.children[i];
+        if (SKIP_TEXT_EDIT_TAGS[ch.tagName]) continue;
+        if (ch.textContent && ch.textContent.trim()) {
+          if (textChild) { textChild = null; break; } // ambiguous — multiple text children
+          textChild = ch;
+        }
+      }
+      if (textChild) return findTextTarget(textChild);
+      // Fall back: allow editing if element has direct text nodes
+      return hasDirectTextNodes(el) ? el : null;
+    }
+
+    function hasDirectTextNodes(el) {
+      for (var i = 0; i < el.childNodes.length; i++) {
+        if (el.childNodes[i].nodeType === 3 && el.childNodes[i].textContent.trim()) {
+          return true;
+        }
+      }
+      return false;
+    }
+
     document.addEventListener('dblclick', function(e) {
       if (!selectionModeEnabled) return;
       e.preventDefault();
       e.stopPropagation();
 
       var el = document.elementFromPoint(e.clientX, e.clientY);
-      if (!el || el === selectionOverlay) return;
-
-      if (el.children.length > 0) return;
+      // If the selection overlay is in the way, temporarily hide it
+      // and re-probe to get the actual element underneath
+      if (el === selectionOverlay || el === hoverOverlay) {
+        var prevSel = selectionOverlay.style.display;
+        var prevHov = hoverOverlay.style.display;
+        selectionOverlay.style.display = 'none';
+        hoverOverlay.style.display = 'none';
+        el = document.elementFromPoint(e.clientX, e.clientY);
+        selectionOverlay.style.display = prevSel;
+        hoverOverlay.style.display = prevHov;
+      }
+      if (!el) return;
       if (SKIP_TEXT_EDIT_TAGS[el.tagName]) return;
+
+      // Find the best editable text target (may walk down into children)
+      el = findTextTarget(el);
+      if (!el) return;
+
       var text = el.textContent;
       if (text === null || text === undefined) return;
 
@@ -843,6 +900,82 @@
     });
     observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'id', 'style'] });
 
+    // --- Drag-and-drop from Add Element palette ---
+    var VOID_TAGS_DND = {img:1,input:1,br:1,hr:1,area:1,base:1,col:1,embed:1,link:1,meta:1,param:1,source:1,track:1,wbr:1};
+    var dropIndicator = document.createElement('div');
+    dropIndicator.style.cssText = 'position:fixed;pointer-events:none;z-index:2147483645;border:2px dashed #4a9eff;background:rgba(74,158,255,0.08);display:none;transition:top 0.08s,left 0.08s,width 0.08s,height 0.08s;';
+    document.body.appendChild(dropIndicator);
+
+    document.addEventListener('dragover', function(e) {
+      if (!e.dataTransfer || !e.dataTransfer.types.indexOf) return;
+      if (e.dataTransfer.types.indexOf('application/x-dev-editor-element') === -1) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+      var dropTarget = document.elementFromPoint(e.clientX, e.clientY);
+      if (!dropTarget || dropTarget === dropIndicator) return;
+      if (dropTarget.id && dropTarget.id.indexOf('dev-editor') === 0) return;
+      var rect = dropTarget.getBoundingClientRect();
+      dropIndicator.style.top = rect.top + 'px';
+      dropIndicator.style.left = rect.left + 'px';
+      dropIndicator.style.width = rect.width + 'px';
+      dropIndicator.style.height = rect.height + 'px';
+      dropIndicator.style.display = 'block';
+    }, true);
+
+    document.addEventListener('dragleave', function(e) {
+      if (e.relatedTarget === null || e.relatedTarget === document.documentElement) {
+        dropIndicator.style.display = 'none';
+      }
+    }, true);
+
+    document.addEventListener('drop', function(e) {
+      dropIndicator.style.display = 'none';
+      if (!e.dataTransfer) return;
+      var raw = e.dataTransfer.getData('application/x-dev-editor-element');
+      if (!raw) return;
+      e.preventDefault();
+      e.stopPropagation();
+      try {
+        var data = JSON.parse(raw);
+        var dropEl = document.elementFromPoint(e.clientX, e.clientY);
+        if (!dropEl) return;
+        if (dropEl.id && dropEl.id.indexOf('dev-editor') === 0) return;
+        var targetParent = dropEl;
+        var insertMode = 'child';
+        if (VOID_TAGS_DND[dropEl.tagName.toLowerCase()]) {
+          targetParent = dropEl.parentElement || document.body;
+          insertMode = 'after';
+        }
+        var newEl = document.createElement(data.tag);
+        newEl.setAttribute('data-dev-editor-inserted', 'true');
+        if (data.placeholderText) newEl.textContent = data.placeholderText;
+        if (data.defaultStyles) {
+          var dndDS = data.defaultStyles;
+          for (var dndDSKey in dndDS) {
+            if (dndDS.hasOwnProperty(dndDSKey)) newEl.style.setProperty(dndDSKey, dndDS[dndDSKey]);
+          }
+        }
+        if (insertMode === 'after' && dropEl.nextSibling) {
+          targetParent.insertBefore(newEl, dropEl.nextSibling);
+        } else {
+          targetParent.appendChild(newEl);
+        }
+        var newSelector = generateSelectorPath(newEl);
+        var newIndex = Array.from(targetParent.children).indexOf(newEl);
+        send({
+          type: 'ELEMENT_INSERTED',
+          payload: {
+            selectorPath: newSelector,
+            parentSelectorPath: generateSelectorPath(targetParent),
+            tagName: data.tag,
+            insertionIndex: newIndex,
+            placeholderText: data.placeholderText || '',
+            defaultStyles: data.defaultStyles || undefined
+          }
+        });
+      } catch(err) {}
+    }, true);
+
     // --- Handle messages from editor ---
     window.addEventListener('message', function(e) {
       // Accept messages from detected parentOrigin, or any origin if using wildcard
@@ -1043,11 +1176,161 @@
           } catch(err) {}
           break;
         }
+        case 'DELETE_ELEMENT': {
+          try {
+            var deEl = document.querySelector(msg.payload.selectorPath);
+            if (deEl) {
+              var deComputed = window.getComputedStyle(deEl);
+              var deOrigDisplay = deComputed.getPropertyValue('display');
+              var deSelector = msg.payload.selectorPath;
+              var deAttrs = {};
+              for (var deai = 0; deai < deEl.attributes.length; deai++) {
+                var dea = deEl.attributes[deai];
+                deAttrs[dea.name] = dea.value;
+              }
+              deEl.style.setProperty('display', 'none', 'important');
+              if (selectedElement === deEl) {
+                selectionOverlay.style.display = 'none';
+                selectedElement = null;
+              }
+              send({
+                type: 'ELEMENT_DELETED',
+                payload: {
+                  selectorPath: deSelector,
+                  originalDisplay: deOrigDisplay,
+                  tagName: deEl.tagName.toLowerCase(),
+                  className: deEl.className && typeof deEl.className === 'string' ? deEl.className : null,
+                  elementId: deEl.id || null,
+                  innerText: (deEl.innerText || '').substring(0, 500) || null,
+                  attributes: deAttrs,
+                  computedStyles: getComputedStylesForElement(deEl)
+                }
+              });
+            }
+          } catch(err) {}
+          break;
+        }
         case 'REVERT_DELETE': {
           try {
             var rdEl = document.querySelector(msg.payload.selectorPath);
             if (rdEl) {
               rdEl.style.removeProperty('display');
+            }
+          } catch(err) {}
+          break;
+        }
+        case 'INSERT_ELEMENT': {
+          try {
+            var ieParent = document.querySelector(msg.payload.parentSelectorPath);
+            if (ieParent) {
+              var IE_VOID = {img:1,input:1,br:1,hr:1,area:1,base:1,col:1,embed:1,link:1,meta:1,param:1,source:1,track:1,wbr:1};
+              var ieTarget = ieParent;
+              var ieMode = 'child';
+              if (IE_VOID[ieParent.tagName.toLowerCase()]) {
+                ieTarget = ieParent.parentElement || document.body;
+                ieMode = 'after';
+              }
+              var ieNew = document.createElement(msg.payload.tagName);
+              ieNew.setAttribute('data-dev-editor-inserted', 'true');
+              if (msg.payload.placeholderText) ieNew.textContent = msg.payload.placeholderText;
+              if (msg.payload.defaultStyles) {
+                var ieDS = msg.payload.defaultStyles;
+                for (var ieDSKey in ieDS) {
+                  if (ieDS.hasOwnProperty(ieDSKey)) ieNew.style.setProperty(ieDSKey, ieDS[ieDSKey]);
+                }
+              }
+              if (ieMode === 'after' && ieParent.nextSibling) {
+                ieTarget.insertBefore(ieNew, ieParent.nextSibling);
+              } else {
+                ieTarget.appendChild(ieNew);
+              }
+              var ieSelector = generateSelectorPath(ieNew);
+              var ieIndex = Array.from(ieTarget.children).indexOf(ieNew);
+              send({
+                type: 'ELEMENT_INSERTED',
+                payload: {
+                  selectorPath: ieSelector,
+                  parentSelectorPath: generateSelectorPath(ieTarget),
+                  tagName: msg.payload.tagName,
+                  insertionIndex: ieIndex,
+                  placeholderText: msg.payload.placeholderText || '',
+                  defaultStyles: msg.payload.defaultStyles || undefined
+                }
+              });
+            }
+          } catch(err) {}
+          break;
+        }
+        case 'REMOVE_INSERTED_ELEMENT': {
+          try {
+            var rieEl = document.querySelector(msg.payload.selectorPath);
+            if (rieEl && rieEl.parentElement) {
+              rieEl.parentElement.removeChild(rieEl);
+            }
+          } catch(err) {}
+          break;
+        }
+        case 'MOVE_ELEMENT': {
+          try {
+            var meEl = document.querySelector(msg.payload.selectorPath);
+            var meNewParent = document.querySelector(msg.payload.newParentSelectorPath);
+            if (meEl && meNewParent && meEl !== meNewParent && !meNewParent.contains(meEl) === false) {
+              // Allow move even if newParent is a descendant check
+            }
+            if (meEl && meNewParent && meEl !== meNewParent) {
+              // Prevent moving an element into its own descendant
+              if (meEl.contains(meNewParent)) break;
+              var meOldParent = meEl.parentElement;
+              var meOldIndex = meOldParent ? Array.from(meOldParent.children).indexOf(meEl) : -1;
+              var meOldParentSelector = meOldParent ? generateSelectorPath(meOldParent) : '';
+              // Remove from current position
+              if (meOldParent) meOldParent.removeChild(meEl);
+              // Insert at new position
+              var meNewIndex = msg.payload.newIndex;
+              var meChildren = meNewParent.children;
+              if (meNewIndex >= 0 && meNewIndex < meChildren.length) {
+                meNewParent.insertBefore(meEl, meChildren[meNewIndex]);
+              } else {
+                meNewParent.appendChild(meEl);
+              }
+              var meNewSelector = generateSelectorPath(meEl);
+              var meActualIndex = Array.from(meNewParent.children).indexOf(meEl);
+              send({
+                type: 'ELEMENT_MOVED',
+                payload: {
+                  selectorPath: msg.payload.selectorPath,
+                  newSelectorPath: meNewSelector,
+                  oldParentSelectorPath: meOldParentSelector,
+                  newParentSelectorPath: msg.payload.newParentSelectorPath,
+                  oldIndex: meOldIndex,
+                  newIndex: meActualIndex
+                }
+              });
+              // Update selection overlay if selected element moved
+              if (selectedElement === meEl) {
+                updateSelectionOverlay();
+              }
+            }
+          } catch(err) {}
+          break;
+        }
+        case 'REVERT_MOVE_ELEMENT': {
+          try {
+            var rmEl = document.querySelector(msg.payload.selectorPath);
+            var rmOldParent = document.querySelector(msg.payload.oldParentSelectorPath);
+            if (rmEl && rmOldParent) {
+              var rmCurrentParent = rmEl.parentElement;
+              if (rmCurrentParent) rmCurrentParent.removeChild(rmEl);
+              var rmOldIndex = msg.payload.oldIndex;
+              var rmChildren = rmOldParent.children;
+              if (rmOldIndex >= 0 && rmOldIndex < rmChildren.length) {
+                rmOldParent.insertBefore(rmEl, rmChildren[rmOldIndex]);
+              } else {
+                rmOldParent.appendChild(rmEl);
+              }
+              if (selectedElement === rmEl) {
+                updateSelectionOverlay();
+              }
             }
           } catch(err) {}
           break;
@@ -1075,6 +1358,47 @@
     if (window.navigation) {
       window.navigation.addEventListener('navigatesuccess', notifyNavigationIfChanged);
     }
+
+    // --- Animation reveal ---
+    // Many pages use animation libraries (Framer Motion, GSAP, etc.) that set
+    // elements to opacity:0 + translateY via inline styles as an initial state,
+    // then animate them on scroll or mount. When loaded through the proxy,
+    // these animations may not fire (hydration issues, missing scroll context).
+    // This function detects such hidden elements and forces them visible so the
+    // editor can inspect and edit all content.
+    function revealAnimationHidden() {
+      var revealed = 0;
+      var els = document.querySelectorAll('[style]');
+      for (var ri = 0; ri < els.length; ri++) {
+        var rel = els[ri];
+        var rstyle = rel.getAttribute('style') || '';
+        // Only target elements where opacity is explicitly set to 0 via inline style
+        // and optionally have a translateY transform (animation initial state pattern)
+        if (!/opacity\s*:\s*0\b/.test(rstyle)) continue;
+        // Skip elements intentionally hidden (display:none, visibility:hidden)
+        var rcs = window.getComputedStyle(rel);
+        if (rcs.display === 'none' || rcs.visibility === 'hidden') continue;
+        // Force visible with a smooth transition
+        rel.style.setProperty('transition', 'opacity 0.3s ease, transform 0.3s ease', 'important');
+        rel.style.setProperty('opacity', '1', 'important');
+        // Also clear translateY transforms that are part of the animation initial state
+        if (/translate[YX]\s*\(/.test(rstyle) || /matrix\s*\(/.test(rcs.transform)) {
+          rel.style.setProperty('transform', 'none', 'important');
+        }
+        revealed++;
+      }
+      return revealed;
+    }
+
+    // Run reveal after a delay to give animations a chance to fire naturally.
+    // If they don't fire (proxy context), this catches the stuck elements.
+    // Re-run a few times to catch dynamically rendered content.
+    var revealAttempts = 0;
+    var revealTimer = setInterval(function() {
+      revealAnimationHidden();
+      revealAttempts++;
+      if (revealAttempts >= 5) clearInterval(revealTimer);
+    }, 800);
 
     // --- Signal ready with retry ---
     // Send INSPECTOR_READY immediately, then retry every second until editor responds.

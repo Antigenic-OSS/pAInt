@@ -212,6 +212,8 @@ Phases MUST be completed in order. Do not implement later-phase features before 
 - TypeScript 5.x (strict mode) + Next.js 15 (App Router), React 19, Zustand 5, Tailwind CSS 4 (005-rebuild-text-section)
 - N/A (changes tracked in Zustand store + localStorage) (005-rebuild-text-section)
 - N/A (state in Zustand store, no persistence changes) (006-improve-navigator-layers)
+- TypeScript 5.x (strict mode), JavaScript ES5 (inspector script) + Next.js 15 (App Router), React 19, Zustand 5, Tailwind CSS 4 (007-add-element-panel)
+- localStorage (changes keyed by target URL) (007-add-element-panel)
 
 ## Known Issues & Root Causes
 
@@ -233,6 +235,6 @@ The SSR-rendered HTML + CSS is complete for visual editing. The inspector script
 - React Strict Mode double-mounted PreviewFrame, setting `iframe.src` twice (`lastSrcRef` guard)
 
 ## Recent Changes
+- 007-add-element-panel: Added TypeScript 5.x (strict mode), JavaScript ES5 (inspector script) + Next.js 15 (App Router), React 19, Zustand 5, Tailwind CSS 4
 - 006-improve-navigator-layers: Added TypeScript 5.x (strict mode) + Next.js 15 (App Router), React 19, Zustand 5, Tailwind CSS 4
 - 005-rebuild-text-section: Added TypeScript 5.x (strict mode) + Next.js 15 (App Router), React 19, Zustand 5, Tailwind CSS 4
-- All feature branches (001–004) merged to `main` and deleted. Development continues on `main`.

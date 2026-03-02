@@ -30,10 +30,14 @@ export const createTreeSlice: StateCreator<TreeSlice, [], [], TreeSlice> = (set,
   highlightedNodeId: null,
 
   setRootNode: (node) => {
-    // Expand all layers by default
-    const ids = new Set<string>();
-    if (node) collectAllIds(node, ids);
-    set({ rootNode: node, expandedNodeIds: ids });
+    const { expandedNodeIds: prev } = get();
+    // On first load (no previous state), start collapsed.
+    // On subsequent updates (DOM_UPDATED), preserve user-expanded state.
+    if (prev.size === 0) {
+      set({ rootNode: node, expandedNodeIds: new Set<string>() });
+    } else {
+      set({ rootNode: node });
+    }
   },
   setSearchQuery: (query) => set({ searchQuery: query }),
   setHighlightedNodeId: (id) => set({ highlightedNodeId: id }),
@@ -50,16 +54,13 @@ export const createTreeSlice: StateCreator<TreeSlice, [], [], TreeSlice> = (set,
   },
 
   expandToNode: (nodeId) => {
-    // Collapse all other branches — only expand ancestors + selected node itself
+    // Merge ancestors into existing expanded state (preserve user-toggled branches)
+    const { expandedNodeIds: prev } = get();
+    const next = new Set(prev);
     const parts = nodeId.split(' > ');
-
-    const next = new Set<string>();
-    // Expand all ancestors
-    for (let i = 1; i < parts.length; i++) {
+    for (let i = 1; i <= parts.length; i++) {
       next.add(parts.slice(0, i).join(' > '));
     }
-    // Also expand the selected node itself (so its children are visible)
-    next.add(nodeId);
     set({ expandedNodeIds: next });
   },
 });

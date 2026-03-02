@@ -29,7 +29,6 @@ function PanelLoading() {
 export function Editor() {
   const targetUrl = useEditorStore((s) => s.targetUrl);
   const connectionStatus = useEditorStore((s) => s.connectionStatus);
-  const leftPanelOpen = useEditorStore((s) => s.leftPanelOpen);
   const rightPanelOpen = useEditorStore((s) => s.rightPanelOpen);
   const leftPanelWidth = useEditorStore((s) => s.leftPanelWidth);
   const rightPanelWidth = useEditorStore((s) => s.rightPanelWidth);
@@ -50,16 +49,14 @@ export function Editor() {
         <TopBar />
       </div>
       <div className="flex flex-1 overflow-hidden">
-        {leftPanelOpen && (
-          // eslint-disable-next-line jsx-a11y/no-static-element-interactions
-          <div onMouseDown={hideHover} onMouseEnter={hideHover} className="flex">
-            <ErrorBoundary panelName="Layers panel">
-              <Suspense fallback={<PanelLoading />}>
-                <LeftPanel width={leftPanelWidth} />
-              </Suspense>
-            </ErrorBoundary>
-          </div>
-        )}
+        {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
+        <div onMouseDown={hideHover} onMouseEnter={hideHover} className="flex">
+          <ErrorBoundary panelName="Layers panel">
+            <Suspense fallback={<PanelLoading />}>
+              <LeftPanel width={leftPanelWidth} />
+            </Suspense>
+          </ErrorBoundary>
+        </div>
         <div className="flex-1 min-w-0 relative">
           <ErrorBoundary panelName="Preview">
             <PreviewFrame />

@@ -5,6 +5,8 @@ import { ResizablePanel } from '@/components/common/ResizablePanel';
 import { useEditorStore } from '@/store';
 import { LayersPanel } from './LayersPanel';
 import { PagesPanel } from './PagesPanel';
+import { AddElementPanel } from './AddElementPanel';
+import { IconSidebar } from './IconSidebar';
 import { PANEL_DEFAULTS } from '@/lib/constants';
 
 const ComponentsPanel = React.lazy(() => import('./ComponentsPanel'));
@@ -12,7 +14,15 @@ const TerminalPanel = React.lazy(() =>
   import('./terminal/TerminalPanel').then((m) => ({ default: m.TerminalPanel })),
 );
 
-type LeftTab = 'layers' | 'pages' | 'components' | 'terminal';
+type LeftTab = 'layers' | 'pages' | 'components' | 'terminal' | 'add-element';
+
+const TAB_LABELS: Record<LeftTab, string> = {
+  layers: 'Navigator',
+  pages: 'Pages',
+  components: 'Components',
+  'add-element': 'Add Element',
+  terminal: 'Terminal',
+};
 
 interface LeftPanelProps {
   width: number;
@@ -22,81 +32,77 @@ export function LeftPanel({ width }: LeftPanelProps) {
   const setLeftPanelWidth = useEditorStore((s) => s.setLeftPanelWidth);
   const connectionStatus = useEditorStore((s) => s.connectionStatus);
   const activeTab = useEditorStore((s) => s.activeLeftTab);
-  const setActiveTab = useEditorStore((s) => s.setActiveLeftTab);
-
-  const tabs: { id: LeftTab; label: string }[] = [
-    { id: 'layers', label: 'Navigator' },
-    { id: 'pages', label: 'Pages' },
-    { id: 'components', label: 'Comps' },
-    { id: 'terminal', label: 'Terminal' },
-  ];
+  const leftPanelOpen = useEditorStore((s) => s.leftPanelOpen);
 
   const isInspectorTab = activeTab !== 'terminal';
   const showNotConnected = isInspectorTab && connectionStatus !== 'connected';
 
   return (
-    <ResizablePanel
-      width={width}
-      minWidth={PANEL_DEFAULTS.leftMin}
-      maxWidth={PANEL_DEFAULTS.leftMax}
-      onResize={setLeftPanelWidth}
-      side="left"
-    >
-      <div className="flex flex-col h-full">
-        {/* Tabs */}
-        <div
-          className="flex items-center h-8 flex-shrink-0"
-          style={{ borderBottom: '1px solid var(--border)' }}
+    <div className="flex h-full">
+      <IconSidebar />
+      {leftPanelOpen && (
+        <ResizablePanel
+          width={width}
+          minWidth={PANEL_DEFAULTS.leftMin}
+          maxWidth={PANEL_DEFAULTS.leftMax}
+          onResize={setLeftPanelWidth}
+          side="left"
         >
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className="flex-1 h-full text-xs font-medium transition-colors"
+          <div className="flex flex-col h-full">
+            {/* Panel header */}
+            <div
+              className="flex items-center flex-shrink-0 h-8"
               style={{
-                color: activeTab === tab.id ? 'var(--text-primary)' : 'var(--text-muted)',
-                borderBottom: activeTab === tab.id ? '2px solid var(--accent)' : '2px solid transparent',
+                padding: '0 12px',
+                borderBottom: '1px solid var(--border)',
               }}
             >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+              <span
+                className="text-xs font-medium"
+                style={{ color: 'var(--text-primary)' }}
+              >
+                {TAB_LABELS[activeTab]}
+              </span>
+            </div>
 
-        {/* Tab content */}
-        {activeTab === 'terminal' ? (
-          <Suspense
-            fallback={
-              <div style={{ color: 'var(--text-muted)', padding: '8px', fontSize: '11px' }}>
-                Loading terminal...
+            {/* Tab content */}
+            {activeTab === 'terminal' ? (
+              <Suspense
+                fallback={
+                  <div style={{ color: 'var(--text-muted)', padding: '8px', fontSize: '11px' }}>
+                    Loading terminal...
+                  </div>
+                }
+              >
+                <TerminalPanel />
+              </Suspense>
+            ) : showNotConnected ? (
+              <div
+                className="flex items-center justify-center flex-1 text-xs"
+                style={{ color: 'var(--text-muted)' }}
+              >
+                Connect to inspect
               </div>
-            }
-          >
-            <TerminalPanel />
-          </Suspense>
-        ) : showNotConnected ? (
-          <div
-            className="flex items-center justify-center flex-1 text-xs"
-            style={{ color: 'var(--text-muted)' }}
-          >
-            Connect to inspect
+            ) : activeTab === 'layers' ? (
+              <LayersPanel />
+            ) : activeTab === 'pages' ? (
+              <PagesPanel />
+            ) : activeTab === 'add-element' ? (
+              <AddElementPanel />
+            ) : (
+              <Suspense
+                fallback={
+                  <div style={{ color: 'var(--text-muted)', padding: '8px', fontSize: '11px' }}>
+                    Loading...
+                  </div>
+                }
+              >
+                <ComponentsPanel />
+              </Suspense>
+            )}
           </div>
-        ) : activeTab === 'layers' ? (
-          <LayersPanel />
-        ) : activeTab === 'pages' ? (
-          <PagesPanel />
-        ) : (
-          <Suspense
-            fallback={
-              <div style={{ color: 'var(--text-muted)', padding: '8px', fontSize: '11px' }}>
-                Loading...
-              </div>
-            }
-          >
-            <ComponentsPanel />
-          </Suspense>
-        )}
-      </div>
-    </ResizablePanel>
+        </ResizablePanel>
+      )}
+    </div>
   );
 }

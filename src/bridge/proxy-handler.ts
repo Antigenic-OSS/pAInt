@@ -284,6 +284,12 @@ export async function handleProxy(
       responseHeaders.set('Cache-Control', 'public, max-age=31536000, immutable');
     }
 
+    // Image response — always revalidate so updated assets on the target
+    // are reflected immediately instead of being served from browser cache.
+    if ((contentType && contentType.includes('image/')) || pathname.match(/\.(png|jpe?g|gif|svg|ico|webp|avif)(\?|$)/i)) {
+      responseHeaders.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    }
+
     // All other responses — passthrough
     return new Response(targetRes.body, {
       status: targetRes.status,

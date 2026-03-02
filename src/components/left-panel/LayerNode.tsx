@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, type ReactElement } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react';
 import { useEditorStore } from '@/store';
 import { usePostMessage } from '@/hooks/usePostMessage';
 import { useChangeTracker } from '@/hooks/useChangeTracker';
@@ -52,6 +52,19 @@ function categorize(tag: string, className?: string | null): NodeCategory {
   if (LIST_TAGS.has(tag)) return 'list';
   if (LINK_TAGS.has(tag)) return 'link';
   return 'div';
+}
+
+// --- Container tags that accept child elements ---
+
+const CONTAINER_TAGS = new Set([
+  'div', 'section', 'main', 'header', 'footer', 'nav', 'aside', 'article',
+  'ul', 'ol', 'li', 'form', 'fieldset', 'details', 'summary', 'figure',
+  'figcaption', 'blockquote', 'table', 'thead', 'tbody', 'tfoot', 'tr',
+  'td', 'th', 'body',
+]);
+
+function isContainerNode(node: TreeNode): boolean {
+  return CONTAINER_TAGS.has(node.tagName) || node.children.length > 0;
 }
 
 // --- SVG Icons (14×14) ---
@@ -198,13 +211,31 @@ function matchesSearch(node: TreeNode, query: string): boolean {
   );
 }
 
+// --- Drag-and-drop helpers ---
+
+const DRAG_DATA_TYPE = 'application/x-dev-editor-layer-move';
+
+type DropPosition = 'before' | 'inside' | 'after';
+
+function isDescendant(parentId: string, childId: string): boolean {
+  return childId.startsWith(parentId + ' > ');
+}
+
+function getDropPosition(e: React.DragEvent, rowElement: HTMLElement): DropPosition {
+  const rect = rowElement.getBoundingClientRect();
+  const y = e.clientY - rect.top;
+  const third = rect.height / 3;
+  if (y < third) return 'before';
+  if (y > third * 2) return 'after';
+  return 'inside';
+}
+
 // --- Component ---
 
 export function LayerNode({ node, depth, searchQuery, changedSelectors, deletedSelectors }: LayerNodeProps) {
   const selectorPath = useEditorStore((s) => s.selectorPath);
   const highlightedNodeId = useEditorStore((s) => s.highlightedNodeId);
   const toggleNodeExpanded = useEditorStore((s) => s.toggleNodeExpanded);
-  const expandToNode = useEditorStore((s) => s.expandToNode);
   const styleChanges = useEditorStore((s) => s.styleChanges);
   const { sendToInspector } = usePostMessage();
   const { revertChange } = useChangeTracker();
@@ -212,26 +243,28 @@ export function LayerNode({ node, depth, searchQuery, changedSelectors, deletedS
   const isDeleted = deletedSelectors?.has(node.id) ?? false;
 
   const rowRef = useRef<HTMLDivElement>(null);
+  const [dropIndicator, setDropIndicator] = useState<DropPosition | null>(null);
+  const [isDragSource, setIsDragSource] = useState(false);
+
+  const expandedNodeIds = useEditorStore((s) => s.expandedNodeIds);
 
   const isSelected = selectorPath === node.id;
   const isHighlighted = highlightedNodeId === node.id;
-  const isExpanded = node.isExpanded !== false;
+  const isExpanded = expandedNodeIds.has(node.id);
   const hasChildren = node.children.length > 0;
+  const isBody = node.tagName === 'body';
 
   const category = categorize(node.tagName, node.className);
   const isGreen = GREEN_CATEGORIES.has(category);
   const IconComponent = ICON_MAP[category];
   const label = getDisplayLabel(node);
 
-  // Auto-expand ancestors and scroll selected layer into view
+  // Scroll selected layer into view (expansion is handled by usePostMessage)
   useEffect(() => {
-    if (isSelected) {
-      expandToNode(node.id);
-      if (rowRef.current) {
-        rowRef.current.scrollIntoView({ block: 'center', behavior: 'instant' });
-      }
+    if (isSelected && rowRef.current) {
+      rowRef.current.scrollIntoView({ block: 'center', behavior: 'instant' });
     }
-  }, [isSelected, node.id, expandToNode]);
+  }, [isSelected]);
 
   const handleClick = useCallback(() => {
     sendToInspector({ type: 'SELECT_ELEMENT', payload: { selectorPath: node.id } });
@@ -256,6 +289,143 @@ export function LayerNode({ node, depth, searchQuery, changedSelectors, deletedS
       }
     },
     [node.id, styleChanges, revertChange]
+  );
+
+  const handleDelete = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      sendToInspector({ type: 'DELETE_ELEMENT', payload: { selectorPath: node.id } });
+    },
+    [node.id, sendToInspector]
+  );
+
+  // --- Drag handlers ---
+
+  const handleDragStart = useCallback(
+    (e: React.DragEvent) => {
+      if (isBody) {
+        e.preventDefault();
+        return;
+      }
+      e.dataTransfer.setData(DRAG_DATA_TYPE, JSON.stringify({
+        selectorPath: node.id,
+        tagName: node.tagName,
+      }));
+      e.dataTransfer.effectAllowed = 'move';
+      setIsDragSource(true);
+
+      // Use a minimal drag image
+      if (rowRef.current) {
+        e.dataTransfer.setDragImage(rowRef.current, 10, 14);
+      }
+    },
+    [node.id, node.tagName, isBody]
+  );
+
+  const handleDragEnd = useCallback(() => {
+    setIsDragSource(false);
+  }, []);
+
+  const handleDragOver = useCallback(
+    (e: React.DragEvent) => {
+      if (!e.dataTransfer.types.includes(DRAG_DATA_TYPE)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      e.dataTransfer.dropEffect = 'move';
+
+      if (!rowRef.current) return;
+      const pos = getDropPosition(e, rowRef.current);
+
+      // If this node is a container, show 'inside' for the middle zone
+      // Otherwise, only show before/after
+      if (pos === 'inside' && !isContainerNode(node)) {
+        setDropIndicator(null);
+        return;
+      }
+      setDropIndicator(pos);
+    },
+    [node]
+  );
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    // Only clear if leaving the actual row (not entering a child)
+    if (rowRef.current && !rowRef.current.contains(e.relatedTarget as Node)) {
+      setDropIndicator(null);
+    }
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setDropIndicator(null);
+
+      const raw = e.dataTransfer.getData(DRAG_DATA_TYPE);
+      if (!raw) return;
+
+      let dragData: { selectorPath: string; tagName: string };
+      try {
+        dragData = JSON.parse(raw);
+      } catch {
+        return;
+      }
+
+      // Can't drop on itself
+      if (dragData.selectorPath === node.id) return;
+      // Can't drop inside own descendant
+      if (isDescendant(dragData.selectorPath, node.id)) return;
+
+      if (!rowRef.current) return;
+      const pos = getDropPosition(e, rowRef.current);
+
+      // Determine the target parent and insertion index
+      // The node.id is a CSS selector path like "body > div > section"
+      // The parent path is everything before the last " > " segment
+      const parentParts = node.id.split(' > ');
+
+      if (pos === 'inside' && isContainerNode(node)) {
+        // Drop inside this node as last child
+        sendToInspector({
+          type: 'MOVE_ELEMENT',
+          payload: {
+            selectorPath: dragData.selectorPath,
+            newParentSelectorPath: node.id,
+            newIndex: node.children.length,
+          },
+        });
+      } else if (pos === 'before') {
+        // Drop before this node — same parent, at this node's index
+        if (parentParts.length < 2) return; // Can't drop before body
+        const parentId = parentParts.slice(0, -1).join(' > ');
+        // Find sibling index of this node in its parent
+        const parentNode = findNodeInTree(useEditorStore.getState().rootNode, parentId);
+        if (!parentNode) return;
+        const siblingIndex = parentNode.children.findIndex((c) => c.id === node.id);
+        sendToInspector({
+          type: 'MOVE_ELEMENT',
+          payload: {
+            selectorPath: dragData.selectorPath,
+            newParentSelectorPath: parentId,
+            newIndex: Math.max(0, siblingIndex),
+          },
+        });
+      } else if (pos === 'after') {
+        if (parentParts.length < 2) return;
+        const parentId = parentParts.slice(0, -1).join(' > ');
+        const parentNode = findNodeInTree(useEditorStore.getState().rootNode, parentId);
+        if (!parentNode) return;
+        const siblingIndex = parentNode.children.findIndex((c) => c.id === node.id);
+        sendToInspector({
+          type: 'MOVE_ELEMENT',
+          payload: {
+            selectorPath: dragData.selectorPath,
+            newParentSelectorPath: parentId,
+            newIndex: siblingIndex + 1,
+          },
+        });
+      }
+    },
+    [node, sendToInspector]
   );
 
   if (searchQuery && !matchesSearch(node, searchQuery)) {
@@ -287,8 +457,20 @@ export function LayerNode({ node, depth, searchQuery, changedSelectors, deletedS
         ? '#4ade80'
         : 'var(--text-primary)';
 
+  // Drop indicator styles
+  const dropBorderStyle: React.CSSProperties = {};
+  if (dropIndicator === 'before') {
+    dropBorderStyle.borderTop = '2px solid #4a9eff';
+  } else if (dropIndicator === 'after') {
+    dropBorderStyle.borderBottom = '2px solid #4a9eff';
+  } else if (dropIndicator === 'inside') {
+    dropBorderStyle.background = 'rgba(74, 158, 255, 0.15)';
+    dropBorderStyle.outline = '1px dashed #4a9eff';
+    dropBorderStyle.outlineOffset = '-1px';
+  }
+
   return (
-    <div className="relative">
+    <div className="relative" style={{ opacity: isDragSource ? 0.4 : 1 }}>
       {/* Indent guide lines */}
       {depth > 0 && (
         <div
@@ -305,6 +487,12 @@ export function LayerNode({ node, depth, searchQuery, changedSelectors, deletedS
       <div
         ref={rowRef}
         className="flex items-center cursor-pointer group"
+        draggable={!isBody}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
         style={{
           paddingLeft: depth * 16 + 4,
           height: 28,
@@ -313,6 +501,7 @@ export function LayerNode({ node, depth, searchQuery, changedSelectors, deletedS
             : isHighlighted
               ? 'rgba(255, 255, 255, 0.04)'
               : 'transparent',
+          ...dropBorderStyle,
         }}
         onClick={handleClick}
       >
@@ -384,6 +573,21 @@ export function LayerNode({ node, depth, searchQuery, changedSelectors, deletedS
             </svg>
           </button>
         )}
+
+        {/* Delete button on hover (non-body, non-deleted) */}
+        {!isBody && !isDeleted && (
+          <button
+            onClick={handleDelete}
+            className="delete-layer-btn ml-auto mr-1 flex items-center justify-center w-5 h-5 rounded opacity-0 group-hover:opacity-100 transition-all hover:!opacity-100"
+            style={{ color: '#f87171' }}
+            title="Delete element"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* Children */}
@@ -403,4 +607,16 @@ export function LayerNode({ node, depth, searchQuery, changedSelectors, deletedS
       )}
     </div>
   );
+}
+
+// --- Tree lookup utility ---
+
+function findNodeInTree(root: TreeNode | null, id: string): TreeNode | null {
+  if (!root) return null;
+  if (root.id === id) return root;
+  for (const child of root.children) {
+    const found = findNodeInTree(child, id);
+    if (found) return found;
+  }
+  return null;
 }

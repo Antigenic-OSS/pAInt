@@ -251,6 +251,48 @@ export interface RevertDeleteMessage {
   };
 }
 
+export interface InsertElementMessage {
+  type: 'INSERT_ELEMENT';
+  payload: {
+    tagName: string;
+    parentSelectorPath: string;
+    placeholderText?: string;
+    defaultStyles?: Record<string, string>;
+  };
+}
+
+export interface RemoveInsertedElementMessage {
+  type: 'REMOVE_INSERTED_ELEMENT';
+  payload: {
+    selectorPath: string;
+  };
+}
+
+export interface DeleteElementMessage {
+  type: 'DELETE_ELEMENT';
+  payload: {
+    selectorPath: string;
+  };
+}
+
+export interface MoveElementMessage {
+  type: 'MOVE_ELEMENT';
+  payload: {
+    selectorPath: string;
+    newParentSelectorPath: string;
+    newIndex: number;
+  };
+}
+
+export interface RevertMoveElementMessage {
+  type: 'REVERT_MOVE_ELEMENT';
+  payload: {
+    selectorPath: string;
+    oldParentSelectorPath: string;
+    oldIndex: number;
+  };
+}
+
 export interface HideSelectionOverlayMessage {
   type: 'HIDE_SELECTION_OVERLAY';
 }
@@ -274,6 +316,30 @@ export interface RecursiveEmbedDetectedMessage {
   type: 'RECURSIVE_EMBED_DETECTED';
 }
 
+export interface ElementInsertedMessage {
+  type: 'ELEMENT_INSERTED';
+  payload: {
+    selectorPath: string;
+    parentSelectorPath: string;
+    tagName: string;
+    insertionIndex: number;
+    placeholderText: string;
+    defaultStyles?: Record<string, string>;
+  };
+}
+
+export interface ElementMovedMessage {
+  type: 'ELEMENT_MOVED';
+  payload: {
+    selectorPath: string;
+    newSelectorPath: string;
+    oldParentSelectorPath: string;
+    newParentSelectorPath: string;
+    oldIndex: number;
+    newIndex: number;
+  };
+}
+
 // Union types
 export type InspectorToEditorMessage =
   | InspectorReadyMessage
@@ -290,7 +356,9 @@ export type InspectorToEditorMessage =
   | TextChangedMessage
   | ElementDeletedMessage
   | ConsoleMessageMessage
-  | RecursiveEmbedDetectedMessage;
+  | RecursiveEmbedDetectedMessage
+  | ElementInsertedMessage
+  | ElementMovedMessage;
 
 export type EditorToInspectorMessage =
   | SelectElementMessage
@@ -312,7 +380,12 @@ export type EditorToInspectorMessage =
   | HideSelectionOverlayMessage
   | ShowSelectionOverlayMessage
   | HideHoverMessage
-  | NavigateToMessage;
+  | NavigateToMessage
+  | DeleteElementMessage
+  | InsertElementMessage
+  | RemoveInsertedElementMessage
+  | MoveElementMessage
+  | RevertMoveElementMessage;
 
 export type PostMessageType =
   | InspectorToEditorMessage['type']

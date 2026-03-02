@@ -13,7 +13,15 @@ export function performUndo() {
   const action = useEditorStore.getState().popUndo();
   if (!action) return;
 
-  if (action.property === '__element_deleted__') {
+  if (action.property === '__element_moved__') {
+    // Parse beforeValue: "parent:<selector>|index:<num>|selector:<oldSelector>"
+    const mvParts = action.beforeValue.split('|');
+    const mvOldParent = mvParts[0]?.replace('parent:', '') || '';
+    const mvOldIndex = parseInt(mvParts[1]?.replace('index:', '') || '0', 10);
+    sendViaIframe({ type: 'REVERT_MOVE_ELEMENT', payload: { selectorPath: action.elementSelector, oldParentSelectorPath: mvOldParent, oldIndex: mvOldIndex } });
+  } else if (action.property === '__element_inserted__') {
+    sendViaIframe({ type: 'REMOVE_INSERTED_ELEMENT', payload: { selectorPath: action.elementSelector } });
+  } else if (action.property === '__element_deleted__') {
     sendViaIframe({ type: 'REVERT_DELETE', payload: { selectorPath: action.elementSelector, originalDisplay: action.beforeValue } });
   } else if (action.property === '__text_content__') {
     if (action.wasNewChange) {
@@ -28,7 +36,7 @@ export function performUndo() {
   }
 
   // Update local computedStyles for undo
-  if (action.property !== '__text_content__' && action.property !== '__element_deleted__') {
+  if (action.property !== '__text_content__' && action.property !== '__element_deleted__' && action.property !== '__element_inserted__' && action.property !== '__element_moved__') {
     const store = useEditorStore.getState();
     store.updateComputedStyles({
       ...store.computedStyles,
@@ -54,7 +62,22 @@ export function performRedo() {
   const action = useEditorStore.getState().popRedo();
   if (!action) return;
 
-  if (action.property === '__element_deleted__') {
+  if (action.property === '__element_moved__') {
+    // Re-do the move: parse afterValue "parent:<selector>|index:<num>"
+    const rdMvParts = action.afterValue.split('|');
+    const rdMvParent = rdMvParts[0]?.replace('parent:', '') || '';
+    const rdMvIndex = parseInt(rdMvParts[1]?.replace('index:', '') || '0', 10);
+    // Parse beforeValue to get the old selector: "parent:...|index:...|selector:<oldSelector>"
+    const rdMvBefore = action.beforeValue.split('|');
+    const rdMvOldSelector = rdMvBefore[2]?.replace('selector:', '') || action.elementSelector;
+    sendViaIframe({ type: 'MOVE_ELEMENT', payload: { selectorPath: rdMvOldSelector, newParentSelectorPath: rdMvParent, newIndex: rdMvIndex } });
+  } else if (action.property === '__element_inserted__') {
+    // Re-insert: parse the originalValue which stores parent and tag info
+    // For redo of element insertion, we'd need to re-insert, but since the element
+    // was removed from DOM, a full redo isn't trivially possible. Reload instead.
+    const iframe = document.querySelector<HTMLIFrameElement>('iframe[title="Preview"]');
+    if (iframe?.src) iframe.src = iframe.src;
+  } else if (action.property === '__element_deleted__') {
     sendViaIframe({ type: 'PREVIEW_CHANGE', payload: { selectorPath: action.elementSelector, property: 'display', value: 'none' } });
   } else if (action.property === '__text_content__') {
     sendViaIframe({ type: 'SET_TEXT_CONTENT', payload: { selectorPath: action.elementSelector, text: action.afterValue } });
@@ -66,7 +89,7 @@ export function performRedo() {
   }
 
   // Update local computedStyles for redo
-  if (action.property !== '__text_content__' && action.property !== '__element_deleted__') {
+  if (action.property !== '__text_content__' && action.property !== '__element_deleted__' && action.property !== '__element_inserted__' && action.property !== '__element_moved__') {
     const store = useEditorStore.getState();
     store.updateComputedStyles({
       ...store.computedStyles,
@@ -97,6 +120,27 @@ export function performRevertAll() {
     sendViaIframe({
       type: 'REVERT_DELETE',
       payload: { selectorPath: dc.elementSelector, originalDisplay: dc.originalValue },
+    });
+  }
+  const insertChanges = state.styleChanges.filter(
+    (c) => c.property === '__element_inserted__'
+  );
+  for (const ic of insertChanges) {
+    sendViaIframe({
+      type: 'REMOVE_INSERTED_ELEMENT',
+      payload: { selectorPath: ic.elementSelector },
+    });
+  }
+  const moveChanges = state.styleChanges.filter(
+    (c) => c.property === '__element_moved__'
+  );
+  for (const mc of moveChanges) {
+    const parts = mc.originalValue.split('|');
+    const oldParent = parts[0]?.replace('parent:', '') || '';
+    const oldIndex = parseInt(parts[1]?.replace('index:', '') || '0', 10);
+    sendViaIframe({
+      type: 'REVERT_MOVE_ELEMENT',
+      payload: { selectorPath: mc.elementSelector, oldParentSelectorPath: oldParent, oldIndex },
     });
   }
 
@@ -249,7 +293,23 @@ export function useChangeTracker() {
 
   const revertChange = useCallback(
     (changeId: string, selectorPath: string, property: string) => {
-      if (property === '__element_deleted__') {
+      if (property === '__element_moved__') {
+        const change = useEditorStore.getState().styleChanges.find((c) => c.id === changeId);
+        if (change) {
+          const parts = change.originalValue.split('|');
+          const oldParent = parts[0]?.replace('parent:', '') || '';
+          const oldIndex = parseInt(parts[1]?.replace('index:', '') || '0', 10);
+          sendToInspector({
+            type: 'REVERT_MOVE_ELEMENT',
+            payload: { selectorPath, oldParentSelectorPath: oldParent, oldIndex },
+          });
+        }
+      } else if (property === '__element_inserted__') {
+        sendToInspector({
+          type: 'REMOVE_INSERTED_ELEMENT',
+          payload: { selectorPath },
+        });
+      } else if (property === '__element_deleted__') {
         const change = useEditorStore.getState().styleChanges.find((c) => c.id === changeId);
         if (change) {
           sendToInspector({
@@ -295,6 +355,27 @@ export function useChangeTracker() {
       sendToInspector({
         type: 'REVERT_DELETE',
         payload: { selectorPath: dc.elementSelector, originalDisplay: dc.originalValue },
+      });
+    }
+    const insertChanges = state.styleChanges.filter(
+      (c) => c.property === '__element_inserted__'
+    );
+    for (const ic of insertChanges) {
+      sendToInspector({
+        type: 'REMOVE_INSERTED_ELEMENT',
+        payload: { selectorPath: ic.elementSelector },
+      });
+    }
+    const moveChanges = state.styleChanges.filter(
+      (c) => c.property === '__element_moved__'
+    );
+    for (const mc of moveChanges) {
+      const parts = mc.originalValue.split('|');
+      const oldParent = parts[0]?.replace('parent:', '') || '';
+      const oldIndex = parseInt(parts[1]?.replace('index:', '') || '0', 10);
+      sendToInspector({
+        type: 'REVERT_MOVE_ELEMENT',
+        payload: { selectorPath: mc.elementSelector, oldParentSelectorPath: oldParent, oldIndex },
       });
     }
 

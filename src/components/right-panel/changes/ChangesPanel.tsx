@@ -121,7 +121,11 @@ function buildSingleElementLog(snapshot: ElementSnapshot, changes: StyleChange[]
 
   lines.push('CHANGES');
   for (const c of changes) {
-    if (c.property === '__element_deleted__') {
+    if (c.property === '__element_inserted__') {
+      lines.push(`  element inserted (${snapshot.tagName})`);
+    } else if (c.property === '__element_moved__') {
+      lines.push(`  element moved → ${c.newValue}`);
+    } else if (c.property === '__element_deleted__') {
       lines.push(`  element deleted (was display: ${c.originalValue})`);
     } else if (c.property === '__text_content__') {
       lines.push(`  text content: "${c.originalValue}" → "${c.newValue}"`);
@@ -191,7 +195,11 @@ function buildElementSection(snapshot: ElementSnapshot, changes: StyleChange[], 
 
   lines.push('CHANGES');
   for (const c of changes) {
-    if (c.property === '__element_deleted__') {
+    if (c.property === '__element_inserted__') {
+      lines.push(`  element inserted (${snapshot.tagName})`);
+    } else if (c.property === '__element_moved__') {
+      lines.push(`  element moved → ${c.newValue}`);
+    } else if (c.property === '__element_deleted__') {
       lines.push(`  element deleted (was display: ${c.originalValue})`);
     } else if (c.property === '__text_content__') {
       lines.push(`  text content: "${c.originalValue}" → "${c.newValue}"`);
@@ -427,13 +435,17 @@ function ElementAccordion({
           {/* Per-change undo buttons */}
           <div className="space-y-1">
             {changes.map((change) => {
-              const displayVal = (liveStyles && change.property !== '__text_content__' && change.property !== '__element_deleted__')
+              const displayVal = (liveStyles && change.property !== '__text_content__' && change.property !== '__element_deleted__' && change.property !== '__element_inserted__' && change.property !== '__element_moved__')
                 ? (liveStyles[change.property] ?? change.newValue)
                 : change.newValue;
               return (
               <div key={change.id} className="flex items-center justify-between text-xs">
                 <span className="truncate" style={{ color: 'var(--text-muted)' }}>
-                  {change.property === '__element_deleted__' ? (
+                  {change.property === '__element_inserted__' ? (
+                    <span style={{ color: 'var(--accent)' }}>element inserted</span>
+                  ) : change.property === '__element_moved__' ? (
+                    <span style={{ color: '#fbbf24' }}>element moved</span>
+                  ) : change.property === '__element_deleted__' ? (
                     <span style={{ color: 'var(--error)' }}>element deleted</span>
                   ) : change.property === '__text_content__' ? (
                     <>
