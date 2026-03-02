@@ -1,41 +1,47 @@
 # Dependencies
 node_modules/
 
-# Next.js
+# Next.js / build outputs
 .next/
 out/
-
-# Build
 dist/
 build/
+coverage/
+.turbo/
+.vercel/
+*.tsbuildinfo
 
 # Environment
 .env*
 !.env.example
 
-# OS
-.DS_Store
-Thumbs.db
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+bun-debug.log*
 
-# IDE
+# OS files
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+Desktop.ini
+
+# IDE / editor
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# Logs
-*.log
-npm-debug.log*
-
-# TypeScript
-*.tsbuildinfo
-
-# Playwright MCP
+# Tooling
 .playwright-mcp/
-
-# Screenshots
-*.png
 
 # Misc
 *.tmp
-coverage/
