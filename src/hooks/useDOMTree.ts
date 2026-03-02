@@ -1,7 +1,7 @@
-'use client';
+'use client'
 
-import { useEffect } from 'react';
-import { useEditorStore } from '@/store';
+import { useEffect } from 'react'
+import { useEditorStore } from '@/store'
 
 /**
  * Hook that syncs DOM tree state from the inspector.
@@ -9,11 +9,11 @@ import { useEditorStore } from '@/store';
  * This hook provides convenient access to tree state.
  */
 export function useDOMTree() {
-  const rootNode = useEditorStore((s) => s.rootNode);
-  const searchQuery = useEditorStore((s) => s.searchQuery);
-  const highlightedNodeId = useEditorStore((s) => s.highlightedNodeId);
-  const setSearchQuery = useEditorStore((s) => s.setSearchQuery);
-  const toggleNodeExpanded = useEditorStore((s) => s.toggleNodeExpanded);
+  const rootNode = useEditorStore((s) => s.rootNode)
+  const searchQuery = useEditorStore((s) => s.searchQuery)
+  const highlightedNodeId = useEditorStore((s) => s.highlightedNodeId)
+  const setSearchQuery = useEditorStore((s) => s.setSearchQuery)
+  const toggleNodeExpanded = useEditorStore((s) => s.toggleNodeExpanded)
 
   return {
     rootNode,
@@ -21,5 +21,5 @@ export function useDOMTree() {
     highlightedNodeId,
     setSearchQuery,
     toggleNodeExpanded,
-  };
+  }
 }

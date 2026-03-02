@@ -1,22 +1,22 @@
-'use client';
+'use client'
 
-import { ResizablePanel } from '@/components/common/ResizablePanel';
-import { PanelTabs } from './PanelTabs';
-import { DesignPanel } from './design/DesignPanel';
-import { ChangesPanel } from './changes/ChangesPanel';
-import { ClaudeIntegrationPanel } from './claude/ClaudeIntegrationPanel';
-import { ConsolePanel } from './console/ConsolePanel';
-import { VariablesPanel } from './variables/VariablesPanel';
-import { useEditorStore } from '@/store';
-import { PANEL_DEFAULTS } from '@/lib/constants';
+import { ResizablePanel } from '@/components/common/ResizablePanel'
+import { PanelTabs } from './PanelTabs'
+import { DesignPanel } from './design/DesignPanel'
+import { ChangesPanel } from './changes/ChangesPanel'
+import { ClaudeIntegrationPanel } from './claude/ClaudeIntegrationPanel'
+import { ConsolePanel } from './console/ConsolePanel'
+import { VariablesPanel } from './variables/VariablesPanel'
+import { useEditorStore } from '@/store'
+import { PANEL_DEFAULTS } from '@/lib/constants'
 
 interface RightPanelProps {
-  width: number;
+  width: number
 }
 
 export function RightPanel({ width }: RightPanelProps) {
-  const setRightPanelWidth = useEditorStore((s) => s.setRightPanelWidth);
-  const activeRightTab = useEditorStore((s) => s.activeRightTab);
+  const setRightPanelWidth = useEditorStore((s) => s.setRightPanelWidth)
+  const activeRightTab = useEditorStore((s) => s.activeRightTab)
 
   return (
     <ResizablePanel
@@ -37,5 +37,5 @@ export function RightPanel({ width }: RightPanelProps) {
         </div>
       </div>
     </ResizablePanel>
-  );
+  )
 }

@@ -1,6 +1,6 @@
-'use client';
+'use client'
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react'
 
 const NAV_ITEMS = [
   { id: 'how-it-works', label: 'How It Works' },
@@ -9,11 +9,11 @@ const NAV_ITEMS = [
   { id: 'framework-guides', label: 'Framework Guides' },
   { id: 'troubleshooting', label: 'Troubleshooting' },
   { id: 'faq', label: 'FAQ' },
-] as const;
+] as const
 
 export function Sidebar() {
-  const [activeId, setActiveId] = useState<string>('how-it-works');
-  const observerRef = useRef<IntersectionObserver | null>(null);
+  const [activeId, setActiveId] = useState<string>('how-it-works')
+  const observerRef = useRef<IntersectionObserver | null>(null)
 
   useEffect(() => {
     observerRef.current = new IntersectionObserver(
@@ -21,29 +21,29 @@ export function Sidebar() {
         // Find the topmost visible section
         const visible = entries
           .filter((e) => e.isIntersecting)
-          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)
         if (visible.length > 0) {
-          setActiveId(visible[0].target.id);
+          setActiveId(visible[0].target.id)
         }
       },
-      { rootMargin: '-80px 0px -60% 0px', threshold: 0 }
-    );
+      { rootMargin: '-80px 0px -60% 0px', threshold: 0 },
+    )
 
     const sections = NAV_ITEMS.map((item) =>
-      document.getElementById(item.id)
-    ).filter(Boolean) as HTMLElement[];
+      document.getElementById(item.id),
+    ).filter(Boolean) as HTMLElement[]
 
-    sections.forEach((el) => observerRef.current!.observe(el));
+    sections.forEach((el) => observerRef.current!.observe(el))
 
-    return () => observerRef.current?.disconnect();
-  }, []);
+    return () => observerRef.current?.disconnect()
+  }, [])
 
   const handleClick = (id: string) => {
-    const el = document.getElementById(id);
+    const el = document.getElementById(id)
     if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
-  };
+  }
 
   return (
     <nav
@@ -63,9 +63,7 @@ export function Sidebar() {
           className="text-left text-sm px-2 py-1.5 rounded transition-colors"
           style={{
             color:
-              activeId === item.id
-                ? 'var(--accent)'
-                : 'var(--text-secondary)',
+              activeId === item.id ? 'var(--accent)' : 'var(--text-secondary)',
             background:
               activeId === item.id ? 'var(--accent-bg)' : 'transparent',
             borderLeft:
@@ -78,7 +76,7 @@ export function Sidebar() {
         </button>
       ))}
     </nav>
-  );
+  )
 }
 
 const FRAMEWORK_IDS = [
@@ -89,22 +87,22 @@ const FRAMEWORK_IDS = [
   'react-native-expo',
   'vue-nuxt',
   'svelte-sveltekit',
-] as const;
+] as const
 
-type FrameworkId = (typeof FRAMEWORK_IDS)[number];
+type FrameworkId = (typeof FRAMEWORK_IDS)[number]
 
 export function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState(false)
 
   const handleCopy = useCallback(async () => {
     try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
     } catch {
       // Fallback: user can manually select & copy
     }
-  }, [text]);
+  }, [text])
 
   return (
     <button
@@ -117,7 +115,7 @@ export function CopyButton({ text }: { text: string }) {
     >
       {copied ? 'Copied!' : 'Copy'}
     </button>
-  );
+  )
 }
 
 export function CodeBlock({
@@ -125,9 +123,9 @@ export function CodeBlock({
   copyText,
   language,
 }: {
-  code: string;
-  copyText?: string;
-  language?: string;
+  code: string
+  copyText?: string
+  language?: string
 }) {
   return (
     <div
@@ -156,46 +154,46 @@ export function CodeBlock({
         <code>{code}</code>
       </pre>
     </div>
-  );
+  )
 }
 
 export function FrameworkAccordion({
   children,
 }: {
-  children: React.ReactNode;
+  children: React.ReactNode
 }) {
   const [openSections, setOpenSections] = useState<Set<string>>(
-    new Set(['nextjs'])
-  );
+    new Set(['nextjs']),
+  )
 
   const toggle = useCallback((id: string) => {
     setOpenSections((prev) => {
-      const next = new Set(prev);
+      const next = new Set(prev)
       if (next.has(id)) {
-        next.delete(id);
+        next.delete(id)
       } else {
-        next.add(id);
+        next.add(id)
       }
-      return next;
-    });
-  }, []);
+      return next
+    })
+  }, [])
 
   return (
     <AccordionContext.Provider value={{ openSections, toggle }}>
       <div className="flex flex-col gap-2">{children}</div>
     </AccordionContext.Provider>
-  );
+  )
 }
 
-import { createContext, useContext } from 'react';
+import { createContext, useContext } from 'react'
 
 const AccordionContext = createContext<{
-  openSections: Set<string>;
-  toggle: (id: string) => void;
+  openSections: Set<string>
+  toggle: (id: string) => void
 }>({
   openSections: new Set(),
   toggle: () => {},
-});
+})
 
 export function FrameworkSection({
   id,
@@ -203,13 +201,13 @@ export function FrameworkSection({
   icon,
   children,
 }: {
-  id: string;
-  title: string;
-  icon: string;
-  children: React.ReactNode;
+  id: string
+  title: string
+  icon: string
+  children: React.ReactNode
 }) {
-  const { openSections, toggle } = useContext(AccordionContext);
-  const isOpen = openSections.has(id);
+  const { openSections, toggle } = useContext(AccordionContext)
+  const isOpen = openSections.has(id)
 
   return (
     <div
@@ -245,29 +243,29 @@ export function FrameworkSection({
         </div>
       )}
     </div>
-  );
+  )
 }
 
 export function FaqAccordion({ children }: { children: React.ReactNode }) {
-  const [openSections, setOpenSections] = useState<Set<string>>(new Set());
+  const [openSections, setOpenSections] = useState<Set<string>>(new Set())
 
   const toggle = useCallback((id: string) => {
     setOpenSections((prev) => {
-      const next = new Set(prev);
+      const next = new Set(prev)
       if (next.has(id)) {
-        next.delete(id);
+        next.delete(id)
       } else {
-        next.add(id);
+        next.add(id)
       }
-      return next;
-    });
-  }, []);
+      return next
+    })
+  }, [])
 
   return (
     <AccordionContext.Provider value={{ openSections, toggle }}>
       <div className="flex flex-col gap-2">{children}</div>
     </AccordionContext.Provider>
-  );
+  )
 }
 
 export function FaqSection({
@@ -275,12 +273,12 @@ export function FaqSection({
   question,
   children,
 }: {
-  id: string;
-  question: string;
-  children: React.ReactNode;
+  id: string
+  question: string
+  children: React.ReactNode
 }) {
-  const { openSections, toggle } = useContext(AccordionContext);
-  const isOpen = openSections.has(id);
+  const { openSections, toggle } = useContext(AccordionContext)
+  const isOpen = openSections.has(id)
 
   return (
     <div
@@ -320,5 +318,5 @@ export function FaqSection({
         </div>
       )}
     </div>
-  );
+  )
 }

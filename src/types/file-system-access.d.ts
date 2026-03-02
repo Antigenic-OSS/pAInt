@@ -5,15 +5,23 @@
  */
 
 interface FileSystemDirectoryHandle {
-  entries(): AsyncIterableIterator<[string, FileSystemHandle]>;
-  getDirectoryHandle(name: string, options?: { create?: boolean }): Promise<FileSystemDirectoryHandle>;
-  getFileHandle(name: string, options?: { create?: boolean }): Promise<FileSystemFileHandle>;
+  entries(): AsyncIterableIterator<[string, FileSystemHandle]>
+  getDirectoryHandle(
+    name: string,
+    options?: { create?: boolean },
+  ): Promise<FileSystemDirectoryHandle>
+  getFileHandle(
+    name: string,
+    options?: { create?: boolean },
+  ): Promise<FileSystemFileHandle>
 }
 
 interface FileSystemFileHandle {
-  getFile(): Promise<File>;
+  getFile(): Promise<File>
 }
 
 interface Window {
-  showDirectoryPicker?(options?: { mode?: 'read' | 'readwrite' }): Promise<FileSystemDirectoryHandle>;
+  showDirectoryPicker?(options?: {
+    mode?: 'read' | 'readwrite'
+  }): Promise<FileSystemDirectoryHandle>
 }

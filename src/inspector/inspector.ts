@@ -13,5 +13,5 @@
  * - messaging: postMessage send/receive bridge
  */
 
-export { generateSelectorPath, serializeTree } from './DOMTraverser';
-export { getComputedStylesForElement } from './StyleExtractor';
+export { generateSelectorPath, serializeTree } from './DOMTraverser'
+export { getComputedStylesForElement } from './StyleExtractor'

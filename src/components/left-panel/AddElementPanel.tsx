@@ -1,53 +1,126 @@
-'use client';
+'use client'
 
-import { useCallback } from 'react';
-import { useEditorStore } from '@/store';
-import { sendViaIframe } from '@/hooks/usePostMessage';
+import { useCallback } from 'react'
+import { useEditorStore } from '@/store'
+import { sendViaIframe } from '@/hooks/usePostMessage'
 
 interface ElementType {
-  tag: string;
-  label: string;
-  description: string;
-  placeholderText: string;
-  defaultStyles?: Record<string, string>;
+  tag: string
+  label: string
+  description: string
+  placeholderText: string
+  defaultStyles?: Record<string, string>
 }
 
 interface ElementCategory {
-  name: string;
-  elements: ElementType[];
+  name: string
+  elements: ElementType[]
 }
 
 const ELEMENT_CATEGORIES: ElementCategory[] = [
   {
     name: 'Structure',
     elements: [
-      { tag: 'div', label: 'Div', description: 'Generic container', placeholderText: 'Div', defaultStyles: { width: '100%', height: '100px', 'background-color': 'green', display: 'flex', 'justify-content': 'center', 'align-items': 'center' } },
-      { tag: 'section', label: 'Section', description: 'Semantic section', placeholderText: 'Section', defaultStyles: { width: '100%', height: '100px', 'background-color': 'green', display: 'flex', 'justify-content': 'center', 'align-items': 'center' } },
+      {
+        tag: 'div',
+        label: 'Div',
+        description: 'Generic container',
+        placeholderText: 'Div',
+        defaultStyles: {
+          width: '100%',
+          height: '100px',
+          'background-color': 'green',
+          display: 'flex',
+          'justify-content': 'center',
+          'align-items': 'center',
+        },
+      },
+      {
+        tag: 'section',
+        label: 'Section',
+        description: 'Semantic section',
+        placeholderText: 'Section',
+        defaultStyles: {
+          width: '100%',
+          height: '100px',
+          'background-color': 'green',
+          display: 'flex',
+          'justify-content': 'center',
+          'align-items': 'center',
+        },
+      },
     ],
   },
   {
     name: 'Text',
     elements: [
-      { tag: 'h1', label: 'H1', description: 'Main heading', placeholderText: 'Heading 1' },
-      { tag: 'h2', label: 'H2', description: 'Sub heading', placeholderText: 'Heading 2' },
-      { tag: 'h3', label: 'H3', description: 'Section heading', placeholderText: 'Heading 3' },
-      { tag: 'h4', label: 'H4', description: 'Sub-section heading', placeholderText: 'Heading 4' },
-      { tag: 'h5', label: 'H5', description: 'Minor heading', placeholderText: 'Heading 5' },
-      { tag: 'h6', label: 'H6', description: 'Smallest heading', placeholderText: 'Heading 6' },
-      { tag: 'p', label: 'Paragraph', description: 'Text paragraph', placeholderText: 'Paragraph text' },
+      {
+        tag: 'h1',
+        label: 'H1',
+        description: 'Main heading',
+        placeholderText: 'Heading 1',
+      },
+      {
+        tag: 'h2',
+        label: 'H2',
+        description: 'Sub heading',
+        placeholderText: 'Heading 2',
+      },
+      {
+        tag: 'h3',
+        label: 'H3',
+        description: 'Section heading',
+        placeholderText: 'Heading 3',
+      },
+      {
+        tag: 'h4',
+        label: 'H4',
+        description: 'Sub-section heading',
+        placeholderText: 'Heading 4',
+      },
+      {
+        tag: 'h5',
+        label: 'H5',
+        description: 'Minor heading',
+        placeholderText: 'Heading 5',
+      },
+      {
+        tag: 'h6',
+        label: 'H6',
+        description: 'Smallest heading',
+        placeholderText: 'Heading 6',
+      },
+      {
+        tag: 'p',
+        label: 'Paragraph',
+        description: 'Text paragraph',
+        placeholderText: 'Paragraph text',
+      },
     ],
   },
-];
+]
 
-function ElementItem({ element, onInsert }: { element: ElementType; onInsert: (el: ElementType) => void }) {
-  const handleDragStart = useCallback((e: React.DragEvent) => {
-    e.dataTransfer.setData('application/x-dev-editor-element', JSON.stringify({
-      tag: element.tag,
-      placeholderText: element.placeholderText,
-      defaultStyles: element.defaultStyles,
-    }));
-    e.dataTransfer.effectAllowed = 'copy';
-  }, [element]);
+function ElementItem({
+  element,
+  onInsert,
+}: {
+  element: ElementType
+  onInsert: (el: ElementType) => void
+}) {
+  const handleDragStart = useCallback(
+    (e: React.DragEvent) => {
+      e.dataTransfer.setData(
+        'application/x-dev-editor-element',
+        JSON.stringify({
+          tag: element.tag,
+          placeholderText: element.placeholderText,
+          defaultStyles: element.defaultStyles,
+        }),
+      )
+      e.dataTransfer.effectAllowed = 'copy'
+    },
+    [element],
+  )
 
   return (
     <button
@@ -66,10 +139,10 @@ function ElementItem({ element, onInsert }: { element: ElementType; onInsert: (e
         transition: 'background-color 0.1s',
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.background = 'var(--bg-hover)';
+        e.currentTarget.style.background = 'var(--bg-hover)'
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.background = 'transparent';
+        e.currentTarget.style.background = 'transparent'
       }}
       title={`Drag to add or click to insert <${element.tag}>`}
     >
@@ -92,27 +165,33 @@ function ElementItem({ element, onInsert }: { element: ElementType; onInsert: (e
         {element.description}
       </span>
     </button>
-  );
+  )
 }
 
 export function AddElementPanel() {
-  const selectorPath = useEditorStore((s) => s.selectorPath);
+  const selectorPath = useEditorStore((s) => s.selectorPath)
 
-  const handleInsert = useCallback((element: ElementType) => {
-    if (!selectorPath) return;
-    sendViaIframe({
-      type: 'INSERT_ELEMENT',
-      payload: {
-        tagName: element.tag,
-        parentSelectorPath: selectorPath,
-        placeholderText: element.placeholderText,
-        defaultStyles: element.defaultStyles,
-      },
-    });
-  }, [selectorPath]);
+  const handleInsert = useCallback(
+    (element: ElementType) => {
+      if (!selectorPath) return
+      sendViaIframe({
+        type: 'INSERT_ELEMENT',
+        payload: {
+          tagName: element.tag,
+          parentSelectorPath: selectorPath,
+          placeholderText: element.placeholderText,
+          defaultStyles: element.defaultStyles,
+        },
+      })
+    },
+    [selectorPath],
+  )
 
   return (
-    <div className="flex flex-col flex-1 overflow-y-auto" style={{ padding: '8px' }}>
+    <div
+      className="flex flex-col flex-1 overflow-y-auto"
+      style={{ padding: '8px' }}
+    >
       {!selectorPath && (
         <div
           className="text-xs"
@@ -124,7 +203,8 @@ export function AddElementPanel() {
             background: 'var(--bg-tertiary)',
           }}
         >
-          Select a parent element first, then click an element to insert it. Or drag an element onto the preview.
+          Select a parent element first, then click an element to insert it. Or
+          drag an element onto the preview.
         </div>
       )}
       {ELEMENT_CATEGORIES.map((category) => (
@@ -153,5 +233,5 @@ export function AddElementPanel() {
         </div>
       ))}
     </div>
-  );
+  )
 }

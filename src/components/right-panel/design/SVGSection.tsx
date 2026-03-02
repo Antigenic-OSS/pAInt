@@ -1,14 +1,14 @@
-'use client';
+'use client'
 
-import { useCallback, useState } from 'react';
-import { useEditorStore } from '@/store';
-import { SectionHeader } from '@/components/right-panel/design/inputs/SectionHeader';
-import { ColorInput } from '@/components/right-panel/design/inputs/ColorInput';
-import { useChangeTracker } from '@/hooks/useChangeTracker';
-import { sendViaIframe } from '@/hooks/usePostMessage';
-import { generateId } from '@/lib/utils';
+import { useCallback, useState } from 'react'
+import { useEditorStore } from '@/store'
+import { SectionHeader } from '@/components/right-panel/design/inputs/SectionHeader'
+import { ColorInput } from '@/components/right-panel/design/inputs/ColorInput'
+import { useChangeTracker } from '@/hooks/useChangeTracker'
+import { sendViaIframe } from '@/hooks/usePostMessage'
+import { generateId } from '@/lib/utils'
 
-const SVG_PROPERTIES = ['fill', 'stroke'];
+const SVG_PROPERTIES = ['fill', 'stroke']
 
 // ─── Save as Variable Row ──────────────────────────────────────
 
@@ -18,45 +18,51 @@ function SaveAsVariableRow({
   existingVarName,
   onRemove,
 }: {
-  property: string;
-  onSave: (varName: string) => void;
-  existingVarName: string | null;
-  onRemove: () => void;
+  property: string
+  onSave: (varName: string) => void
+  existingVarName: string | null
+  onRemove: () => void
 }) {
-  const [editing, setEditing] = useState(false);
-  const [varName, setVarName] = useState(`--svg-${property}`);
+  const [editing, setEditing] = useState(false)
+  const [varName, setVarName] = useState(`--svg-${property}`)
 
   const handleSave = () => {
-    const name = varName.trim();
-    if (!name) return;
+    const name = varName.trim()
+    if (!name) return
     // Ensure it starts with --
-    const finalName = name.startsWith('--') ? name : `--${name}`;
-    onSave(finalName);
-    setEditing(false);
-  };
+    const finalName = name.startsWith('--') ? name : `--${name}`
+    onSave(finalName)
+    setEditing(false)
+  }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') handleSave();
-    if (e.key === 'Escape') setEditing(false);
-  };
+    if (e.key === 'Enter') handleSave()
+    if (e.key === 'Escape') setEditing(false)
+  }
 
   if (existingVarName) {
     return (
       <div className="flex items-center gap-1.5 pl-1">
-        <span className="text-[10px] truncate flex-1" style={{ color: 'var(--accent)' }}>
+        <span
+          className="text-[10px] truncate flex-1"
+          style={{ color: 'var(--accent)' }}
+        >
           {existingVarName}
         </span>
         <button
           type="button"
           onClick={onRemove}
           className="text-[10px] px-1.5 py-0.5 rounded shrink-0"
-          style={{ color: 'var(--text-muted)', background: 'var(--bg-tertiary)' }}
+          style={{
+            color: 'var(--text-muted)',
+            background: 'var(--bg-tertiary)',
+          }}
           title="Remove variable"
         >
           Remove
         </button>
       </div>
-    );
+    )
   }
 
   if (editing) {
@@ -87,12 +93,15 @@ function SaveAsVariableRow({
           type="button"
           onClick={() => setEditing(false)}
           className="text-[10px] px-1.5 py-0.5 rounded shrink-0"
-          style={{ color: 'var(--text-muted)', background: 'var(--bg-tertiary)' }}
+          style={{
+            color: 'var(--text-muted)',
+            background: 'var(--bg-tertiary)',
+          }}
         >
           Cancel
         </button>
       </div>
-    );
+    )
   }
 
   return (
@@ -100,113 +109,135 @@ function SaveAsVariableRow({
       type="button"
       onClick={() => setEditing(true)}
       className="flex items-center gap-1 pl-1 text-[10px] transition-colors hover:opacity-80"
-      style={{ color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}
+      style={{
+        color: 'var(--text-muted)',
+        background: 'none',
+        border: 'none',
+        cursor: 'pointer',
+      }}
     >
       <svg width={10} height={10} viewBox="0 0 12 12" fill="none">
-        <path d="M2 2h3v8H2zM7 2h3v8H7z" stroke="currentColor" strokeWidth={1} strokeLinecap="round" />
-        <path d="M5 6h2" stroke="currentColor" strokeWidth={1} strokeLinecap="round" />
+        <path
+          d="M2 2h3v8H2zM7 2h3v8H7z"
+          stroke="currentColor"
+          strokeWidth={1}
+          strokeLinecap="round"
+        />
+        <path
+          d="M5 6h2"
+          stroke="currentColor"
+          strokeWidth={1}
+          strokeLinecap="round"
+        />
       </svg>
       Save as variable
     </button>
-  );
+  )
 }
 
 // ─── Helpers ────────────────────────────────────────────────────
 
 /** Extract variable name from a var() expression */
 function extractVarName(value: string): string | null {
-  const match = value.match(/^var\((--[^,)]+)\)/);
-  return match ? match[1] : null;
+  const match = value.match(/^var\((--[^,)]+)\)/)
+  return match ? match[1] : null
 }
 
 /** Resolve a var() value by looking up the :root change in the store */
 function resolveVarValue(value: string): string | null {
-  const varName = extractVarName(value);
-  if (!varName) return null;
-  const { styleChanges } = useEditorStore.getState();
+  const varName = extractVarName(value)
+  if (!varName) return null
+  const { styleChanges } = useEditorStore.getState()
   const rootChange = styleChanges.find(
-    (c) => c.elementSelector === ':root' && c.property === varName
-  );
-  return rootChange ? rootChange.newValue : null;
+    (c) => c.elementSelector === ':root' && c.property === varName,
+  )
+  return rootChange ? rootChange.newValue : null
 }
 
 // ─── Main Component ─────────────────────────────────────────────
 
 export function SVGSection() {
-  const computedStyles = useEditorStore((state) => state.computedStyles);
-  const cssVariableUsages = useEditorStore((state) => state.cssVariableUsages);
-  const addStyleChange = useEditorStore((s) => s.addStyleChange);
-  const removeStyleChange = useEditorStore((s) => s.removeStyleChange);
-  const { applyChange, resetProperty } = useChangeTracker();
+  const computedStyles = useEditorStore((state) => state.computedStyles)
+  const cssVariableUsages = useEditorStore((state) => state.cssVariableUsages)
+  const addStyleChange = useEditorStore((s) => s.addStyleChange)
+  const removeStyleChange = useEditorStore((s) => s.removeStyleChange)
+  const { applyChange, resetProperty } = useChangeTracker()
 
   // Track which properties have been saved as variables
   const fillVarName = useEditorStore((s) => {
-    const sp = s.selectorPath;
-    if (!sp) return null;
+    const sp = s.selectorPath
+    if (!sp) return null
     const fillChange = s.styleChanges.find(
-      (c) => c.elementSelector === sp && c.property === 'fill'
-    );
-    if (fillChange) return extractVarName(fillChange.newValue);
-    return null;
-  });
+      (c) => c.elementSelector === sp && c.property === 'fill',
+    )
+    if (fillChange) return extractVarName(fillChange.newValue)
+    return null
+  })
 
   const strokeVarName = useEditorStore((s) => {
-    const sp = s.selectorPath;
-    if (!sp) return null;
+    const sp = s.selectorPath
+    if (!sp) return null
     const strokeChange = s.styleChanges.find(
-      (c) => c.elementSelector === sp && c.property === 'stroke'
-    );
-    if (strokeChange) return extractVarName(strokeChange.newValue);
-    return null;
-  });
+      (c) => c.elementSelector === sp && c.property === 'stroke',
+    )
+    if (strokeChange) return extractVarName(strokeChange.newValue)
+    return null
+  })
 
   const hasChanges = useEditorStore((s) => {
-    const sp = s.selectorPath;
-    if (!sp) return false;
-    return s.styleChanges.some((c) => c.elementSelector === sp && SVG_PROPERTIES.includes(c.property));
-  });
+    const sp = s.selectorPath
+    if (!sp) return false
+    return s.styleChanges.some(
+      (c) => c.elementSelector === sp && SVG_PROPERTIES.includes(c.property),
+    )
+  })
 
   const handleResetAll = () => {
-    const { selectorPath, styleChanges } = useEditorStore.getState();
-    if (!selectorPath) return;
-    const matching = styleChanges.filter((c) => c.elementSelector === selectorPath && SVG_PROPERTIES.includes(c.property));
+    const { selectorPath, styleChanges } = useEditorStore.getState()
+    if (!selectorPath) return
+    const matching = styleChanges.filter(
+      (c) =>
+        c.elementSelector === selectorPath &&
+        SVG_PROPERTIES.includes(c.property),
+    )
     for (const c of matching) {
       // Also remove associated :root variable definitions
-      const varName = extractVarName(c.newValue);
+      const varName = extractVarName(c.newValue)
       if (varName) {
         const rootChange = styleChanges.find(
-          (rc) => rc.elementSelector === ':root' && rc.property === varName
-        );
-        if (rootChange) removeStyleChange(rootChange.id);
+          (rc) => rc.elementSelector === ':root' && rc.property === varName,
+        )
+        if (rootChange) removeStyleChange(rootChange.id)
         // Revert the :root inline style in the iframe
         sendViaIframe({
           type: 'REVERT_CHANGE',
           payload: { selectorPath: ':root', property: varName },
-        });
+        })
       }
-      resetProperty(c.property);
+      resetProperty(c.property)
     }
-  };
+  }
 
   const handleColorChange = useCallback(
     (property: string, value: string) => applyChange(property, value),
-    [applyChange]
-  );
+    [applyChange],
+  )
 
   const handleSaveAsVariable = useCallback(
     (property: 'fill' | 'stroke', varName: string) => {
-      const { selectorPath, styleChanges, activeBreakpoint, changeScope } = useEditorStore.getState();
-      if (!selectorPath) return;
+      const { selectorPath, styleChanges, activeBreakpoint, changeScope } =
+        useEditorStore.getState()
+      if (!selectorPath) return
 
       // Get the current color value (from existing change or computed styles)
       const existingChange = styleChanges.find(
-        (c) => c.elementSelector === selectorPath && c.property === property
-      );
+        (c) => c.elementSelector === selectorPath && c.property === property,
+      )
       const colorValue = existingChange
         ? existingChange.newValue
-        : (useEditorStore.getState().computedStyles[property] || '');
+        : useEditorStore.getState().computedStyles[property] || ''
 
-      if (!colorValue) return;
+      if (!colorValue) return
 
       // 1. Add :root variable definition change
       addStyleChange({
@@ -218,65 +249,78 @@ export function SVGSection() {
         breakpoint: activeBreakpoint,
         timestamp: Date.now(),
         changeScope,
-      });
+      })
 
       // 2. Apply the variable on :root in the iframe
       sendViaIframe({
         type: 'PREVIEW_CHANGE',
-        payload: { selectorPath: ':root', property: varName, value: colorValue },
-      });
+        payload: {
+          selectorPath: ':root',
+          property: varName,
+          value: colorValue,
+        },
+      })
 
       // 3. Update the fill/stroke to use var() reference
-      applyChange(property, `var(${varName})`);
+      applyChange(property, `var(${varName})`)
     },
-    [applyChange, addStyleChange]
-  );
+    [applyChange, addStyleChange],
+  )
 
   const handleRemoveVariable = useCallback(
     (property: 'fill' | 'stroke') => {
-      const { selectorPath, styleChanges } = useEditorStore.getState();
-      if (!selectorPath) return;
+      const { selectorPath, styleChanges } = useEditorStore.getState()
+      if (!selectorPath) return
 
       // Find the fill/stroke change with var() reference
       const propChange = styleChanges.find(
-        (c) => c.elementSelector === selectorPath && c.property === property
-      );
-      if (!propChange) return;
+        (c) => c.elementSelector === selectorPath && c.property === property,
+      )
+      if (!propChange) return
 
-      const varName = extractVarName(propChange.newValue);
-      if (!varName) return;
+      const varName = extractVarName(propChange.newValue)
+      if (!varName) return
 
       // Resolve the color value from the :root change
-      const resolved = resolveVarValue(propChange.newValue);
+      const resolved = resolveVarValue(propChange.newValue)
 
       // Remove the :root variable definition
       const rootChange = styleChanges.find(
-        (c) => c.elementSelector === ':root' && c.property === varName
-      );
-      if (rootChange) removeStyleChange(rootChange.id);
+        (c) => c.elementSelector === ':root' && c.property === varName,
+      )
+      if (rootChange) removeStyleChange(rootChange.id)
 
       // Revert :root inline style in iframe
       sendViaIframe({
         type: 'REVERT_CHANGE',
         payload: { selectorPath: ':root', property: varName },
-      });
+      })
 
       // Restore fill/stroke to the resolved color value
       if (resolved) {
-        applyChange(property, resolved);
+        applyChange(property, resolved)
       }
     },
-    [applyChange, removeStyleChange]
-  );
+    [applyChange, removeStyleChange],
+  )
 
   // Resolve display values: if the value is var(), show the resolved color
-  const rawFill = computedStyles.fill || '';
-  const rawStroke = computedStyles.stroke || '';
-  const fillDisplay = extractVarName(rawFill) ? (resolveVarValue(rawFill) || rawFill) : rawFill;
-  const strokeDisplay = extractVarName(rawStroke) ? (resolveVarValue(rawStroke) || rawStroke) : rawStroke;
+  const rawFill = computedStyles.fill || ''
+  const rawStroke = computedStyles.stroke || ''
+  const fillDisplay = extractVarName(rawFill)
+    ? resolveVarValue(rawFill) || rawFill
+    : rawFill
+  const strokeDisplay = extractVarName(rawStroke)
+    ? resolveVarValue(rawStroke) || rawStroke
+    : rawStroke
 
   return (
-    <SectionHeader title="SVG" defaultOpen={true} hasChanges={hasChanges} onReset={handleResetAll}>
+    <SectionHeader
+      title="SVG"
+      defaultOpen={true}
+      hasChanges={hasChanges}
+      onReset={handleResetAll}
+    >
       <div className="space-y-2.5">
         {/* Fill */}
         <div className="space-y-1">
@@ -313,5 +357,5 @@ export function SVGSection() {
         </div>
       </div>
     </SectionHeader>
-  );
+  )
 }

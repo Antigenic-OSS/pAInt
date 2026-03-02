@@ -109,7 +109,7 @@ bun run dev:terminal # Start terminal server
 bun run dev:all      # Start terminal + bridge + next dev
 bun run build        # Production build
 bun run start        # Production server (port 4000)
-bun run lint         # ESLint
+bun run lint         # Biome check
 ```
 
 ## Architecture Summary

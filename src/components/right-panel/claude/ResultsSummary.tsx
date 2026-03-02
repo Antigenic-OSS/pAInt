@@ -1,29 +1,29 @@
-'use client';
+'use client'
 
-import { useState, useCallback } from 'react';
-import { useEditorStore } from '@/store';
-import { ApplyConfirmModal } from './ApplyConfirmModal';
+import { useState, useCallback } from 'react'
+import { useEditorStore } from '@/store'
+import { ApplyConfirmModal } from './ApplyConfirmModal'
 
 interface ResultsSummaryProps {
-  summary: string;
-  onApplyAll: () => void;
+  summary: string
+  onApplyAll: () => void
 }
 
 export function ResultsSummary({ summary, onApplyAll }: ResultsSummaryProps) {
-  const parsedDiffs = useEditorStore((s) => s.parsedDiffs);
-  const claudeStatus = useEditorStore((s) => s.claudeStatus);
-  const [copied, setCopied] = useState(false);
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const parsedDiffs = useEditorStore((s) => s.parsedDiffs)
+  const claudeStatus = useEditorStore((s) => s.claudeStatus)
+  const [copied, setCopied] = useState(false)
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
 
   const handleCopyDiffs = useCallback(async () => {
-    if (parsedDiffs.length === 0) return;
+    if (parsedDiffs.length === 0) return
 
     const text = parsedDiffs
       .map((diff) => {
-        const header = `--- ${diff.filePath}\n+++ ${diff.filePath}`;
+        const header = `--- ${diff.filePath}\n+++ ${diff.filePath}`
         const hunks = diff.hunks
           .map((hunk) => {
-            const hunkHeader = hunk.header;
+            const hunkHeader = hunk.header
             const lines = hunk.lines
               .map((line) => {
                 const prefix =
@@ -31,40 +31,43 @@ export function ResultsSummary({ summary, onApplyAll }: ResultsSummaryProps) {
                     ? '+'
                     : line.type === 'removal'
                       ? '-'
-                      : ' ';
-                return `${prefix}${line.content}`;
+                      : ' '
+                return `${prefix}${line.content}`
               })
-              .join('\n');
-            return `${hunkHeader}\n${lines}`;
+              .join('\n')
+            return `${hunkHeader}\n${lines}`
           })
-          .join('\n');
-        return `${header}\n${hunks}`;
+          .join('\n')
+        return `${header}\n${hunks}`
       })
-      .join('\n\n');
+      .join('\n\n')
 
     try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
     } catch {
       // Fallback for clipboard API
-      const textarea = document.createElement('textarea');
-      textarea.value = text;
-      textarea.style.position = 'fixed';
-      textarea.style.opacity = '0';
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textarea);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      const textarea = document.createElement('textarea')
+      textarea.value = text
+      textarea.style.position = 'fixed'
+      textarea.style.opacity = '0'
+      document.body.appendChild(textarea)
+      textarea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textarea)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
     }
-  }, [parsedDiffs]);
+  }, [parsedDiffs])
 
-  const isApplying = claudeStatus === 'applying';
+  const isApplying = claudeStatus === 'applying'
 
   return (
-    <div className="flex flex-col gap-3 p-3" style={{ borderTop: '1px solid var(--border)' }}>
+    <div
+      className="flex flex-col gap-3 p-3"
+      style={{ borderTop: '1px solid var(--border)' }}
+    >
       {/* Summary text */}
       {summary && (
         <div
@@ -105,12 +108,12 @@ export function ResultsSummary({ summary, onApplyAll }: ResultsSummaryProps) {
       {showConfirmModal && (
         <ApplyConfirmModal
           onConfirm={() => {
-            setShowConfirmModal(false);
-            onApplyAll();
+            setShowConfirmModal(false)
+            onApplyAll()
           }}
           onCancel={() => setShowConfirmModal(false)}
         />
       )}
     </div>
-  );
+  )
 }

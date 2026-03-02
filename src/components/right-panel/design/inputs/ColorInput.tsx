@@ -1,14 +1,14 @@
-'use client';
+'use client'
 
-import { useEditorStore } from '@/store';
-import { VariableColorPicker } from '@/components/common/VariableColorPicker';
+import { useEditorStore } from '@/store'
+import { VariableColorPicker } from '@/components/common/VariableColorPicker'
 
 interface ColorInputProps {
-  value: string;
-  property: string;
-  onChange: (property: string, value: string) => void;
-  varExpression?: string;
-  label?: string;
+  value: string
+  property: string
+  onChange: (property: string, value: string) => void
+  varExpression?: string
+  label?: string
 }
 
 export function ColorInput({
@@ -18,10 +18,10 @@ export function ColorInput({
   varExpression,
   label,
 }: ColorInputProps) {
-  const selectorPath = useEditorStore((s) => s.selectorPath);
-  const detachProperty = useEditorStore((s) => s.detachProperty);
-  const reattachProperty = useEditorStore((s) => s.reattachProperty);
-  const tailwindEntry = useEditorStore((s) => s.tailwindClassMap[property]);
+  const selectorPath = useEditorStore((s) => s.selectorPath)
+  const detachProperty = useEditorStore((s) => s.detachProperty)
+  const reattachProperty = useEditorStore((s) => s.reattachProperty)
+  const tailwindEntry = useEditorStore((s) => s.tailwindClassMap[property])
 
   return (
     <VariableColorPicker
@@ -34,10 +34,10 @@ export function ColorInput({
       onDetach={() => selectorPath && detachProperty(selectorPath, property)}
       onReattach={(expr) => {
         if (selectorPath) {
-          reattachProperty(selectorPath, property);
-          onChange(property, expr);
+          reattachProperty(selectorPath, property)
+          onChange(property, expr)
         }
       }}
     />
-  );
+  )
 }

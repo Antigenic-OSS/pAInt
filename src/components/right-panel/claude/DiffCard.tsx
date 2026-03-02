@@ -1,21 +1,24 @@
-'use client';
+'use client'
 
-import { useState } from 'react';
-import type { ParsedDiff } from '@/types/claude';
+import { useState } from 'react'
+import type { ParsedDiff } from '@/types/claude'
 
 interface DiffCardProps {
-  diff: ParsedDiff;
+  diff: ParsedDiff
 }
 
 export function DiffCard({ diff }: DiffCardProps) {
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(true)
 
-  const fileName = diff.filePath.split('/').pop() || diff.filePath;
+  const fileName = diff.filePath.split('/').pop() || diff.filePath
 
   return (
     <div
       className="rounded overflow-hidden"
-      style={{ border: '1px solid var(--border)', background: 'var(--bg-secondary)' }}
+      style={{
+        border: '1px solid var(--border)',
+        background: 'var(--bg-secondary)',
+      }}
     >
       {/* File header - collapsible */}
       <button
@@ -43,14 +46,10 @@ export function DiffCard({ diff }: DiffCardProps) {
 
         <div className="flex items-center gap-2 flex-shrink-0 text-[11px]">
           {diff.linesAdded > 0 && (
-            <span style={{ color: 'var(--success)' }}>
-              +{diff.linesAdded}
-            </span>
+            <span style={{ color: 'var(--success)' }}>+{diff.linesAdded}</span>
           )}
           {diff.linesRemoved > 0 && (
-            <span style={{ color: 'var(--error)' }}>
-              -{diff.linesRemoved}
-            </span>
+            <span style={{ color: 'var(--error)' }}>-{diff.linesRemoved}</span>
           )}
         </div>
       </button>
@@ -59,7 +58,10 @@ export function DiffCard({ diff }: DiffCardProps) {
       {expanded && diff.filePath !== fileName && (
         <div
           className="px-3 py-1 text-[10px] font-mono truncate"
-          style={{ color: 'var(--text-muted)', background: 'var(--bg-tertiary)' }}
+          style={{
+            color: 'var(--text-muted)',
+            background: 'var(--bg-tertiary)',
+          }}
           title={diff.filePath}
         >
           {diff.filePath}
@@ -74,25 +76,28 @@ export function DiffCard({ diff }: DiffCardProps) {
               {/* Hunk header */}
               <div
                 className="px-3 py-1 text-[10px] font-mono"
-                style={{ color: 'var(--accent)', background: 'rgba(74, 158, 255, 0.06)' }}
+                style={{
+                  color: 'var(--accent)',
+                  background: 'rgba(74, 158, 255, 0.06)',
+                }}
               >
                 {hunk.header}
               </div>
 
               {/* Diff lines */}
               {hunk.lines.map((line, lineIdx) => {
-                let bgColor = 'transparent';
-                let prefixChar = ' ';
-                let textColor = 'var(--text-primary)';
+                let bgColor = 'transparent'
+                let prefixChar = ' '
+                let textColor = 'var(--text-primary)'
 
                 if (line.type === 'addition') {
-                  bgColor = '#2ea04333';
-                  prefixChar = '+';
-                  textColor = '#4ec9b0';
+                  bgColor = '#2ea04333'
+                  prefixChar = '+'
+                  textColor = '#4ec9b0'
                 } else if (line.type === 'removal') {
-                  bgColor = '#f4474733';
-                  prefixChar = '-';
-                  textColor = '#f44747';
+                  bgColor = '#f4474733'
+                  prefixChar = '-'
+                  textColor = '#f44747'
                 }
 
                 return (
@@ -114,12 +119,12 @@ export function DiffCard({ diff }: DiffCardProps) {
                     </span>
                     {line.content}
                   </div>
-                );
+                )
               })}
             </div>
           ))}
         </div>
       )}
     </div>
-  );
+  )
 }

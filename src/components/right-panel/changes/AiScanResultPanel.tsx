@@ -1,73 +1,112 @@
-'use client';
+'use client'
 
-import { useState, useCallback } from 'react';
-import type { ClaudeScanResponse } from '@/types/claude';
+import { useState, useCallback } from 'react'
+import type { ClaudeScanResponse } from '@/types/claude'
 
 function ChevronIcon({ open, size = 10 }: { open: boolean; size?: number }) {
   return (
     <span
       className="inline-block transition-transform"
-      style={{ transform: open ? 'rotate(0deg)' : 'rotate(-90deg)', fontSize: `${size}px` }}
+      style={{
+        transform: open ? 'rotate(0deg)' : 'rotate(-90deg)',
+        fontSize: `${size}px`,
+      }}
     >
       ▼
     </span>
-  );
+  )
 }
 
 function CopyIcon({ size = 14 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
       <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
     </svg>
-  );
+  )
 }
 
 function CheckIcon({ size = 14 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <polyline points="20 6 9 17 4 12" />
     </svg>
-  );
+  )
 }
 
 function CloseIcon({ size = 14 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <line x1="18" y1="6" x2="6" y2="18" />
       <line x1="6" y1="6" x2="18" y2="18" />
     </svg>
-  );
+  )
 }
 
 function SendIcon({ size = 14 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <line x1="22" y1="2" x2="11" y2="13" />
       <polygon points="22 2 15 22 11 13 2 9 22 2" />
     </svg>
-  );
+  )
 }
 
 function useCopy() {
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState(false)
   const copy = useCallback(async (text: string) => {
     try {
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(text)
     } catch {
-      const textarea = document.createElement('textarea');
-      textarea.value = text;
-      textarea.style.position = 'fixed';
-      textarea.style.opacity = '0';
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textarea);
+      const textarea = document.createElement('textarea')
+      textarea.value = text
+      textarea.style.position = 'fixed'
+      textarea.style.opacity = '0'
+      document.body.appendChild(textarea)
+      textarea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textarea)
     }
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }, []);
-  return { copied, copy };
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }, [])
+  return { copied, copy }
 }
 
 export function AiScanResultPanel({
@@ -75,22 +114,22 @@ export function AiScanResultPanel({
   onDismiss,
   onSendToClaudeCode,
 }: {
-  result: ClaudeScanResponse;
-  onDismiss: () => void;
-  onSendToClaudeCode: (prompt: string) => void;
+  result: ClaudeScanResponse
+  onDismiss: () => void
+  onSendToClaudeCode: (prompt: string) => void
 }) {
-  const [promptText, setPromptText] = useState(result.smartPrompt);
-  const [expandedGroups, setExpandedGroups] = useState<Set<number>>(new Set());
-  const { copied, copy } = useCopy();
+  const [promptText, setPromptText] = useState(result.smartPrompt)
+  const [expandedGroups, setExpandedGroups] = useState<Set<number>>(new Set())
+  const { copied, copy } = useCopy()
 
   const toggleGroup = useCallback((index: number) => {
     setExpandedGroups((prev) => {
-      const next = new Set(prev);
-      if (next.has(index)) next.delete(index);
-      else next.add(index);
-      return next;
-    });
-  }, []);
+      const next = new Set(prev)
+      if (next.has(index)) next.delete(index)
+      else next.add(index)
+      return next
+    })
+  }, [])
 
   return (
     <div
@@ -143,10 +182,17 @@ export function AiScanResultPanel({
                 className="flex items-center gap-2 px-3 py-1.5 text-[11px] cursor-pointer hover:bg-[var(--bg-hover)] transition-colors"
                 role="button"
                 tabIndex={0}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleGroup(i); } }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    toggleGroup(i)
+                  }
+                }}
               >
                 <ChevronIcon open={expandedGroups.has(i)} />
-                <span style={{ color: 'var(--text-primary)' }}>{group.label}</span>
+                <span style={{ color: 'var(--text-primary)' }}>
+                  {group.label}
+                </span>
                 <span style={{ color: 'var(--text-muted)' }}>
                   {group.changeCount} change{group.changeCount !== 1 ? 's' : ''}
                 </span>
@@ -235,5 +281,5 @@ export function AiScanResultPanel({
         </button>
       </div>
     </div>
-  );
+  )
 }

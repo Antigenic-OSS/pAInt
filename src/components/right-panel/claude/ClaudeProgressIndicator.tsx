@@ -1,16 +1,18 @@
-'use client';
+'use client'
 
-import type { ClaudeStatus } from '@/types/claude';
+import type { ClaudeStatus } from '@/types/claude'
 
 interface ClaudeProgressIndicatorProps {
-  status: ClaudeStatus;
+  status: ClaudeStatus
 }
 
-export function ClaudeProgressIndicator({ status }: ClaudeProgressIndicatorProps) {
+export function ClaudeProgressIndicator({
+  status,
+}: ClaudeProgressIndicatorProps) {
   const message =
     status === 'applying'
       ? 'Applying changes...'
-      : 'Analyzing with Claude Code...';
+      : 'Analyzing with Claude Code...'
 
   return (
     <div className="flex flex-col items-center justify-center gap-4 py-8 px-4">
@@ -70,5 +72,5 @@ export function ClaudeProgressIndicator({ status }: ClaudeProgressIndicatorProps
         }
       `}</style>
     </div>
-  );
+  )
 }

@@ -1,56 +1,56 @@
-'use client';
+'use client'
 
-import { useState } from 'react';
-import { useEditorStore } from '@/store';
-import { BREAKPOINT_LABELS } from '@/types/changelog';
-import type { Breakpoint, StyleChange } from '@/types/changelog';
+import { useState } from 'react'
+import { useEditorStore } from '@/store'
+import { BREAKPOINT_LABELS } from '@/types/changelog'
+import type { Breakpoint, StyleChange } from '@/types/changelog'
 
 interface ChangeSummaryModalProps {
-  onClose: () => void;
+  onClose: () => void
 }
 
-const BREAKPOINT_ORDER: Breakpoint[] = ['desktop', 'tablet', 'mobile'];
+const BREAKPOINT_ORDER: Breakpoint[] = ['desktop', 'tablet', 'mobile']
 
 export function ChangeSummaryModal({ onClose }: ChangeSummaryModalProps) {
-  const styleChanges = useEditorStore((s) => s.styleChanges);
-  const elementSnapshots = useEditorStore((s) => s.elementSnapshots);
+  const styleChanges = useEditorStore((s) => s.styleChanges)
+  const elementSnapshots = useEditorStore((s) => s.elementSnapshots)
 
   // Group changes by breakpoint
   const grouped = BREAKPOINT_ORDER.reduce<Record<Breakpoint, StyleChange[]>>(
     (acc, bp) => {
-      acc[bp] = styleChanges.filter((c) => c.breakpoint === bp);
-      return acc;
+      acc[bp] = styleChanges.filter((c) => c.breakpoint === bp)
+      return acc
     },
-    { desktop: [], tablet: [], mobile: [] }
-  );
+    { desktop: [], tablet: [], mobile: [] },
+  )
 
   // Track which sections are collapsed
   const [collapsed, setCollapsed] = useState<Record<Breakpoint, boolean>>({
     desktop: false,
     tablet: false,
     mobile: false,
-  });
+  })
 
   const toggleSection = (bp: Breakpoint) => {
-    setCollapsed((prev) => ({ ...prev, [bp]: !prev[bp] }));
-  };
+    setCollapsed((prev) => ({ ...prev, [bp]: !prev[bp] }))
+  }
 
   // Resolve the page path for an element selector
   const getPagePath = (selector: string): string => {
-    const snap = elementSnapshots[selector];
-    return snap?.pagePath || '/';
-  };
+    const snap = elementSnapshots[selector]
+    return snap?.pagePath || '/'
+  }
 
   // Group changes within a breakpoint by element selector
   const groupByElement = (changes: StyleChange[]) => {
-    const map = new Map<string, StyleChange[]>();
+    const map = new Map<string, StyleChange[]>()
     for (const c of changes) {
-      const existing = map.get(c.elementSelector) || [];
-      existing.push(c);
-      map.set(c.elementSelector, existing);
+      const existing = map.get(c.elementSelector) || []
+      existing.push(c)
+      map.set(c.elementSelector, existing)
     }
-    return map;
-  };
+    return map
+  }
 
   return (
     <div
@@ -118,10 +118,10 @@ export function ChangeSummaryModal({ onClose }: ChangeSummaryModalProps) {
           ) : (
             <div className="flex flex-col gap-2">
               {BREAKPOINT_ORDER.map((bp) => {
-                const changes = grouped[bp];
-                if (changes.length === 0) return null;
+                const changes = grouped[bp]
+                if (changes.length === 0) return null
 
-                const elementGroups = groupByElement(changes);
+                const elementGroups = groupByElement(changes)
 
                 return (
                   <div key={bp}>
@@ -158,7 +158,9 @@ export function ChangeSummaryModal({ onClose }: ChangeSummaryModalProps) {
                         strokeLinejoin="round"
                         className="transition-transform"
                         style={{
-                          transform: collapsed[bp] ? 'rotate(-90deg)' : 'rotate(0deg)',
+                          transform: collapsed[bp]
+                            ? 'rotate(-90deg)'
+                            : 'rotate(0deg)',
                         }}
                       >
                         <polyline points="6 9 12 15 18 9" />
@@ -216,7 +218,9 @@ export function ChangeSummaryModal({ onClose }: ChangeSummaryModalProps) {
                                     >
                                       &quot;{change.originalValue}&quot;
                                     </span>
-                                    <span style={{ color: 'var(--text-muted)' }}>
+                                    <span
+                                      style={{ color: 'var(--text-muted)' }}
+                                    >
                                       &rarr;
                                     </span>
                                     <span
@@ -230,12 +234,12 @@ export function ChangeSummaryModal({ onClose }: ChangeSummaryModalProps) {
                                 ))}
                               </div>
                             </div>
-                          )
+                          ),
                         )}
                       </div>
                     )}
                   </div>
-                );
+                )
               })}
             </div>
           )}
@@ -249,12 +253,15 @@ export function ChangeSummaryModal({ onClose }: ChangeSummaryModalProps) {
           <button
             onClick={onClose}
             className="px-4 py-1.5 rounded text-xs font-medium transition-colors"
-            style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)' }}
+            style={{
+              background: 'var(--bg-tertiary)',
+              color: 'var(--text-primary)',
+            }}
           >
             Close
           </button>
         </div>
       </div>
     </div>
-  );
+  )
 }

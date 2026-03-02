@@ -1,76 +1,68 @@
-'use client';
+'use client'
 
-import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import type { GradientData, GradientStop } from '@/types/gradient';
-import { serializeGradient } from '@/lib/gradientParser';
-import { ColorPicker } from '@/components/common/ColorPicker';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
+import type { GradientData, GradientStop } from '@/types/gradient'
+import { serializeGradient } from '@/lib/gradientParser'
+import { ColorPicker } from '@/components/common/ColorPicker'
 
 interface GradientEditorProps {
-  value: GradientData;
-  onChange: (data: GradientData) => void;
-  showTypeSelector?: boolean;
+  value: GradientData
+  onChange: (data: GradientData) => void
+  showTypeSelector?: boolean
 }
 
 // ─── Color Helpers ───────────────────────────────────────────────
 
 function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
-  const clean = hex.replace('#', '');
+  const clean = hex.replace('#', '')
   if (clean.length === 3) {
     return {
       r: parseInt(clean[0] + clean[0], 16),
       g: parseInt(clean[1] + clean[1], 16),
       b: parseInt(clean[2] + clean[2], 16),
-    };
+    }
   }
   if (clean.length >= 6) {
     return {
       r: parseInt(clean.slice(0, 2), 16),
       g: parseInt(clean.slice(2, 4), 16),
       b: parseInt(clean.slice(4, 6), 16),
-    };
+    }
   }
-  return null;
+  return null
 }
 
 function parseStopColor(color: string): { hex: string; opacity: number } {
   const rgbaMatch = color.match(
-    /rgba?\(\s*(\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\s*\)/
-  );
+    /rgba?\(\s*(\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\s*\)/,
+  )
   if (rgbaMatch) {
     const r = +rgbaMatch[1],
       g = +rgbaMatch[2],
-      b = +rgbaMatch[3];
-    const a =
-      rgbaMatch[4] !== undefined ? parseFloat(rgbaMatch[4]) : 1;
+      b = +rgbaMatch[3]
+    const a = rgbaMatch[4] !== undefined ? parseFloat(rgbaMatch[4]) : 1
     const hex =
-      '#' +
-      [r, g, b].map((c) => c.toString(16).padStart(2, '0')).join('');
-    return { hex, opacity: Math.round(a * 100) };
+      '#' + [r, g, b].map((c) => c.toString(16).padStart(2, '0')).join('')
+    return { hex, opacity: Math.round(a * 100) }
   }
   if (color.startsWith('#')) {
-    return { hex: color.slice(0, 7), opacity: 100 };
+    return { hex: color.slice(0, 7), opacity: 100 }
   }
-  return { hex: '#000000', opacity: 100 };
+  return { hex: '#000000', opacity: 100 }
 }
 
 function buildStopColor(hex: string, opacity: number): string {
-  if (opacity >= 100) return hex;
-  const rgb = hexToRgb(hex);
-  if (!rgb) return hex;
-  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${(opacity / 100).toFixed(2)})`;
+  if (opacity >= 100) return hex
+  const rgb = hexToRgb(hex)
+  if (!rgb) return hex
+  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${(opacity / 100).toFixed(2)})`
 }
 
 // ─── Gradient Type Icons ─────────────────────────────────────────
 
 function LinearIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
-    <svg
-      width={16}
-      height={16}
-      viewBox="0 0 16 16"
-      fill="none"
-      {...props}
-    >
+    <svg width={16} height={16} viewBox="0 0 16 16" fill="none" {...props}>
       <rect
         x={2}
         y={2}
@@ -90,18 +82,12 @@ function LinearIcon(props: React.SVGProps<SVGSVGElement>) {
         strokeLinecap="round"
       />
     </svg>
-  );
+  )
 }
 
 function RadialIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
-    <svg
-      width={16}
-      height={16}
-      viewBox="0 0 16 16"
-      fill="none"
-      {...props}
-    >
+    <svg width={16} height={16} viewBox="0 0 16 16" fill="none" {...props}>
       <circle cx={8} cy={8} r={3} stroke="currentColor" strokeWidth={1.2} />
       <circle
         cx={8}
@@ -112,18 +98,12 @@ function RadialIcon(props: React.SVGProps<SVGSVGElement>) {
         opacity={0.4}
       />
     </svg>
-  );
+  )
 }
 
 function ConicIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
-    <svg
-      width={16}
-      height={16}
-      viewBox="0 0 16 16"
-      fill="none"
-      {...props}
-    >
+    <svg width={16} height={16} viewBox="0 0 16 16" fill="none" {...props}>
       <circle cx={8} cy={8} r={6} stroke="currentColor" strokeWidth={1.2} />
       <path
         d="M8 2V8L12.5 4"
@@ -133,7 +113,7 @@ function ConicIcon(props: React.SVGProps<SVGSVGElement>) {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 
 // ─── Rotate Icons ────────────────────────────────────────────────
@@ -155,7 +135,7 @@ function RotateCCWIcon() {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 
 function RotateCWIcon() {
@@ -175,7 +155,7 @@ function RotateCWIcon() {
         strokeLinejoin="round"
       />
     </svg>
-  );
+  )
 }
 
 // ─── Angle Dial ──────────────────────────────────────────────────
@@ -184,48 +164,48 @@ function AngleDial({
   angle,
   onChange,
 }: {
-  angle: number;
-  onChange: (a: number) => void;
+  angle: number
+  onChange: (a: number) => void
 }) {
-  const svgRef = useRef<SVGSVGElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null)
 
   const calcAngle = useCallback(
     (e: React.PointerEvent) => {
-      const svg = svgRef.current;
-      if (!svg) return;
-      const rect = svg.getBoundingClientRect();
-      const x = e.clientX - rect.left - rect.width / 2;
-      const y = e.clientY - rect.top - rect.height / 2;
-      let deg = Math.atan2(y, x) * (180 / Math.PI) + 90;
-      if (deg < 0) deg += 360;
-      onChange(Math.round(deg) % 360);
+      const svg = svgRef.current
+      if (!svg) return
+      const rect = svg.getBoundingClientRect()
+      const x = e.clientX - rect.left - rect.width / 2
+      const y = e.clientY - rect.top - rect.height / 2
+      let deg = Math.atan2(y, x) * (180 / Math.PI) + 90
+      if (deg < 0) deg += 360
+      onChange(Math.round(deg) % 360)
     },
-    [onChange]
-  );
+    [onChange],
+  )
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
-      e.preventDefault();
-      svgRef.current?.setPointerCapture(e.pointerId);
-      calcAngle(e);
+      e.preventDefault()
+      svgRef.current?.setPointerCapture(e.pointerId)
+      calcAngle(e)
     },
-    [calcAngle]
-  );
+    [calcAngle],
+  )
 
   const handlePointerMove = useCallback(
     (e: React.PointerEvent) => {
-      if (!svgRef.current?.hasPointerCapture(e.pointerId)) return;
-      calcAngle(e);
+      if (!svgRef.current?.hasPointerCapture(e.pointerId)) return
+      calcAngle(e)
     },
-    [calcAngle]
-  );
+    [calcAngle],
+  )
 
-  const rad = (angle - 90) * (Math.PI / 180);
+  const rad = (angle - 90) * (Math.PI / 180)
   const cx = 13,
     cy = 13,
-    r = 9;
-  const dotX = cx + r * Math.cos(rad);
-  const dotY = cy + r * Math.sin(rad);
+    r = 9
+  const dotX = cx + r * Math.cos(rad)
+  const dotY = cy + r * Math.sin(rad)
 
   return (
     <svg
@@ -246,13 +226,7 @@ function AngleDial({
         strokeWidth={1.5}
         opacity={0.3}
       />
-      <circle
-        cx={cx}
-        cy={cy}
-        r={1.5}
-        fill="var(--text-muted)"
-        opacity={0.4}
-      />
+      <circle cx={cx} cy={cy} r={1.5} fill="var(--text-muted)" opacity={0.4} />
       <line
         x1={cx}
         y1={cy}
@@ -264,7 +238,7 @@ function AngleDial({
       />
       <circle cx={dotX} cy={dotY} r={2.5} fill="var(--accent)" />
     </svg>
-  );
+  )
 }
 
 // ─── Gradient Bar with Draggable Stops ───────────────────────────
@@ -278,63 +252,63 @@ function GradientBar({
   onAddStop,
   onRemoveStop,
 }: {
-  stops: GradientStop[];
-  selectedIndex: number;
-  gradient: string;
-  onSelectStop: (index: number) => void;
-  onMoveStop: (index: number, position: number) => void;
-  onAddStop: (position: number) => void;
-  onRemoveStop: (index: number) => void;
+  stops: GradientStop[]
+  selectedIndex: number
+  gradient: string
+  onSelectStop: (index: number) => void
+  onMoveStop: (index: number, position: number) => void
+  onAddStop: (position: number) => void
+  onRemoveStop: (index: number) => void
 }) {
-  const barRef = useRef<HTMLDivElement>(null);
-  const dragIndexRef = useRef<number | null>(null);
-  const wasDragging = useRef(false);
+  const barRef = useRef<HTMLDivElement>(null)
+  const dragIndexRef = useRef<number | null>(null)
+  const wasDragging = useRef(false)
 
   const handleBarPointerDown = useCallback(
     (e: React.PointerEvent) => {
       // Only handle direct clicks on the bar, not on stop handles
-      if ((e.target as HTMLElement).dataset.stopHandle) return;
-      const rect = barRef.current?.getBoundingClientRect();
-      if (!rect) return;
+      if ((e.target as HTMLElement).dataset.stopHandle) return
+      const rect = barRef.current?.getBoundingClientRect()
+      if (!rect) return
       const pos = Math.max(
         0,
-        Math.min(100, Math.round(((e.clientX - rect.left) / rect.width) * 100))
-      );
-      onAddStop(pos);
+        Math.min(100, Math.round(((e.clientX - rect.left) / rect.width) * 100)),
+      )
+      onAddStop(pos)
     },
-    [onAddStop]
-  );
+    [onAddStop],
+  )
 
   const handleStopPointerDown = useCallback(
     (e: React.PointerEvent, index: number) => {
-      e.preventDefault();
-      e.stopPropagation();
-      dragIndexRef.current = index;
-      wasDragging.current = false;
-      onSelectStop(index);
-      barRef.current?.setPointerCapture(e.pointerId);
+      e.preventDefault()
+      e.stopPropagation()
+      dragIndexRef.current = index
+      wasDragging.current = false
+      onSelectStop(index)
+      barRef.current?.setPointerCapture(e.pointerId)
     },
-    [onSelectStop]
-  );
+    [onSelectStop],
+  )
 
   const handlePointerMove = useCallback(
     (e: React.PointerEvent) => {
-      if (dragIndexRef.current === null) return;
-      if (!barRef.current?.hasPointerCapture(e.pointerId)) return;
-      wasDragging.current = true;
-      const rect = barRef.current.getBoundingClientRect();
+      if (dragIndexRef.current === null) return
+      if (!barRef.current?.hasPointerCapture(e.pointerId)) return
+      wasDragging.current = true
+      const rect = barRef.current.getBoundingClientRect()
       const pos = Math.max(
         0,
-        Math.min(100, Math.round(((e.clientX - rect.left) / rect.width) * 100))
-      );
-      onMoveStop(dragIndexRef.current, pos);
+        Math.min(100, Math.round(((e.clientX - rect.left) / rect.width) * 100)),
+      )
+      onMoveStop(dragIndexRef.current, pos)
     },
-    [onMoveStop]
-  );
+    [onMoveStop],
+  )
 
   const handlePointerUp = useCallback(() => {
-    dragIndexRef.current = null;
-  }, []);
+    dragIndexRef.current = null
+  }, [])
 
   return (
     <div
@@ -358,7 +332,7 @@ function GradientBar({
 
       {/* Stop handles */}
       {stops.map((stop, i) => {
-        const isSelected = i === selectedIndex;
+        const isSelected = i === selectedIndex
         return (
           <div
             key={i}
@@ -383,22 +357,26 @@ function GradientBar({
             }}
             onPointerDown={(e) => handleStopPointerDown(e, i)}
             onDoubleClick={(e) => {
-              e.stopPropagation();
-              onRemoveStop(i);
+              e.stopPropagation()
+              onRemoveStop(i)
             }}
           />
-        );
+        )
       })}
     </div>
-  );
+  )
 }
 
 // ─── Main GradientEditor ─────────────────────────────────────────
 
-export function GradientEditor({ value, onChange, showTypeSelector = true }: GradientEditorProps) {
-  const [selectedStop, setSelectedStop] = useState(0);
+export function GradientEditor({
+  value,
+  onChange,
+  showTypeSelector = true,
+}: GradientEditorProps) {
+  const [selectedStop, setSelectedStop] = useState(0)
 
-  const previewGradient = useMemo(() => serializeGradient(value), [value]);
+  const previewGradient = useMemo(() => serializeGradient(value), [value])
 
   // Build a scaled-down repeat preview (show ~3 repetitions)
   const repeatPreview = useMemo(() => {
@@ -409,165 +387,160 @@ export function GradientEditor({ value, onChange, showTypeSelector = true }: Gra
         ...s,
         position: Math.round(s.position * 0.33),
       })),
-    };
-    return serializeGradient(scaled);
-  }, [value]);
+    }
+    return serializeGradient(scaled)
+  }, [value])
 
   // Keep selected stop in bounds
   useEffect(() => {
     if (selectedStop >= value.stops.length) {
-      setSelectedStop(Math.max(0, value.stops.length - 1));
+      setSelectedStop(Math.max(0, value.stops.length - 1))
     }
-  }, [value.stops.length, selectedStop]);
+  }, [value.stops.length, selectedStop])
 
-  const currentStop = value.stops[selectedStop] || value.stops[0];
+  const currentStop = value.stops[selectedStop] || value.stops[0]
   const { hex: stopHex, opacity: stopOpacity } = useMemo(
     () => parseStopColor(currentStop?.color || '#000000'),
-    [currentStop?.color]
-  );
+    [currentStop?.color],
+  )
 
   // ── Type ──
   const updateType = useCallback(
     (type: GradientData['type']) => {
-      onChange({ ...value, type });
+      onChange({ ...value, type })
     },
-    [value, onChange]
-  );
+    [value, onChange],
+  )
 
   // ── Angle ──
   const updateAngle = useCallback(
     (angle: number) => {
-      onChange({ ...value, angle });
+      onChange({ ...value, angle })
     },
-    [value, onChange]
-  );
+    [value, onChange],
+  )
 
   const rotateAngle = useCallback(
     (delta: number) => {
       onChange({
         ...value,
-        angle: ((value.angle + delta) % 360 + 360) % 360,
-      });
+        angle: (((value.angle + delta) % 360) + 360) % 360,
+      })
     },
-    [value, onChange]
-  );
+    [value, onChange],
+  )
 
   // ── Stops ──
   const updateStop = useCallback(
     (index: number, updates: Partial<GradientStop>) => {
       const newStops = value.stops.map((s, i) =>
-        i === index ? { ...s, ...updates } : s
-      );
-      onChange({ ...value, stops: newStops });
+        i === index ? { ...s, ...updates } : s,
+      )
+      onChange({ ...value, stops: newStops })
     },
-    [value, onChange]
-  );
+    [value, onChange],
+  )
 
   const addStopAtPosition = useCallback(
     (position: number) => {
-      const pos = Math.max(0, Math.min(100, position));
+      const pos = Math.max(0, Math.min(100, position))
       // Interpolate color from closest neighbor
       const newStop: GradientStop = {
         color: '#808080',
         position: pos,
         opacity: 1,
-      };
+      }
       const newStops = [...value.stops, newStop].sort(
-        (a, b) => a.position - b.position
-      );
-      const newIndex = newStops.findIndex((s) => s === newStop);
-      setSelectedStop(newIndex);
-      onChange({ ...value, stops: newStops });
+        (a, b) => a.position - b.position,
+      )
+      const newIndex = newStops.findIndex((s) => s === newStop)
+      setSelectedStop(newIndex)
+      onChange({ ...value, stops: newStops })
     },
-    [value, onChange]
-  );
+    [value, onChange],
+  )
 
   const removeStop = useCallback(
     (index: number) => {
-      if (value.stops.length <= 2) return;
-      const newStops = value.stops.filter((_, i) => i !== index);
-      onChange({ ...value, stops: newStops });
-      if (selectedStop >= newStops.length)
-        setSelectedStop(newStops.length - 1);
-      else if (selectedStop === index)
-        setSelectedStop(Math.max(0, index - 1));
+      if (value.stops.length <= 2) return
+      const newStops = value.stops.filter((_, i) => i !== index)
+      onChange({ ...value, stops: newStops })
+      if (selectedStop >= newStops.length) setSelectedStop(newStops.length - 1)
+      else if (selectedStop === index) setSelectedStop(Math.max(0, index - 1))
     },
-    [value, onChange, selectedStop]
-  );
+    [value, onChange, selectedStop],
+  )
 
   // ── Selected stop color ──
   const updateStopColor = useCallback(
     (color: string) => {
-      updateStop(selectedStop, { color });
+      updateStop(selectedStop, { color })
     },
-    [selectedStop, updateStop]
-  );
+    [selectedStop, updateStop],
+  )
 
   const updateStopHex = useCallback(
     (newHex: string) => {
-      const clean = newHex.replace(/[^0-9a-fA-F]/g, '').slice(0, 6);
+      const clean = newHex.replace(/[^0-9a-fA-F]/g, '').slice(0, 6)
       if (clean.length === 6 || clean.length === 3) {
-        const hex = '#' + clean;
-        const newColor = buildStopColor(hex, stopOpacity);
-        updateStop(selectedStop, { color: newColor });
+        const hex = '#' + clean
+        const newColor = buildStopColor(hex, stopOpacity)
+        updateStop(selectedStop, { color: newColor })
       }
     },
-    [selectedStop, stopOpacity, updateStop]
-  );
+    [selectedStop, stopOpacity, updateStop],
+  )
 
   const updateStopOpacity = useCallback(
     (opacity: number) => {
-      const clamped = Math.max(0, Math.min(100, opacity));
-      const newColor = buildStopColor(stopHex, clamped);
-      updateStop(selectedStop, { color: newColor, opacity: clamped / 100 });
+      const clamped = Math.max(0, Math.min(100, opacity))
+      const newColor = buildStopColor(stopHex, clamped)
+      updateStop(selectedStop, { color: newColor, opacity: clamped / 100 })
     },
-    [selectedStop, stopHex, updateStop]
-  );
+    [selectedStop, stopHex, updateStop],
+  )
 
   // ── Repeat ──
   const toggleRepeat = useCallback(() => {
-    onChange({ ...value, repeat: !value.repeat });
-  }, [value, onChange]);
+    onChange({ ...value, repeat: !value.repeat })
+  }, [value, onChange])
 
   // ── Local inputs ──
-  const [angleInput, setAngleInput] = useState(String(value.angle));
-  useEffect(() => setAngleInput(String(value.angle)), [value.angle]);
+  const [angleInput, setAngleInput] = useState(String(value.angle))
+  useEffect(() => setAngleInput(String(value.angle)), [value.angle])
 
   const commitAngle = useCallback(() => {
-    const n = parseInt(angleInput, 10);
-    if (!isNaN(n)) updateAngle(((n % 360) + 360) % 360);
-    else setAngleInput(String(value.angle));
-  }, [angleInput, value.angle, updateAngle]);
+    const n = parseInt(angleInput, 10)
+    if (!isNaN(n)) updateAngle(((n % 360) + 360) % 360)
+    else setAngleInput(String(value.angle))
+  }, [angleInput, value.angle, updateAngle])
 
-  const [hexInput, setHexInput] = useState(stopHex.replace('#', ''));
-  useEffect(
-    () => setHexInput(stopHex.replace('#', '')),
-    [stopHex]
-  );
+  const [hexInput, setHexInput] = useState(stopHex.replace('#', ''))
+  useEffect(() => setHexInput(stopHex.replace('#', '')), [stopHex])
 
   const commitHex = useCallback(() => {
-    updateStopHex(hexInput);
-  }, [hexInput, updateStopHex]);
+    updateStopHex(hexInput)
+  }, [hexInput, updateStopHex])
 
-  const [opacityInput, setOpacityInput] = useState(String(stopOpacity));
-  useEffect(
-    () => setOpacityInput(String(stopOpacity)),
-    [stopOpacity]
-  );
+  const [opacityInput, setOpacityInput] = useState(String(stopOpacity))
+  useEffect(() => setOpacityInput(String(stopOpacity)), [stopOpacity])
 
   const commitOpacity = useCallback(() => {
-    const n = parseInt(opacityInput, 10);
-    if (!isNaN(n)) updateStopOpacity(n);
-    else setOpacityInput(String(stopOpacity));
-  }, [opacityInput, stopOpacity, updateStopOpacity]);
+    const n = parseInt(opacityInput, 10)
+    if (!isNaN(n)) updateStopOpacity(n)
+    else setOpacityInput(String(stopOpacity))
+  }, [opacityInput, stopOpacity, updateStopOpacity])
 
-  const showAngle = value.type === 'linear' || value.type === 'conic';
+  const showAngle = value.type === 'linear' || value.type === 'conic'
 
-  const TYPES: { type: GradientData['type']; Icon: React.FC<React.SVGProps<SVGSVGElement>> }[] = [
+  const TYPES: {
+    type: GradientData['type']
+    Icon: React.FC<React.SVGProps<SVGSVGElement>>
+  }[] = [
     { type: 'linear', Icon: LinearIcon },
     { type: 'radial', Icon: RadialIcon },
     { type: 'conic', Icon: ConicIcon },
-  ];
+  ]
 
   return (
     <div className="space-y-2.5">
@@ -580,9 +553,12 @@ export function GradientEditor({ value, onChange, showTypeSelector = true }: Gra
           >
             Type
           </span>
-          <div className="flex gap-px rounded overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+          <div
+            className="flex gap-px rounded overflow-hidden"
+            style={{ border: '1px solid var(--border)' }}
+          >
             {TYPES.map(({ type, Icon }) => {
-              const active = value.type === type;
+              const active = value.type === type
               return (
                 <button
                   key={type}
@@ -592,9 +568,7 @@ export function GradientEditor({ value, onChange, showTypeSelector = true }: Gra
                     background: active
                       ? 'rgba(74,158,255,0.15)'
                       : 'var(--bg-tertiary)',
-                    color: active
-                      ? 'var(--accent)'
-                      : 'var(--text-secondary)',
+                    color: active ? 'var(--accent)' : 'var(--text-secondary)',
                     border: 'none',
                     cursor: 'pointer',
                   }}
@@ -603,7 +577,7 @@ export function GradientEditor({ value, onChange, showTypeSelector = true }: Gra
                 >
                   <Icon />
                 </button>
-              );
+              )
             })}
           </div>
         </div>
@@ -646,7 +620,7 @@ export function GradientEditor({ value, onChange, showTypeSelector = true }: Gra
               onChange={(e) => setAngleInput(e.target.value)}
               onBlur={commitAngle}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') commitAngle();
+                if (e.key === 'Enter') commitAngle()
               }}
               className="w-11 h-6 rounded text-[11px] px-1.5 outline-none text-right tabular-nums"
               style={{
@@ -723,7 +697,7 @@ export function GradientEditor({ value, onChange, showTypeSelector = true }: Gra
             onChange={(e) => setOpacityInput(e.target.value)}
             onBlur={commitOpacity}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') commitOpacity();
+              if (e.key === 'Enter') commitOpacity()
             }}
             className="w-8 h-6 rounded text-[11px] px-1 outline-none text-right tabular-nums"
             style={{
@@ -732,10 +706,7 @@ export function GradientEditor({ value, onChange, showTypeSelector = true }: Gra
               color: 'var(--text-primary)',
             }}
           />
-          <span
-            className="text-[10px]"
-            style={{ color: 'var(--text-muted)' }}
-          >
+          <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
             %
           </span>
         </div>
@@ -751,5 +722,5 @@ export function GradientEditor({ value, onChange, showTypeSelector = true }: Gra
         </div>
       )}
     </div>
-  );
+  )
 }

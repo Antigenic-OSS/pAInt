@@ -1,27 +1,27 @@
-'use client';
+'use client'
 
-import { useEffect, useState } from 'react';
-import { useEditorStore } from '@/store';
-import { ScanAnimation } from '@/components/common/ScanAnimation';
+import { useEffect, useState } from 'react'
+import { useEditorStore } from '@/store'
+import { ScanAnimation } from '@/components/common/ScanAnimation'
 
 export function ScanOverlay() {
-  const aiScanStatus = useEditorStore((s) => s.aiScanStatus);
-  const [visible, setVisible] = useState(false);
-  const [fadeOut, setFadeOut] = useState(false);
+  const aiScanStatus = useEditorStore((s) => s.aiScanStatus)
+  const [visible, setVisible] = useState(false)
+  const [fadeOut, setFadeOut] = useState(false)
 
   useEffect(() => {
     if (aiScanStatus === 'scanning') {
-      setFadeOut(false);
-      setVisible(true);
+      setFadeOut(false)
+      setVisible(true)
     } else if (visible) {
       // Fade out when scan finishes
-      setFadeOut(true);
-      const timer = setTimeout(() => setVisible(false), 600);
-      return () => clearTimeout(timer);
+      setFadeOut(true)
+      const timer = setTimeout(() => setVisible(false), 600)
+      return () => clearTimeout(timer)
     }
-  }, [aiScanStatus, visible]);
+  }, [aiScanStatus, visible])
 
-  if (!visible) return null;
+  if (!visible) return null
 
   return (
     <div
@@ -39,7 +39,8 @@ export function ScanOverlay() {
           left: 0,
           right: 0,
           height: '2px',
-          background: 'linear-gradient(90deg, transparent 0%, var(--accent) 30%, var(--accent) 70%, transparent 100%)',
+          background:
+            'linear-gradient(90deg, transparent 0%, var(--accent) 30%, var(--accent) 70%, transparent 100%)',
           boxShadow: '0 0 12px 3px rgba(74, 158, 255, 0.4)',
           animation: 'scan-sweep 2.4s ease-in-out infinite',
         }}
@@ -52,7 +53,8 @@ export function ScanOverlay() {
           left: 0,
           right: 0,
           height: '1px',
-          background: 'linear-gradient(90deg, transparent 0%, rgba(74, 158, 255, 0.4) 40%, rgba(74, 158, 255, 0.4) 60%, transparent 100%)',
+          background:
+            'linear-gradient(90deg, transparent 0%, rgba(74, 158, 255, 0.4) 40%, rgba(74, 158, 255, 0.4) 60%, transparent 100%)',
           animation: 'scan-sweep 2.4s ease-in-out infinite',
           animationDelay: '1.2s',
         }}
@@ -60,5 +62,5 @@ export function ScanOverlay() {
 
       <ScanAnimation active={!fadeOut} label="SCANNING" />
     </div>
-  );
+  )
 }

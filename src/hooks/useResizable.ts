@@ -1,20 +1,20 @@
-import { useCallback } from 'react';
-import { useEditorStore } from '@/store';
+import { useCallback } from 'react'
+import { useEditorStore } from '@/store'
 
 export function useResizable(side: 'left' | 'right') {
   const width = useEditorStore((s) =>
-    side === 'left' ? s.leftPanelWidth : s.rightPanelWidth
-  );
+    side === 'left' ? s.leftPanelWidth : s.rightPanelWidth,
+  )
   const setWidth = useEditorStore((s) =>
-    side === 'left' ? s.setLeftPanelWidth : s.setRightPanelWidth
-  );
+    side === 'left' ? s.setLeftPanelWidth : s.setRightPanelWidth,
+  )
 
   const handleResize = useCallback(
     (newWidth: number) => {
-      setWidth(newWidth);
+      setWidth(newWidth)
     },
-    [setWidth]
-  );
+    [setWidth],
+  )
 
-  return { width, handleResize };
+  return { width, handleResize }
 }

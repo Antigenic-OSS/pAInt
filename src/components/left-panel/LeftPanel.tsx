@@ -1,20 +1,22 @@
-'use client';
+'use client'
 
-import React, { Suspense } from 'react';
-import { ResizablePanel } from '@/components/common/ResizablePanel';
-import { useEditorStore } from '@/store';
-import { LayersPanel } from './LayersPanel';
-import { PagesPanel } from './PagesPanel';
-import { AddElementPanel } from './AddElementPanel';
-import { IconSidebar } from './IconSidebar';
-import { PANEL_DEFAULTS } from '@/lib/constants';
+import React, { Suspense } from 'react'
+import { ResizablePanel } from '@/components/common/ResizablePanel'
+import { useEditorStore } from '@/store'
+import { LayersPanel } from './LayersPanel'
+import { PagesPanel } from './PagesPanel'
+import { AddElementPanel } from './AddElementPanel'
+import { IconSidebar } from './IconSidebar'
+import { PANEL_DEFAULTS } from '@/lib/constants'
 
-const ComponentsPanel = React.lazy(() => import('./ComponentsPanel'));
+const ComponentsPanel = React.lazy(() => import('./ComponentsPanel'))
 const TerminalPanel = React.lazy(() =>
-  import('./terminal/TerminalPanel').then((m) => ({ default: m.TerminalPanel })),
-);
+  import('./terminal/TerminalPanel').then((m) => ({
+    default: m.TerminalPanel,
+  })),
+)
 
-type LeftTab = 'layers' | 'pages' | 'components' | 'terminal' | 'add-element';
+type LeftTab = 'layers' | 'pages' | 'components' | 'terminal' | 'add-element'
 
 const TAB_LABELS: Record<LeftTab, string> = {
   layers: 'Navigator',
@@ -22,20 +24,20 @@ const TAB_LABELS: Record<LeftTab, string> = {
   components: 'Components',
   'add-element': 'Add Element',
   terminal: 'Terminal',
-};
+}
 
 interface LeftPanelProps {
-  width: number;
+  width: number
 }
 
 export function LeftPanel({ width }: LeftPanelProps) {
-  const setLeftPanelWidth = useEditorStore((s) => s.setLeftPanelWidth);
-  const connectionStatus = useEditorStore((s) => s.connectionStatus);
-  const activeTab = useEditorStore((s) => s.activeLeftTab);
-  const leftPanelOpen = useEditorStore((s) => s.leftPanelOpen);
+  const setLeftPanelWidth = useEditorStore((s) => s.setLeftPanelWidth)
+  const connectionStatus = useEditorStore((s) => s.connectionStatus)
+  const activeTab = useEditorStore((s) => s.activeLeftTab)
+  const leftPanelOpen = useEditorStore((s) => s.leftPanelOpen)
 
-  const isInspectorTab = activeTab !== 'terminal';
-  const showNotConnected = isInspectorTab && connectionStatus !== 'connected';
+  const isInspectorTab = activeTab !== 'terminal'
+  const showNotConnected = isInspectorTab && connectionStatus !== 'connected'
 
   return (
     <div className="flex h-full">
@@ -69,7 +71,13 @@ export function LeftPanel({ width }: LeftPanelProps) {
             {activeTab === 'terminal' ? (
               <Suspense
                 fallback={
-                  <div style={{ color: 'var(--text-muted)', padding: '8px', fontSize: '11px' }}>
+                  <div
+                    style={{
+                      color: 'var(--text-muted)',
+                      padding: '8px',
+                      fontSize: '11px',
+                    }}
+                  >
                     Loading terminal...
                   </div>
                 }
@@ -92,7 +100,13 @@ export function LeftPanel({ width }: LeftPanelProps) {
             ) : (
               <Suspense
                 fallback={
-                  <div style={{ color: 'var(--text-muted)', padding: '8px', fontSize: '11px' }}>
+                  <div
+                    style={{
+                      color: 'var(--text-muted)',
+                      padding: '8px',
+                      fontSize: '11px',
+                    }}
+                  >
                     Loading...
                   </div>
                 }
@@ -104,5 +118,5 @@ export function LeftPanel({ width }: LeftPanelProps) {
         </ResizablePanel>
       )}
     </div>
-  );
+  )
 }

@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { PROXY_HEADER } from '@/lib/constants';
+import { NextRequest, NextResponse } from 'next/server'
+import { PROXY_HEADER } from '@/lib/constants'
 
 const INSPECTOR_SCRIPT = `
 <script>
@@ -7,7 +7,7 @@ const INSPECTOR_SCRIPT = `
   ${getInspectorCode()}
 })();
 </script>
-`;
+`
 
 function getInspectorCode(): string {
   // The inspector code will be inlined here during build.
@@ -1437,43 +1437,40 @@ function getInspectorCode(): string {
 
       return { selectElement: selectElement, clearSelection: clearSelection };
     })();
-  `;
+  `
 }
 
 function isLocalhostUrl(url: string): boolean {
   try {
-    const parsed = new URL(url);
-    return parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1';
+    const parsed = new URL(url)
+    return parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1'
   } catch {
-    return false;
+    return false
   }
 }
 
-async function handleProxy(
-  request: NextRequest,
-  params: { path?: string[] }
-) {
+async function handleProxy(request: NextRequest, params: { path?: string[] }) {
   // Accept target URL from header, query param, or cookie (for dynamic chunk loading)
   const targetUrl =
     request.headers.get(PROXY_HEADER) ||
     request.nextUrl.searchParams.get(PROXY_HEADER) ||
-    request.cookies.get(PROXY_HEADER)?.value;
+    request.cookies.get(PROXY_HEADER)?.value
 
   if (!targetUrl) {
     return NextResponse.json(
       { error: 'Missing X-Dev-Editor-Target header or query parameter' },
-      { status: 400 }
-    );
+      { status: 400 },
+    )
   }
 
   if (!isLocalhostUrl(targetUrl)) {
     return NextResponse.json(
       { error: 'Target URL must be localhost or 127.0.0.1' },
-      { status: 400 }
-    );
+      { status: 400 },
+    )
   }
 
-  const path = (params.path || []).join('/');
+  const path = (params.path || []).join('/')
 
   // Short-circuit HMR requests — return empty responses so webpack's
   // hot-update polling and HMR connections stop at the proxy instead of
@@ -1489,33 +1486,33 @@ async function handleProxy(
       return new NextResponse('{}', {
         status: 200,
         headers: { 'content-type': 'application/json' },
-      });
+      })
     }
     // For JS hot-update chunks, return empty script
     if (path.endsWith('.js')) {
       return new NextResponse('', {
         status: 200,
         headers: { 'content-type': 'application/javascript' },
-      });
+      })
     }
     // Anything else HMR-related: empty 204
-    return new NextResponse(null, { status: 204 });
+    return new NextResponse(null, { status: 204 })
   }
 
-  const url = new URL(path || '/', targetUrl);
+  const url = new URL(path || '/', targetUrl)
 
   // Forward query string (excluding the proxy header param)
   request.nextUrl.searchParams.forEach((value, key) => {
     if (key !== PROXY_HEADER) {
-      url.searchParams.set(key, value);
+      url.searchParams.set(key, value)
     }
-  });
+  })
 
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 10000)
 
-    const headers = new Headers();
+    const headers = new Headers()
     request.headers.forEach((value, key) => {
       if (
         key !== PROXY_HEADER &&
@@ -1524,25 +1521,28 @@ async function handleProxy(
         key !== 'connection' &&
         key !== 'accept-encoding'
       ) {
-        headers.set(key, value);
+        headers.set(key, value)
       }
-    });
+    })
     // Request uncompressed responses from the target. The proxy streams
     // non-HTML/CSS bodies directly and strips content-encoding, so
     // receiving compressed bytes would corrupt JS chunks, fonts, etc.
-    headers.set('accept-encoding', 'identity');
+    headers.set('accept-encoding', 'identity')
 
     const response = await fetch(url.toString(), {
       method: request.method,
       headers,
-      body: request.method !== 'GET' && request.method !== 'HEAD' ? await request.arrayBuffer() : undefined,
+      body:
+        request.method !== 'GET' && request.method !== 'HEAD'
+          ? await request.arrayBuffer()
+          : undefined,
       signal: controller.signal,
       redirect: 'manual',
-    });
+    })
 
-    clearTimeout(timeout);
+    clearTimeout(timeout)
 
-    const contentType = response.headers.get('content-type') || '';
+    const contentType = response.headers.get('content-type') || ''
     // Headers to strip from proxied responses:
     // - content-encoding/transfer-encoding: proxy re-encodes the body
     // - COEP/COOP/CORP: block inspector script and iframe embedding
@@ -1557,108 +1557,114 @@ async function handleProxy(
       'content-security-policy',
       'content-security-policy-report-only',
       'x-frame-options',
-    ]);
+    ])
 
     // Handle redirects from the target (e.g. auth middleware redirecting to /login).
     // Rewrite the Location header to go through the proxy so the browser stays
     // within the iframe and cookies/auth state are preserved.
     if (response.status >= 300 && response.status < 400) {
-      const location = response.headers.get('location');
+      const location = response.headers.get('location')
       if (location) {
-        let rewrittenLocation = location;
-        const targetOriginForRedirect = new URL(targetUrl).origin;
+        let rewrittenLocation = location
+        const targetOriginForRedirect = new URL(targetUrl).origin
         try {
-          const locUrl = new URL(location, targetUrl);
+          const locUrl = new URL(location, targetUrl)
           // Only rewrite same-origin redirects (to the target server)
           if (locUrl.origin === targetOriginForRedirect) {
-            const sep = locUrl.search ? '&' : '?';
-            rewrittenLocation = `/api/proxy${locUrl.pathname}${locUrl.search}${sep}${PROXY_HEADER}=${encodeURIComponent(targetUrl)}${locUrl.hash}`;
+            const sep = locUrl.search ? '&' : '?'
+            rewrittenLocation = `/api/proxy${locUrl.pathname}${locUrl.search}${sep}${PROXY_HEADER}=${encodeURIComponent(targetUrl)}${locUrl.hash}`
           }
         } catch {
           // If URL parsing fails, pass through as-is
         }
-        const redirectHeaders = new Headers();
+        const redirectHeaders = new Headers()
         response.headers.forEach((value, key) => {
           if (!STRIP_HEADERS.has(key) && key !== 'location') {
             if (key === 'set-cookie') {
-              redirectHeaders.append(key, value);
+              redirectHeaders.append(key, value)
             } else {
-              redirectHeaders.set(key, value);
+              redirectHeaders.set(key, value)
             }
           }
-        });
-        redirectHeaders.set('location', rewrittenLocation);
+        })
+        redirectHeaders.set('location', rewrittenLocation)
         return new NextResponse(null, {
           status: response.status,
           headers: redirectHeaders,
-        });
+        })
       }
     }
-    const responseHeaders = new Headers();
+    const responseHeaders = new Headers()
     response.headers.forEach((value, key) => {
       if (!STRIP_HEADERS.has(key)) {
         // Use append for set-cookie to preserve multiple cookies (e.g. Supabase
         // auth sends separate access-token, refresh-token, etc. cookies).
         // Using set() would overwrite all but the last cookie.
         if (key === 'set-cookie') {
-          responseHeaders.append(key, value);
+          responseHeaders.append(key, value)
         } else {
-          responseHeaders.set(key, value);
+          responseHeaders.set(key, value)
         }
       }
-    });
+    })
 
     // Inject inspector script into HTML responses
     if (contentType.includes('text/html')) {
-      let html = await response.text();
+      let html = await response.text()
 
       // Strip any existing pAInt inspector scripts the target app may
       // have added manually. The proxy injects its own inspector, so these
       // duplicates cause multiple overlays and conflicting message handlers.
-      html = html.replace(/<script[^>]*src=["'][^"']*dev-editor-inspector\.js["'][^>]*><\/script>/gi, '');
+      html = html.replace(
+        /<script[^>]*src=["'][^"']*dev-editor-inspector\.js["'][^>]*><\/script>/gi,
+        '',
+      )
 
       // Rewrite asset URLs to go through proxy, preserving target param
-      const encodedTarget = encodeURIComponent(targetUrl);
-      const targetOrigin = new URL(targetUrl).origin;
-      const escapedOrigin = targetOrigin.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const encodedTarget = encodeURIComponent(targetUrl)
+      const targetOrigin = new URL(targetUrl).origin
+      const escapedOrigin = targetOrigin.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
       // Helper to rewrite a single absolute path, preserving URL fragments
       function proxyPath(originalPath: string): string {
-        let pathPart = originalPath;
-        let fragment = '';
-        const hashIdx = originalPath.indexOf('#');
+        let pathPart = originalPath
+        let fragment = ''
+        const hashIdx = originalPath.indexOf('#')
         if (hashIdx >= 0) {
-          pathPart = originalPath.substring(0, hashIdx);
-          fragment = originalPath.substring(hashIdx);
+          pathPart = originalPath.substring(0, hashIdx)
+          fragment = originalPath.substring(hashIdx)
         }
-        const separator = pathPart.includes('?') ? '&' : '?';
-        return `/api/proxy${pathPart}${separator}${PROXY_HEADER}=${encodedTarget}${fragment}`;
+        const separator = pathPart.includes('?') ? '&' : '?'
+        return `/api/proxy${pathPart}${separator}${PROXY_HEADER}=${encodedTarget}${fragment}`
       }
 
       // Rewrite fully-qualified target-origin URLs in attributes FIRST
       // (e.g., http://localhost:4000/avatars/img.png → /api/proxy/avatars/img.png?...)
       html = html.replace(
-        new RegExp(`(href|src|action|poster)=(["'])${escapedOrigin}(/[^"']*)`, 'g'),
+        new RegExp(
+          `(href|src|action|poster)=(["'])${escapedOrigin}(/[^"']*)`,
+          'g',
+        ),
         (_match: string, attr: string, quote: string, pathPart: string) => {
           // Tag /_next/ paths with _devproxy marker so middleware can identify
           // them as iframe-originated after history.replaceState changes the referer.
           // Do NOT add /api/proxy/ prefix — that breaks Turbopack chunk path matching.
           if (pathPart.startsWith('/_next/')) {
-            const sep = pathPart.includes('?') ? '&' : '?';
-            return `${attr}=${quote}${pathPart}${sep}_devproxy=1`;
+            const sep = pathPart.includes('?') ? '&' : '?'
+            return `${attr}=${quote}${pathPart}${sep}_devproxy=1`
           }
-          return `${attr}=${quote}${proxyPath(pathPart)}`;
-        }
-      );
+          return `${attr}=${quote}${proxyPath(pathPart)}`
+        },
+      )
 
       // Rewrite fully-qualified target-origin URLs in srcset
       html = html.replace(
         new RegExp(`${escapedOrigin}(/[^\\s,)"']+)`, 'g'),
         (_match: string, pathPart: string) => {
           // Only rewrite inside attribute contexts (not in script text)
-          return proxyPath(pathPart);
-        }
-      );
+          return proxyPath(pathPart)
+        },
+      )
 
       // Rewrite src, href, action, poster attributes (absolute paths starting with /)
       // Tag /_next/ paths with ?_devproxy=1 so the middleware can proxy them to
@@ -1672,25 +1678,25 @@ async function handleProxy(
         /(href|src|action|poster)=(["'])(\/[^"']*)/g,
         (_match: string, attr: string, quote: string, originalPath: string) => {
           // Skip already-rewritten paths
-          if (originalPath.startsWith('/api/proxy')) return _match;
+          if (originalPath.startsWith('/api/proxy')) return _match
           // Tag /_next/ paths with _devproxy marker for middleware identification
           if (originalPath.startsWith('/_next/')) {
-            if (originalPath.includes('_devproxy=')) return _match;
-            const sep = originalPath.includes('?') ? '&' : '?';
-            return `${attr}=${quote}${originalPath}${sep}_devproxy=1`;
+            if (originalPath.includes('_devproxy=')) return _match
+            const sep = originalPath.includes('?') ? '&' : '?'
+            return `${attr}=${quote}${originalPath}${sep}_devproxy=1`
           }
-          return `${attr}=${quote}${proxyPath(originalPath)}`;
-        }
-      );
+          return `${attr}=${quote}${proxyPath(originalPath)}`
+        },
+      )
 
       // Rewrite xlink:href for SVG <use> elements (absolute paths starting with /)
       html = html.replace(
         /xlink:href=(["'])(\/[^"']*)/g,
         (_match: string, quote: string, originalPath: string) => {
-          if (originalPath.startsWith('/api/proxy')) return _match;
-          return `xlink:href=${quote}${proxyPath(originalPath)}`;
-        }
-      );
+          if (originalPath.startsWith('/api/proxy')) return _match
+          return `xlink:href=${quote}${proxyPath(originalPath)}`
+        },
+      )
 
       // Rewrite srcset attributes — each entry is "url descriptor, ..."
       html = html.replace(
@@ -1699,58 +1705,58 @@ async function handleProxy(
           const rewritten = srcsetValue.replace(
             /(\/[^\s,]+)/g,
             (urlPart: string) => {
-              if (urlPart.startsWith('/api/proxy')) return urlPart;
-              return proxyPath(urlPart);
-            }
-          );
-          return `srcset=${quote}${rewritten}`;
-        }
-      );
+              if (urlPart.startsWith('/api/proxy')) return urlPart
+              return proxyPath(urlPart)
+            },
+          )
+          return `srcset=${quote}${rewritten}`
+        },
+      )
 
       // Rewrite data-src and data-srcset (common lazy-loading patterns)
       html = html.replace(
         /data-src=(["'])(\/[^"']*)/g,
         (_match: string, quote: string, originalPath: string) => {
-          if (originalPath.startsWith('/api/proxy')) return _match;
-          return `data-src=${quote}${proxyPath(originalPath)}`;
-        }
-      );
+          if (originalPath.startsWith('/api/proxy')) return _match
+          return `data-src=${quote}${proxyPath(originalPath)}`
+        },
+      )
       html = html.replace(
         /data-srcset=(["'])([^"']+)/g,
         (_match: string, quote: string, srcsetValue: string) => {
           const rewritten = srcsetValue.replace(
             /(\/[^\s,]+)/g,
             (urlPart: string) => {
-              if (urlPart.startsWith('/api/proxy')) return urlPart;
-              return proxyPath(urlPart);
-            }
-          );
-          return `data-srcset=${quote}${rewritten}`;
-        }
-      );
+              if (urlPart.startsWith('/api/proxy')) return urlPart
+              return proxyPath(urlPart)
+            },
+          )
+          return `data-srcset=${quote}${rewritten}`
+        },
+      )
 
       // Rewrite CSS url() references in inline styles — both absolute paths and full URLs
       html = html.replace(
         /url\((["']?)(\/[^)"']+)\1\)/g,
         (_match: string, quote: string, originalPath: string) => {
-          if (originalPath.startsWith('/api/proxy')) return _match;
-          return `url(${quote}${proxyPath(originalPath)}${quote})`;
-        }
-      );
+          if (originalPath.startsWith('/api/proxy')) return _match
+          return `url(${quote}${proxyPath(originalPath)}${quote})`
+        },
+      )
       html = html.replace(
         new RegExp(`url\\((["']?)${escapedOrigin}(/[^)"']+)\\1\\)`, 'g'),
         (_match: string, quote: string, pathPart: string) => {
-          return `url(${quote}${proxyPath(pathPart)}${quote})`;
-        }
-      );
+          return `url(${quote}${proxyPath(pathPart)}${quote})`
+        },
+      )
 
       // Rewrite @import in <style> blocks
       html = html.replace(
         /@import\s+(["'])(\/[^"']+)\1/g,
         (_match: string, quote: string, originalPath: string) => {
-          return `@import ${quote}${proxyPath(originalPath)}${quote}`;
-        }
-      );
+          return `@import ${quote}${proxyPath(originalPath)}${quote}`
+        },
+      )
 
       // --- Strip target-page scripts to prevent hydration failures ---
       // Remove ALL <script> tags from the target HTML except:
@@ -1765,11 +1771,11 @@ async function handleProxy(
         /<script\b[^>]*>[\s\S]*?<\/script>/gi,
         (match: string) => {
           if (/type\s*=\s*["']application\/ld\+json["']/i.test(match)) {
-            return match;
+            return match
           }
-          return '';
-        }
-      );
+          return ''
+        },
+      )
 
       // --- Navigation blocker ---
       // Even with target scripts stripped, we inject a navigation blocker that:
@@ -1781,11 +1787,11 @@ async function handleProxy(
       //      need to make requests through the proxy
       //   5. Suppresses HMR-related errors as a safety net
       //   6. Detects infinite reload loops as a safety net
-      const targetPagePath = '/' + (path || '');
-      const safePagePath = JSON.stringify(targetPagePath);
-      const safeTargetUrl = JSON.stringify(targetUrl);
-      const safeEncodedTarget = JSON.stringify(encodedTarget);
-      const safeProxyHeader = JSON.stringify(PROXY_HEADER);
+      const targetPagePath = '/' + (path || '')
+      const safePagePath = JSON.stringify(targetPagePath)
+      const safeTargetUrl = JSON.stringify(targetUrl)
+      const safeEncodedTarget = JSON.stringify(encodedTarget)
+      const safeProxyHeader = JSON.stringify(PROXY_HEADER)
 
       const navigationBlockerScript = `<script data-dev-editor-nav-blocker>
 (function(){
@@ -2201,89 +2207,107 @@ async function handleProxy(
   hs.textContent='nextjs-portal{display:none!important}';
   document.documentElement.appendChild(hs);
 })();
-</script>`;
+</script>`
 
       // Cookie setter for resource loading
       const urlInterceptorScript = `<script data-dev-editor-interceptor>
 (function(){
   document.cookie='${PROXY_HEADER}='+encodeURIComponent('${targetUrl}')+';path=/;SameSite=Strict;max-age=86400';
 })();
-</script>`;
+</script>`
 
       // Inject navigation blocker + cookie setter at the top of <head>.
       // IMPORTANT: Use function replacements to prevent $ characters in the
       // injected scripts from being interpreted as special replacement patterns
       // ($' = text after match, $& = matched text, etc.).
-      const headInjection = navigationBlockerScript + urlInterceptorScript;
+      const headInjection = navigationBlockerScript + urlInterceptorScript
       if (/<head>/i.test(html)) {
-        html = html.replace(/<head>/i, (match) => match + headInjection);
+        html = html.replace(/<head>/i, (match) => match + headInjection)
       } else if (/<head\s/i.test(html)) {
-        html = html.replace(/<head\s[^>]*>/i, (match) => match + headInjection);
+        html = html.replace(/<head\s[^>]*>/i, (match) => match + headInjection)
       } else {
-        html = headInjection + html;
+        html = headInjection + html
       }
 
       // Set cookie on the response for dynamic resource loading
-      responseHeaders.append('Set-Cookie', `${PROXY_HEADER}=${encodeURIComponent(targetUrl)}; Path=/; SameSite=Strict; Max-Age=86400`);
+      responseHeaders.append(
+        'Set-Cookie',
+        `${PROXY_HEADER}=${encodeURIComponent(targetUrl)}; Path=/; SameSite=Strict; Max-Age=86400`,
+      )
 
       // Strip CSP meta tags that could block the inline inspector script
-      html = html.replace(/<meta\s+http-equiv=["']?Content-Security-Policy["']?[^>]*>/gi, '');
+      html = html.replace(
+        /<meta\s+http-equiv=["']?Content-Security-Policy["']?[^>]*>/gi,
+        '',
+      )
 
       // Inject inspector script before </body> (case-insensitive)
       if (/<\/body>/i.test(html)) {
-        html = html.replace(/<\/body>/i, () => INSPECTOR_SCRIPT + '</body>');
+        html = html.replace(/<\/body>/i, () => INSPECTOR_SCRIPT + '</body>')
       } else {
-        html += INSPECTOR_SCRIPT;
+        html += INSPECTOR_SCRIPT
       }
 
-      responseHeaders.set('content-type', 'text/html; charset=utf-8');
-      responseHeaders.set('cache-control', 'no-cache, no-store, must-revalidate');
-      responseHeaders.delete('content-length');
+      responseHeaders.set('content-type', 'text/html; charset=utf-8')
+      responseHeaders.set(
+        'cache-control',
+        'no-cache, no-store, must-revalidate',
+      )
+      responseHeaders.delete('content-length')
 
       return new NextResponse(html, {
         status: response.status,
         headers: responseHeaders,
-      });
+      })
     }
 
     // Rewrite url() references in CSS responses
     if (contentType.includes('text/css')) {
-      let css = await response.text();
-      const cssEncodedTarget = encodeURIComponent(targetUrl);
-      const cssTargetOrigin = new URL(targetUrl).origin;
-      const cssEscapedOrigin = cssTargetOrigin.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      let css = await response.text()
+      const cssEncodedTarget = encodeURIComponent(targetUrl)
+      const cssTargetOrigin = new URL(targetUrl).origin
+      const cssEscapedOrigin = cssTargetOrigin.replace(
+        /[.*+?^${}()|[\]\\]/g,
+        '\\$&',
+      )
       // Rewrite absolute-path url() references
       css = css.replace(
         /url\(\s*(["']?)(\/[^)"'\s]+)\1\s*\)/g,
         (_match: string, quote: string, originalPath: string) => {
-          if (originalPath.startsWith('/api/proxy')) return _match;
-          const separator = originalPath.includes('?') ? '&' : '?';
-          return `url(${quote}/api/proxy${originalPath}${separator}${PROXY_HEADER}=${cssEncodedTarget}${quote})`;
-        }
-      );
+          if (originalPath.startsWith('/api/proxy')) return _match
+          const separator = originalPath.includes('?') ? '&' : '?'
+          return `url(${quote}/api/proxy${originalPath}${separator}${PROXY_HEADER}=${cssEncodedTarget}${quote})`
+        },
+      )
       // Rewrite fully-qualified target-origin url() references
       css = css.replace(
-        new RegExp(`url\\(\\s*(["']?)${cssEscapedOrigin}(/[^)"'\\s]+)\\1\\s*\\)`, 'g'),
+        new RegExp(
+          `url\\(\\s*(["']?)${cssEscapedOrigin}(/[^)"'\\s]+)\\1\\s*\\)`,
+          'g',
+        ),
         (_match: string, quote: string, pathPart: string) => {
-          const separator = pathPart.includes('?') ? '&' : '?';
-          return `url(${quote}/api/proxy${pathPart}${separator}${PROXY_HEADER}=${cssEncodedTarget}${quote})`;
-        }
-      );
+          const separator = pathPart.includes('?') ? '&' : '?'
+          return `url(${quote}/api/proxy${pathPart}${separator}${PROXY_HEADER}=${cssEncodedTarget}${quote})`
+        },
+      )
       // Rewrite @import with absolute paths
       css = css.replace(
         /@import\s+(["'])(\/[^"']+)\1/g,
         (_match: string, quote: string, originalPath: string) => {
-          const separator = originalPath.includes('?') ? '&' : '?';
-          return `@import ${quote}/api/proxy${originalPath}${separator}${PROXY_HEADER}=${cssEncodedTarget}${quote}`;
-        }
-      );
-      responseHeaders.set('content-type', 'text/css; charset=utf-8');
-      responseHeaders.set('cache-control', 'no-cache, no-store, must-revalidate');
-      responseHeaders.delete('content-length');
+          const separator = originalPath.includes('?') ? '&' : '?'
+          return `@import ${quote}/api/proxy${originalPath}${separator}${PROXY_HEADER}=${cssEncodedTarget}${quote}`
+        },
+      )
+      responseHeaders.set('content-type', 'text/css; charset=utf-8')
+      responseHeaders.set(
+        'cache-control',
+        'no-cache, no-store, must-revalidate',
+      )
+      responseHeaders.delete('content-length')
       return new NextResponse(css, {
         status: response.status,
         headers: responseHeaders,
-      });
+      })
     }
 
     // Add CORS headers for fonts (often needed for cross-origin loading)
@@ -2292,8 +2316,11 @@ async function handleProxy(
       contentType.includes('application/font') ||
       path.match(/\.(woff2?|ttf|eot|otf)(\?|$)/)
     ) {
-      responseHeaders.set('access-control-allow-origin', '*');
-      responseHeaders.set('cache-control', 'public, max-age=31536000, immutable');
+      responseHeaders.set('access-control-allow-origin', '*')
+      responseHeaders.set(
+        'cache-control',
+        'public, max-age=31536000, immutable',
+      )
     }
 
     // Images: always revalidate so updated assets on the target are
@@ -2302,70 +2329,72 @@ async function handleProxy(
       contentType.includes('image/') ||
       path.match(/\.(png|jpg|jpeg|gif|svg|ico|webp|avif)(\?|$)/)
     ) {
-      responseHeaders.set('cache-control', 'no-cache, no-store, must-revalidate');
+      responseHeaders.set(
+        'cache-control',
+        'no-cache, no-store, must-revalidate',
+      )
     }
 
     // Passthrough other responses (streams body directly — no buffering)
     return new NextResponse(response.body, {
       status: response.status,
       headers: responseHeaders,
-    });
+    })
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
       return NextResponse.json(
         { error: 'Target server timeout (10s)' },
-        { status: 504 }
-      );
+        { status: 504 },
+      )
     }
     return NextResponse.json(
       { error: 'Target server is unreachable' },
-      { status: 502 }
-    );
+      { status: 502 },
+    )
   }
 }
 
 export async function GET(
   request: NextRequest,
-  context: { params: Promise<{ path?: string[] }> }
+  context: { params: Promise<{ path?: string[] }> },
 ) {
-  const params = await context.params;
-  return handleProxy(request, params);
+  const params = await context.params
+  return handleProxy(request, params)
 }
 
 export async function POST(
   request: NextRequest,
-  context: { params: Promise<{ path?: string[] }> }
+  context: { params: Promise<{ path?: string[] }> },
 ) {
-  const params = await context.params;
-  return handleProxy(request, params);
+  const params = await context.params
+  return handleProxy(request, params)
 }
 
 export async function PUT(
   request: NextRequest,
-  context: { params: Promise<{ path?: string[] }> }
+  context: { params: Promise<{ path?: string[] }> },
 ) {
-  const params = await context.params;
-  return handleProxy(request, params);
+  const params = await context.params
+  return handleProxy(request, params)
 }
 
 export async function DELETE(
   request: NextRequest,
-  context: { params: Promise<{ path?: string[] }> }
+  context: { params: Promise<{ path?: string[] }> },
 ) {
-  const params = await context.params;
-  return handleProxy(request, params);
+  const params = await context.params
+  return handleProxy(request, params)
 }
 
-export async function OPTIONS(
-  request: NextRequest,
-) {
+export async function OPTIONS(request: NextRequest) {
   return new NextResponse(null, {
     status: 204,
     headers: {
       'access-control-allow-origin': '*',
       'access-control-allow-methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
-      'access-control-allow-headers': request.headers.get('access-control-request-headers') || '*',
+      'access-control-allow-headers':
+        request.headers.get('access-control-request-headers') || '*',
       'access-control-max-age': '86400',
     },
-  });
+  })
 }

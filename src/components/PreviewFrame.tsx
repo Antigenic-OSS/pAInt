@@ -1,10 +1,14 @@
-'use client';
+'use client'
 
-import { useEffect, useRef, useCallback, useState } from 'react';
-import { useEditorStore } from '@/store';
-import { usePostMessage, isEditorOnLocalhost } from '@/hooks/usePostMessage';
-import { PREVIEW_WIDTH_MIN, PREVIEW_WIDTH_MAX, PROXY_HEADER } from '@/lib/constants';
-import { ResponsiveToolbar } from './ResponsiveToolbar';
+import { useEffect, useRef, useCallback, useState } from 'react'
+import { useEditorStore } from '@/store'
+import { usePostMessage, isEditorOnLocalhost } from '@/hooks/usePostMessage'
+import {
+  PREVIEW_WIDTH_MIN,
+  PREVIEW_WIDTH_MAX,
+  PROXY_HEADER,
+} from '@/lib/constants'
+import { ResponsiveToolbar } from './ResponsiveToolbar'
 
 /**
  * Build the proxy URL for the iframe. Routes through /api/proxy/
@@ -13,9 +17,9 @@ import { ResponsiveToolbar } from './ResponsiveToolbar';
  * Used only when the editor runs on localhost.
  */
 function buildProxyUrl(targetUrl: string, pagePath: string): string {
-  const path = pagePath === '/' ? '' : pagePath;
-  const encoded = encodeURIComponent(targetUrl);
-  return `/api/proxy${path}?${PROXY_HEADER}=${encoded}`;
+  const path = pagePath === '/' ? '' : pagePath
+  const encoded = encodeURIComponent(targetUrl)
+  return `/api/proxy${path}?${PROXY_HEADER}=${encoded}`
 }
 
 /**
@@ -24,10 +28,14 @@ function buildProxyUrl(targetUrl: string, pagePath: string): string {
  * and strips security headers, just like the local proxy.
  * Used when the editor is deployed remotely and a bridge is connected.
  */
-function buildBridgeUrl(bridgeUrl: string, targetUrl: string, pagePath: string): string {
-  const path = pagePath === '/' ? '' : pagePath;
-  const encoded = encodeURIComponent(targetUrl);
-  return `${bridgeUrl}${path}?${PROXY_HEADER}=${encoded}`;
+function buildBridgeUrl(
+  bridgeUrl: string,
+  targetUrl: string,
+  pagePath: string,
+): string {
+  const path = pagePath === '/' ? '' : pagePath
+  const encoded = encodeURIComponent(targetUrl)
+  return `${bridgeUrl}${path}?${PROXY_HEADER}=${encoded}`
 }
 
 /**
@@ -37,8 +45,8 @@ function buildBridgeUrl(bridgeUrl: string, targetUrl: string, pagePath: string):
  * Requires the user to manually add the inspector script tag to their project.
  */
 function buildDirectUrl(targetUrl: string, pagePath: string): string {
-  const path = pagePath === '/' ? '' : pagePath;
-  return `${targetUrl}${path}`;
+  const path = pagePath === '/' ? '' : pagePath
+  return `${targetUrl}${path}`
 }
 
 /**
@@ -47,68 +55,74 @@ function buildDirectUrl(targetUrl: string, pagePath: string): string {
  */
 function buildIframeUrl(targetUrl: string, pagePath: string): string {
   if (isEditorOnLocalhost()) {
-    return buildProxyUrl(targetUrl, pagePath);
+    return buildProxyUrl(targetUrl, pagePath)
   }
   // Check for bridge connection
-  const bridgeUrl = useEditorStore.getState().bridgeUrl;
+  const bridgeUrl = useEditorStore.getState().bridgeUrl
   if (bridgeUrl) {
-    return buildBridgeUrl(bridgeUrl, targetUrl, pagePath);
+    return buildBridgeUrl(bridgeUrl, targetUrl, pagePath)
   }
-  return buildDirectUrl(targetUrl, pagePath);
+  return buildDirectUrl(targetUrl, pagePath)
 }
 
 export function PreviewFrame() {
-  const targetUrl = useEditorStore((s) => s.targetUrl);
-  const connectionStatus = useEditorStore((s) => s.connectionStatus);
-  const previewWidth = useEditorStore((s) => s.previewWidth);
-  const setPreviewWidth = useEditorStore((s) => s.setPreviewWidth);
-  const currentPagePath = useEditorStore((s) => s.currentPagePath);
-  const setConnectionStatus = useEditorStore((s) => s.setConnectionStatus);
-  const viewMode = useEditorStore((s) => s.viewMode);
-  const { iframeRef, sendToInspector } = usePostMessage();
-  const containerRef = useRef<HTMLDivElement>(null);
-  const lastSrcRef = useRef<string | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
+  const targetUrl = useEditorStore((s) => s.targetUrl)
+  const connectionStatus = useEditorStore((s) => s.connectionStatus)
+  const previewWidth = useEditorStore((s) => s.previewWidth)
+  const setPreviewWidth = useEditorStore((s) => s.setPreviewWidth)
+  const currentPagePath = useEditorStore((s) => s.currentPagePath)
+  const setConnectionStatus = useEditorStore((s) => s.setConnectionStatus)
+  const viewMode = useEditorStore((s) => s.viewMode)
+  const { iframeRef, sendToInspector } = usePostMessage()
+  const containerRef = useRef<HTMLDivElement>(null)
+  const lastSrcRef = useRef<string | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
 
   // Handle initial connection — load through proxy
   useEffect(() => {
-    if (!targetUrl || connectionStatus !== 'connecting') return;
+    if (!targetUrl || connectionStatus !== 'connecting') return
 
-    const iframe = iframeRef.current;
-    if (!iframe) return;
+    const iframe = iframeRef.current
+    if (!iframe) return
 
-    const newSrc = buildIframeUrl(targetUrl, currentPagePath);
+    const newSrc = buildIframeUrl(targetUrl, currentPagePath)
 
     if (lastSrcRef.current !== newSrc) {
-      lastSrcRef.current = newSrc;
-      iframe.src = newSrc;
+      lastSrcRef.current = newSrc
+      iframe.src = newSrc
     }
 
     const handleError = () => {
-      setConnectionStatus('disconnected');
-    };
+      setConnectionStatus('disconnected')
+    }
 
-    iframe.addEventListener('error', handleError);
+    iframe.addEventListener('error', handleError)
 
     return () => {
-      iframe.removeEventListener('error', handleError);
-    };
-  }, [targetUrl, connectionStatus, currentPagePath, iframeRef, setConnectionStatus]);
+      iframe.removeEventListener('error', handleError)
+    }
+  }, [
+    targetUrl,
+    connectionStatus,
+    currentPagePath,
+    iframeRef,
+    setConnectionStatus,
+  ])
 
   // Handle page navigation when already connected
   useEffect(() => {
-    if (!targetUrl || connectionStatus !== 'connected') return;
+    if (!targetUrl || connectionStatus !== 'connected') return
 
-    const iframe = iframeRef.current;
-    if (!iframe) return;
+    const iframe = iframeRef.current
+    if (!iframe) return
 
-    const newSrc = buildIframeUrl(targetUrl, currentPagePath);
+    const newSrc = buildIframeUrl(targetUrl, currentPagePath)
 
     if (lastSrcRef.current !== newSrc) {
-      lastSrcRef.current = newSrc;
-      iframe.src = newSrc;
+      lastSrcRef.current = newSrc
+      iframe.src = newSrc
     }
-  }, [targetUrl, connectionStatus, currentPagePath, iframeRef]);
+  }, [targetUrl, connectionStatus, currentPagePath, iframeRef])
 
   // Preview mode — stay on proxy URL but disable inspector overlays.
   // Previously this switched to the direct URL for full JS interactivity,
@@ -120,53 +134,67 @@ export function PreviewFrame() {
   // The proxy already preserves enough scripts for most apps (Expo/RN Web
   // bundles load fine through the proxy).
   useEffect(() => {
-    if (!targetUrl || connectionStatus !== 'connected') return;
+    if (!targetUrl || connectionStatus !== 'connected') return
 
     // Selection mode is managed by TopBar via sendToInspector.
     // When exiting preview, TopBar re-enables selection and the proxy
     // iframe is still loaded — no reload needed.
-  }, [viewMode, targetUrl, connectionStatus, currentPagePath, iframeRef]);
+  }, [viewMode, targetUrl, connectionStatus, currentPagePath, iframeRef])
 
   // Drag resize logic — symmetric from center
-  const dragStateRef = useRef<{ startX: number; startWidth: number; side: 'left' | 'right' } | null>(null);
+  const dragStateRef = useRef<{
+    startX: number
+    startWidth: number
+    side: 'left' | 'right'
+  } | null>(null)
 
-  const handleDragStart = useCallback((e: React.MouseEvent, side: 'left' | 'right') => {
-    e.preventDefault();
-    dragStateRef.current = { startX: e.clientX, startWidth: previewWidth, side };
-    setIsDragging(true);
-  }, [previewWidth]);
+  const handleDragStart = useCallback(
+    (e: React.MouseEvent, side: 'left' | 'right') => {
+      e.preventDefault()
+      dragStateRef.current = {
+        startX: e.clientX,
+        startWidth: previewWidth,
+        side,
+      }
+      setIsDragging(true)
+    },
+    [previewWidth],
+  )
 
   useEffect(() => {
-    if (!isDragging) return;
+    if (!isDragging) return
 
     const handleMouseMove = (e: MouseEvent) => {
-      const state = dragStateRef.current;
-      if (!state) return;
-      const delta = e.clientX - state.startX;
+      const state = dragStateRef.current
+      if (!state) return
+      const delta = e.clientX - state.startX
       // Symmetric: dragging right handle right = wider, left handle left = wider
-      const direction = state.side === 'right' ? 1 : -1;
-      const newWidth = Math.round(state.startWidth + delta * direction * 2);
-      const clamped = Math.min(Math.max(newWidth, PREVIEW_WIDTH_MIN), PREVIEW_WIDTH_MAX);
-      setPreviewWidth(clamped);
-      sendToInspector({ type: 'SET_BREAKPOINT', payload: { width: clamped } });
-    };
+      const direction = state.side === 'right' ? 1 : -1
+      const newWidth = Math.round(state.startWidth + delta * direction * 2)
+      const clamped = Math.min(
+        Math.max(newWidth, PREVIEW_WIDTH_MIN),
+        PREVIEW_WIDTH_MAX,
+      )
+      setPreviewWidth(clamped)
+      sendToInspector({ type: 'SET_BREAKPOINT', payload: { width: clamped } })
+    }
 
     const handleMouseUp = () => {
-      dragStateRef.current = null;
-      setIsDragging(false);
-    };
+      dragStateRef.current = null
+      setIsDragging(false)
+    }
 
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isDragging, setPreviewWidth, sendToInspector]);
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isDragging, setPreviewWidth, sendToInspector])
 
   // Check if preview fills container (no handles needed)
-  const containerWidth = containerRef.current?.clientWidth ?? 0;
-  const isFullWidth = previewWidth >= containerWidth && containerWidth > 0;
+  const containerWidth = containerRef.current?.clientWidth ?? 0
+  const isFullWidth = previewWidth >= containerWidth && containerWidth > 0
 
   if (!targetUrl) {
     return (
@@ -181,21 +209,21 @@ export function PreviewFrame() {
           >
             No project connected
           </div>
-          <div
-            className="text-sm"
-            style={{ color: 'var(--text-muted)' }}
-          >
+          <div className="text-sm" style={{ color: 'var(--text-muted)' }}>
             Enter a localhost URL above to get started
           </div>
         </div>
       </div>
-    );
+    )
   }
 
-  const showHandles = !isFullWidth && connectionStatus === 'connected';
+  const showHandles = !isFullWidth && connectionStatus === 'connected'
 
   return (
-    <div className="flex flex-col h-full" style={{ background: 'var(--bg-primary)' }}>
+    <div
+      className="flex flex-col h-full"
+      style={{ background: 'var(--bg-primary)' }}
+    >
       {connectionStatus === 'connected' && <ResponsiveToolbar />}
 
       <div
@@ -267,5 +295,5 @@ export function PreviewFrame() {
         )}
       </div>
     </div>
-  );
+  )
 }

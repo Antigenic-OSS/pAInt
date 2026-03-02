@@ -1,20 +1,24 @@
-'use client';
+'use client'
 
-import React from 'react';
+import React from 'react'
 
 interface IconToggleOption {
-  value: string;
-  icon: React.ReactNode;
-  tooltip?: string;
+  value: string
+  icon: React.ReactNode
+  tooltip?: string
 }
 
 interface IconToggleGroupProps {
-  options: IconToggleOption[];
-  value: string;
-  onChange: (value: string) => void;
+  options: IconToggleOption[]
+  value: string
+  onChange: (value: string) => void
 }
 
-export function IconToggleGroup({ options, value, onChange }: IconToggleGroupProps) {
+export function IconToggleGroup({
+  options,
+  value,
+  onChange,
+}: IconToggleGroupProps) {
   return (
     <div
       className="inline-flex rounded"
@@ -24,7 +28,7 @@ export function IconToggleGroup({ options, value, onChange }: IconToggleGroupPro
       }}
     >
       {options.map((option) => {
-        const isActive = option.value === value;
+        const isActive = option.value === value
         return (
           <button
             key={option.value}
@@ -43,8 +47,8 @@ export function IconToggleGroup({ options, value, onChange }: IconToggleGroupPro
           >
             {option.icon}
           </button>
-        );
+        )
       })}
     </div>
-  );
+  )
 }

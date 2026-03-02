@@ -1,26 +1,26 @@
-'use client';
+'use client'
 
-import { useMemo } from 'react';
-import { useEditorStore } from '@/store';
-import { LayerNode } from './LayerNode';
-import { LayerSearch } from './LayerSearch';
+import { useMemo } from 'react'
+import { useEditorStore } from '@/store'
+import { LayerNode } from './LayerNode'
+import { LayerSearch } from './LayerSearch'
 
 export function LayersPanel() {
-  const rootNode = useEditorStore((s) => s.rootNode);
-  const searchQuery = useEditorStore((s) => s.searchQuery);
-  const styleChanges = useEditorStore((s) => s.styleChanges);
+  const rootNode = useEditorStore((s) => s.rootNode)
+  const searchQuery = useEditorStore((s) => s.searchQuery)
+  const styleChanges = useEditorStore((s) => s.styleChanges)
 
   const { changedSelectors, deletedSelectors } = useMemo(() => {
-    const changed = new Set<string>();
-    const deleted = new Set<string>();
+    const changed = new Set<string>()
+    const deleted = new Set<string>()
     for (const change of styleChanges) {
-      changed.add(change.elementSelector);
+      changed.add(change.elementSelector)
       if (change.property === '__element_deleted__') {
-        deleted.add(change.elementSelector);
+        deleted.add(change.elementSelector)
       }
     }
-    return { changedSelectors: changed, deletedSelectors: deleted };
-  }, [styleChanges]);
+    return { changedSelectors: changed, deletedSelectors: deleted }
+  }, [styleChanges])
 
   if (!rootNode) {
     return (
@@ -30,7 +30,7 @@ export function LayersPanel() {
       >
         Loading tree...
       </div>
-    );
+    )
   }
 
   return (
@@ -38,9 +38,15 @@ export function LayersPanel() {
       <LayerSearch />
       <div className="flex-1 overflow-auto py-1">
         <div style={{ minWidth: 'max-content' }}>
-          <LayerNode node={rootNode} depth={0} searchQuery={searchQuery} changedSelectors={changedSelectors} deletedSelectors={deletedSelectors} />
+          <LayerNode
+            node={rootNode}
+            depth={0}
+            searchQuery={searchQuery}
+            changedSelectors={changedSelectors}
+            deletedSelectors={deletedSelectors}
+          />
         </div>
       </div>
     </div>
-  );
+  )
 }

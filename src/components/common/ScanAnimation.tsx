@@ -1,12 +1,15 @@
-'use client';
+'use client'
 
 interface ScanAnimationProps {
-  active: boolean;
-  label?: string;
+  active: boolean
+  label?: string
 }
 
-export function ScanAnimation({ active, label = 'SCANNING' }: ScanAnimationProps) {
-  if (!active) return null;
+export function ScanAnimation({
+  active,
+  label = 'SCANNING',
+}: ScanAnimationProps) {
+  if (!active) return null
 
   return (
     <div className="flex flex-col items-center gap-3">
@@ -69,5 +72,5 @@ export function ScanAnimation({ active, label = 'SCANNING' }: ScanAnimationProps
         ))}
       </div>
     </div>
-  );
+  )
 }

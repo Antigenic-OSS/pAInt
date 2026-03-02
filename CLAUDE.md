@@ -225,7 +225,7 @@ src/
 │   └── api-handlers.ts               # API request handler
 ├── server/
 │   └── terminal-server.ts            # Terminal WebSocket server (node-pty)
-└── middleware.ts                       # Asset-only request proxying
+└── proxy.ts                            # Asset-only request proxying
 ```
 
 ## Commands
@@ -264,7 +264,7 @@ Top bar background:   #171717
 7. **Bun everywhere** — all commands use Bun. No npm/yarn/pnpm.
 8. **No shell exec** — Claude CLI spawned via `Bun.spawn` or `execFile` only. Never `exec` with shell strings.
 9. **Singleton message listener** — `usePostMessage` hook registers ONE global `window.addEventListener('message', ...)` via a module-level singleton. Multiple components may call the hook but only one listener exists. This prevents duplicate message processing.
-10. **Middleware matches assets only** — Next.js middleware matches `/_next/` paths and common asset directories (`/fonts/`, `/webfonts/`, `/assets/`, `/images/`, `/icons/`, `/media/`, `/static/`, `/public/`). Inside the function, requests are filtered by file extension (`ASSET_EXT_RE`) and referer/fetch-dest to only proxy iframe-originated asset requests. Never match page-level paths — doing so pollutes the editor's HMR route tree and causes reload loops.
+10. **Proxy matches assets only** — Next.js proxy matches `/_next/` paths and common asset directories (`/fonts/`, `/webfonts/`, `/assets/`, `/images/`, `/icons/`, `/media/`, `/static/`, `/public/`). Inside the function, requests are filtered by file extension (`ASSET_EXT_RE`) and referer/fetch-dest to only proxy iframe-originated asset requests. Never match page-level paths — doing so pollutes the editor's HMR route tree and causes reload loops.
 11. **HMR isolation** — Proxy short-circuits `.hot-update.*`, `webpack-hmr`, and `turbopack-hmr` requests with empty 200/204 responses. `page.tsx` suppresses unhandled HMR rejection errors as a safety net.
 
 ## Code Style

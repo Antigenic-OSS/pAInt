@@ -1,10 +1,10 @@
-'use client';
+'use client'
 
-import type { ClaudeError, ClaudeErrorCode } from '@/types/claude';
+import type { ClaudeError, ClaudeErrorCode } from '@/types/claude'
 
 interface ClaudeErrorStateProps {
-  error: ClaudeError;
-  onRetry: () => void;
+  error: ClaudeError
+  onRetry: () => void
 }
 
 const ERROR_DETAILS: Record<
@@ -35,12 +35,13 @@ const ERROR_DETAILS: Record<
   },
   UNKNOWN: {
     title: 'Unexpected Error',
-    description: 'An unexpected error occurred while communicating with Claude Code.',
+    description:
+      'An unexpected error occurred while communicating with Claude Code.',
   },
-};
+}
 
 export function ClaudeErrorState({ error, onRetry }: ClaudeErrorStateProps) {
-  const details = ERROR_DETAILS[error.code] || ERROR_DETAILS.UNKNOWN;
+  const details = ERROR_DETAILS[error.code] || ERROR_DETAILS.UNKNOWN
 
   return (
     <div className="flex flex-col gap-3 p-4">
@@ -48,15 +49,24 @@ export function ClaudeErrorState({ error, onRetry }: ClaudeErrorStateProps) {
       <div className="flex items-start gap-2">
         <div
           className="flex items-center justify-center w-6 h-6 rounded-full flex-shrink-0 text-sm"
-          style={{ background: 'rgba(244, 71, 71, 0.15)', color: 'var(--error)' }}
+          style={{
+            background: 'rgba(244, 71, 71, 0.15)',
+            color: 'var(--error)',
+          }}
         >
           !
         </div>
         <div className="flex flex-col gap-1">
-          <div className="text-xs font-medium" style={{ color: 'var(--error)' }}>
+          <div
+            className="text-xs font-medium"
+            style={{ color: 'var(--error)' }}
+          >
             {details.title}
           </div>
-          <p className="text-[11px] leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+          <p
+            className="text-[11px] leading-relaxed"
+            style={{ color: 'var(--text-secondary)' }}
+          >
             {details.description}
           </p>
         </div>
@@ -79,7 +89,10 @@ export function ClaudeErrorState({ error, onRetry }: ClaudeErrorStateProps) {
       {/* Command suggestion */}
       {details.command && (
         <div className="flex flex-col gap-1.5">
-          <span className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>
+          <span
+            className="text-[11px]"
+            style={{ color: 'var(--text-secondary)' }}
+          >
             Run this in your terminal:
           </span>
           <code
@@ -108,5 +121,5 @@ export function ClaudeErrorState({ error, onRetry }: ClaudeErrorStateProps) {
         Retry
       </button>
     </div>
-  );
+  )
 }

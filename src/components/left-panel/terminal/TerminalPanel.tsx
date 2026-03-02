@@ -1,78 +1,81 @@
-'use client';
+'use client'
 
-import { useRef, useEffect, useCallback } from 'react';
-import { useEditorStore } from '@/store';
-import { ScanOverlay } from './ScanOverlay';
-import '@xterm/xterm/css/xterm.css';
+import { useRef, useEffect, useCallback } from 'react'
+import { useEditorStore } from '@/store'
+import { ScanOverlay } from './ScanOverlay'
+import '@xterm/xterm/css/xterm.css'
 
 export function TerminalPanel() {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const termRef = useRef<import('@xterm/xterm').Terminal | null>(null);
-  const fitRef = useRef<import('@xterm/addon-fit').FitAddon | null>(null);
-  const wsRef = useRef<WebSocket | null>(null);
-  const initRef = useRef(false);
-  const terminalStatus = useEditorStore((s) => s.terminalStatus);
-  const setTerminalStatus = useEditorStore((s) => s.setTerminalStatus);
-  const port = useEditorStore((s) => s.terminalServerPort);
-  const registerTerminalWriter = useEditorStore((s) => s.registerTerminalWriter);
+  const containerRef = useRef<HTMLDivElement>(null)
+  const termRef = useRef<import('@xterm/xterm').Terminal | null>(null)
+  const fitRef = useRef<import('@xterm/addon-fit').FitAddon | null>(null)
+  const wsRef = useRef<WebSocket | null>(null)
+  const initRef = useRef(false)
+  const terminalStatus = useEditorStore((s) => s.terminalStatus)
+  const setTerminalStatus = useEditorStore((s) => s.setTerminalStatus)
+  const port = useEditorStore((s) => s.terminalServerPort)
+  const registerTerminalWriter = useEditorStore((s) => s.registerTerminalWriter)
 
   const connectWebSocket = useCallback(
-    (term: import('@xterm/xterm').Terminal, fitAddon: import('@xterm/addon-fit').FitAddon) => {
-      setTerminalStatus('connecting');
-      const ws = new WebSocket(`ws://localhost:${port}/ws`);
-      wsRef.current = ws;
+    (
+      term: import('@xterm/xterm').Terminal,
+      fitAddon: import('@xterm/addon-fit').FitAddon,
+    ) => {
+      setTerminalStatus('connecting')
+      const ws = new WebSocket(`ws://localhost:${port}/ws`)
+      wsRef.current = ws
 
       ws.onopen = () => {
-        setTerminalStatus('connected');
-        fitAddon.fit();
-        const dims = fitAddon.proposeDimensions();
+        setTerminalStatus('connected')
+        fitAddon.fit()
+        const dims = fitAddon.proposeDimensions()
         if (dims) {
-          ws.send('\x01' + JSON.stringify({ cols: dims.cols, rows: dims.rows }));
+          ws.send('\x01' + JSON.stringify({ cols: dims.cols, rows: dims.rows }))
         }
-      };
+      }
 
       ws.onmessage = (event) => {
-        term.write(event.data);
-      };
+        term.write(event.data)
+      }
 
       ws.onclose = () => {
-        setTerminalStatus('disconnected');
-      };
+        setTerminalStatus('disconnected')
+      }
 
       ws.onerror = () => {
-        setTerminalStatus('error');
-      };
+        setTerminalStatus('error')
+      }
 
       term.onData((data: string) => {
         if (ws.readyState === WebSocket.OPEN) {
-          ws.send(data);
+          ws.send(data)
         }
-      });
+      })
 
       term.onResize((size: { cols: number; rows: number }) => {
         if (ws.readyState === WebSocket.OPEN) {
-          ws.send('\x01' + JSON.stringify({ cols: size.cols, rows: size.rows }));
+          ws.send('\x01' + JSON.stringify({ cols: size.cols, rows: size.rows }))
         }
-      });
+      })
     },
     [port, setTerminalStatus],
-  );
+  )
 
   useEffect(() => {
-    if (initRef.current) return;
-    initRef.current = true;
-    let mounted = true;
+    if (initRef.current) return
+    initRef.current = true
+    let mounted = true
 
     async function init() {
       const [{ Terminal }, { FitAddon }] = await Promise.all([
         import('@xterm/xterm'),
         import('@xterm/addon-fit'),
-      ]);
+      ])
 
-      if (!mounted || !containerRef.current) return;
+      if (!mounted || !containerRef.current) return
 
-      const fitAddon = new FitAddon();
-      fitRef.current = fitAddon;
+      const fitAddon = new FitAddon()
+      fitRef.current = fitAddon
 
       const term = new Terminal({
         theme: {
@@ -101,49 +104,49 @@ export function TerminalPanel() {
         fontFamily: 'Menlo, Monaco, "Courier New", monospace',
         cursorBlink: true,
         scrollback: 1000,
-      });
+      })
 
-      term.loadAddon(fitAddon);
-      term.open(containerRef.current);
-      fitAddon.fit();
+      term.loadAddon(fitAddon)
+      term.open(containerRef.current)
+      fitAddon.fit()
 
-      termRef.current = term;
-      registerTerminalWriter((data: string) => term.write(data));
-      connectWebSocket(term, fitAddon);
+      termRef.current = term
+      registerTerminalWriter((data: string) => term.write(data))
+      connectWebSocket(term, fitAddon)
     }
 
-    init();
+    init()
 
     return () => {
-      mounted = false;
-      registerTerminalWriter(null);
-      wsRef.current?.close();
-      termRef.current?.dispose();
-    };
-  }, [connectWebSocket, registerTerminalWriter]);
+      mounted = false
+      registerTerminalWriter(null)
+      wsRef.current?.close()
+      termRef.current?.dispose()
+    }
+  }, [connectWebSocket, registerTerminalWriter])
 
   // Refit terminal when container resizes
   useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
+    const el = containerRef.current
+    if (!el) return
 
     const observer = new ResizeObserver(() => {
       if (fitRef.current && termRef.current) {
-        fitRef.current.fit();
+        fitRef.current.fit()
       }
-    });
+    })
 
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
 
   const reconnect = useCallback(() => {
     if (termRef.current && fitRef.current) {
-      wsRef.current?.close();
-      termRef.current.clear();
-      connectWebSocket(termRef.current, fitRef.current);
+      wsRef.current?.close()
+      termRef.current.clear()
+      connectWebSocket(termRef.current, fitRef.current)
     }
-  }, [connectWebSocket]);
+  }, [connectWebSocket])
 
   return (
     <div className="relative flex flex-col h-full">
@@ -164,7 +167,10 @@ export function TerminalPanel() {
                     : 'var(--text-muted)',
             }}
           />
-          <span className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>
+          <span
+            className="text-[11px]"
+            style={{ color: 'var(--text-secondary)' }}
+          >
             Terminal
           </span>
         </div>
@@ -172,7 +178,10 @@ export function TerminalPanel() {
           <button
             onClick={reconnect}
             className="px-2 py-0.5 rounded text-[10px] font-medium"
-            style={{ background: 'var(--bg-hover)', color: 'var(--text-secondary)' }}
+            style={{
+              background: 'var(--bg-hover)',
+              color: 'var(--text-secondary)',
+            }}
           >
             Reconnect
           </button>
@@ -204,5 +213,5 @@ export function TerminalPanel() {
       {/* AI Scan animation overlay */}
       <ScanOverlay />
     </div>
-  );
+  )
 }

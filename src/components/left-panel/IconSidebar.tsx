@@ -1,35 +1,45 @@
-'use client';
+'use client'
 
-import { useEditorStore } from '@/store';
-import { LEFT_ICON_SIDEBAR_WIDTH } from '@/lib/constants';
-import { LayersIcon, PagesIcon, ComponentsIcon, AddElementIcon, TerminalIcon } from './icons';
+import { useEditorStore } from '@/store'
+import { LEFT_ICON_SIDEBAR_WIDTH } from '@/lib/constants'
+import {
+  LayersIcon,
+  PagesIcon,
+  ComponentsIcon,
+  AddElementIcon,
+  TerminalIcon,
+} from './icons'
 
-type LeftTab = 'layers' | 'pages' | 'components' | 'terminal' | 'add-element';
+type LeftTab = 'layers' | 'pages' | 'components' | 'terminal' | 'add-element'
 
-const tabs: { id: LeftTab; icon: React.FC<React.SVGProps<SVGSVGElement>>; title: string }[] = [
+const tabs: {
+  id: LeftTab
+  icon: React.FC<React.SVGProps<SVGSVGElement>>
+  title: string
+}[] = [
   { id: 'layers', icon: LayersIcon, title: 'Navigator' },
   { id: 'pages', icon: PagesIcon, title: 'Pages' },
   { id: 'components', icon: ComponentsIcon, title: 'Components' },
   { id: 'add-element', icon: AddElementIcon, title: 'Add Element' },
   { id: 'terminal', icon: TerminalIcon, title: 'Terminal' },
-];
+]
 
 export function IconSidebar() {
-  const activeTab = useEditorStore((s) => s.activeLeftTab);
-  const leftPanelOpen = useEditorStore((s) => s.leftPanelOpen);
-  const setActiveTab = useEditorStore((s) => s.setActiveLeftTab);
-  const togglePanel = useEditorStore((s) => s.toggleLeftPanel);
+  const activeTab = useEditorStore((s) => s.activeLeftTab)
+  const leftPanelOpen = useEditorStore((s) => s.leftPanelOpen)
+  const setActiveTab = useEditorStore((s) => s.setActiveLeftTab)
+  const togglePanel = useEditorStore((s) => s.toggleLeftPanel)
 
   const handleClick = (tabId: LeftTab) => {
     if (tabId === activeTab && leftPanelOpen) {
-      togglePanel();
+      togglePanel()
     } else {
-      setActiveTab(tabId);
+      setActiveTab(tabId)
       if (!leftPanelOpen) {
-        togglePanel();
+        togglePanel()
       }
     }
-  };
+  }
 
   return (
     <div
@@ -41,8 +51,8 @@ export function IconSidebar() {
       }}
     >
       {tabs.map((tab) => {
-        const isActive = tab.id === activeTab && leftPanelOpen;
-        const Icon = tab.icon;
+        const isActive = tab.id === activeTab && leftPanelOpen
+        const Icon = tab.icon
         return (
           <button
             key={tab.id}
@@ -57,7 +67,9 @@ export function IconSidebar() {
               borderTop: 'none',
               borderRight: 'none',
               borderBottom: 'none',
-              borderLeft: isActive ? '2px solid var(--accent)' : '2px solid transparent',
+              borderLeft: isActive
+                ? '2px solid var(--accent)'
+                : '2px solid transparent',
               transition: 'background-color 0.15s, color 0.15s',
               cursor: 'pointer',
               outline: 'none',
@@ -65,19 +77,23 @@ export function IconSidebar() {
             }}
             onMouseEnter={(e) => {
               if (!isActive) {
-                e.currentTarget.style.background = 'var(--bg-hover)';
-                e.currentTarget.style.color = 'var(--text-secondary)';
+                e.currentTarget.style.background = 'var(--bg-hover)'
+                e.currentTarget.style.color = 'var(--text-secondary)'
               }
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = isActive ? 'var(--bg-active)' : 'transparent';
-              e.currentTarget.style.color = isActive ? 'var(--text-primary)' : 'var(--text-muted)';
+              e.currentTarget.style.background = isActive
+                ? 'var(--bg-active)'
+                : 'transparent'
+              e.currentTarget.style.color = isActive
+                ? 'var(--text-primary)'
+                : 'var(--text-muted)'
             }}
           >
             <Icon />
           </button>
-        );
+        )
       })}
     </div>
-  );
+  )
 }

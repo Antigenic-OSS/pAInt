@@ -1,23 +1,23 @@
-'use client';
+'use client'
 
-import { useState, useCallback } from 'react';
-import { useEditorStore } from '@/store';
-import { useChangeTracker } from '@/hooks/useChangeTracker';
-import { formatChangelog } from '@/lib/utils';
-import { BREAKPOINTS } from '@/lib/constants';
+import { useState, useCallback } from 'react'
+import { useEditorStore } from '@/store'
+import { useChangeTracker } from '@/hooks/useChangeTracker'
+import { formatChangelog } from '@/lib/utils'
+import { BREAKPOINTS } from '@/lib/constants'
 
 export function ChangelogActions() {
-  const [copied, setCopied] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
+  const [copied, setCopied] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
 
-  const targetUrl = useEditorStore((s) => s.targetUrl);
-  const activeBreakpoint = useEditorStore((s) => s.activeBreakpoint);
-  const currentPagePath = useEditorStore((s) => s.currentPagePath);
-  const styleChanges = useEditorStore((s) => s.styleChanges);
-  const { revertAll } = useChangeTracker();
+  const targetUrl = useEditorStore((s) => s.targetUrl)
+  const activeBreakpoint = useEditorStore((s) => s.activeBreakpoint)
+  const currentPagePath = useEditorStore((s) => s.currentPagePath)
+  const styleChanges = useEditorStore((s) => s.styleChanges)
+  const { revertAll } = useChangeTracker()
 
   const handleCopyChangelog = useCallback(async () => {
-    if (!targetUrl) return;
+    if (!targetUrl) return
 
     const changelog = formatChangelog({
       targetUrl,
@@ -25,35 +25,38 @@ export function ChangelogActions() {
       breakpoint: activeBreakpoint,
       breakpointWidth: BREAKPOINTS[activeBreakpoint].width,
       styleChanges,
-    });
+    })
 
     try {
-      await navigator.clipboard.writeText(changelog);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      await navigator.clipboard.writeText(changelog)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
     } catch {
-      const textarea = document.createElement('textarea');
-      textarea.value = changelog;
-      textarea.style.position = 'fixed';
-      textarea.style.opacity = '0';
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textarea);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      const textarea = document.createElement('textarea')
+      textarea.value = changelog
+      textarea.style.position = 'fixed'
+      textarea.style.opacity = '0'
+      document.body.appendChild(textarea)
+      textarea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textarea)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
     }
-  }, [targetUrl, activeBreakpoint, styleChanges, currentPagePath]);
+  }, [targetUrl, activeBreakpoint, styleChanges, currentPagePath])
 
   const handleClearAll = useCallback(() => {
-    revertAll();
-    setShowConfirm(false);
-  }, [revertAll]);
+    revertAll()
+    setShowConfirm(false)
+  }, [revertAll])
 
-  if (styleChanges.length === 0) return null;
+  if (styleChanges.length === 0) return null
 
   return (
-    <div className="flex flex-col gap-2 p-3" style={{ borderTop: '1px solid var(--border)' }}>
+    <div
+      className="flex flex-col gap-2 p-3"
+      style={{ borderTop: '1px solid var(--border)' }}
+    >
       <button
         onClick={handleCopyChangelog}
         className="w-full py-1.5 px-3 rounded text-xs font-medium transition-colors"
@@ -98,5 +101,5 @@ export function ChangelogActions() {
         </button>
       )}
     </div>
-  );
+  )
 }

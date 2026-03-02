@@ -1,13 +1,16 @@
-'use client';
+'use client'
 
-import { useEditorStore } from '@/store';
+import { useEditorStore } from '@/store'
 
 export function LayerSearch() {
-  const searchQuery = useEditorStore((s) => s.searchQuery);
-  const setSearchQuery = useEditorStore((s) => s.setSearchQuery);
+  const searchQuery = useEditorStore((s) => s.searchQuery)
+  const setSearchQuery = useEditorStore((s) => s.setSearchQuery)
 
   return (
-    <div className="px-2 py-1.5 flex-shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
+    <div
+      className="px-2 py-1.5 flex-shrink-0"
+      style={{ borderBottom: '1px solid var(--border)' }}
+    >
       <input
         type="text"
         value={searchQuery}
@@ -16,5 +19,5 @@ export function LayerSearch() {
         className="w-full text-xs py-1 px-2"
       />
     </div>
-  );
+  )
 }

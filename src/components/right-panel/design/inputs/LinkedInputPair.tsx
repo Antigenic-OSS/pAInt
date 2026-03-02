@@ -1,24 +1,29 @@
-'use client';
+'use client'
 
-import { useState, useEffect, useCallback } from 'react';
-import { parseCSSValue } from '@/lib/utils';
-import { CompactInput } from './CompactInput';
-import { LinkIcon, UnlinkIcon } from '@/components/right-panel/design/icons';
+import { useState, useEffect, useCallback } from 'react'
+import { parseCSSValue } from '@/lib/utils'
+import { CompactInput } from './CompactInput'
+import { LinkIcon, UnlinkIcon } from '@/components/right-panel/design/icons'
 
 interface LinkedInputPairProps {
-  label: string;
-  values: { top: string; right: string; bottom: string; left: string };
-  properties: { top: string; right: string; bottom: string; left: string };
-  onChange: (property: string, value: string) => void;
-  onReset?: (property: string) => void;
-  units?: string[];
+  label: string
+  values: { top: string; right: string; bottom: string; left: string }
+  properties: { top: string; right: string; bottom: string; left: string }
+  onChange: (property: string, value: string) => void
+  onReset?: (property: string) => void
+  units?: string[]
 }
 
-function areAllEqual(values: { top: string; right: string; bottom: string; left: string }): boolean {
-  const t = parseCSSValue(values.top);
-  const r = parseCSSValue(values.right);
-  const b = parseCSSValue(values.bottom);
-  const l = parseCSSValue(values.left);
+function areAllEqual(values: {
+  top: string
+  right: string
+  bottom: string
+  left: string
+}): boolean {
+  const t = parseCSSValue(values.top)
+  const r = parseCSSValue(values.right)
+  const b = parseCSSValue(values.bottom)
+  const l = parseCSSValue(values.left)
   return (
     t.number === r.number &&
     t.number === b.number &&
@@ -26,20 +31,25 @@ function areAllEqual(values: { top: string; right: string; bottom: string; left:
     (t.unit || 'px') === (r.unit || 'px') &&
     (t.unit || 'px') === (b.unit || 'px') &&
     (t.unit || 'px') === (l.unit || 'px')
-  );
+  )
 }
 
-function areHVEqual(values: { top: string; right: string; bottom: string; left: string }): boolean {
-  const t = parseCSSValue(values.top);
-  const r = parseCSSValue(values.right);
-  const b = parseCSSValue(values.bottom);
-  const l = parseCSSValue(values.left);
+function areHVEqual(values: {
+  top: string
+  right: string
+  bottom: string
+  left: string
+}): boolean {
+  const t = parseCSSValue(values.top)
+  const r = parseCSSValue(values.right)
+  const b = parseCSSValue(values.bottom)
+  const l = parseCSSValue(values.left)
   return (
     t.number === b.number &&
     (t.unit || 'px') === (b.unit || 'px') &&
     r.number === l.number &&
     (r.unit || 'px') === (l.unit || 'px')
-  );
+  )
 }
 
 export function LinkedInputPair({
@@ -50,47 +60,44 @@ export function LinkedInputPair({
   onReset,
   units = ['px', '%', 'em', 'rem'],
 }: LinkedInputPairProps) {
-  const [isLinked, setIsLinked] = useState(() => areHVEqual(values));
+  const [isLinked, setIsLinked] = useState(() => areHVEqual(values))
 
   useEffect(() => {
     if (areHVEqual(values)) {
-      setIsLinked(true);
+      setIsLinked(true)
     }
-  }, [values]);
+  }, [values])
 
   const handleLinkedHChange = (property: string, value: string) => {
-    onChange(properties.left, value);
-    onChange(properties.right, value);
-  };
+    onChange(properties.left, value)
+    onChange(properties.right, value)
+  }
 
   const handleLinkedVChange = (property: string, value: string) => {
-    onChange(properties.top, value);
-    onChange(properties.bottom, value);
-  };
+    onChange(properties.top, value)
+    onChange(properties.bottom, value)
+  }
 
   // When linked, reset both sides together
-  const handleLinkedHReset = useCallback(
-    () => {
-      if (!onReset) return;
-      onReset(properties.left);
-      onReset(properties.right);
-    },
-    [onReset, properties.left, properties.right]
-  );
+  const handleLinkedHReset = useCallback(() => {
+    if (!onReset) return
+    onReset(properties.left)
+    onReset(properties.right)
+  }, [onReset, properties.left, properties.right])
 
-  const handleLinkedVReset = useCallback(
-    () => {
-      if (!onReset) return;
-      onReset(properties.top);
-      onReset(properties.bottom);
-    },
-    [onReset, properties.top, properties.bottom]
-  );
+  const handleLinkedVReset = useCallback(() => {
+    if (!onReset) return
+    onReset(properties.top)
+    onReset(properties.bottom)
+  }, [onReset, properties.top, properties.bottom])
 
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
-        <span className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>
+        <span
+          className="text-[10px] font-medium"
+          style={{ color: 'var(--text-muted)' }}
+        >
           {label}
         </span>
         <button
@@ -163,5 +170,5 @@ export function LinkedInputPair({
         </div>
       )}
     </div>
-  );
+  )
 }

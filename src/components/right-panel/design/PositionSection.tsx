@@ -1,17 +1,17 @@
-'use client';
+'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { useEditorStore } from '@/store';
-import { SectionHeader } from '@/components/right-panel/design/inputs/SectionHeader';
+import { useState, useRef, useEffect, useCallback } from 'react'
+import { useEditorStore } from '@/store'
+import { SectionHeader } from '@/components/right-panel/design/inputs/SectionHeader'
 import {
   StaticIcon,
   RelativeIcon,
   AbsoluteIcon,
   FixedIcon,
   StickyIcon,
-} from '@/components/right-panel/design/icons';
-import { useChangeTracker } from '@/hooks/useChangeTracker';
-import { parseCSSValue, formatCSSValue } from '@/lib/utils';
+} from '@/components/right-panel/design/icons'
+import { useChangeTracker } from '@/hooks/useChangeTracker'
+import { parseCSSValue, formatCSSValue } from '@/lib/utils'
 
 // ─── Position option data ──────────────────────────────────────────
 
@@ -46,20 +46,20 @@ const POSITION_OPTIONS = [
     icon: <StickyIcon />,
     desc: 'Sticky toggles between relative and fixed based on the scroll position.',
   },
-];
+]
 
 const FLOAT_OPTIONS = [
   { value: 'none', label: 'None' },
   { value: 'left', label: 'Left' },
   { value: 'right', label: 'Right' },
-];
+]
 
 const CLEAR_OPTIONS = [
   { value: 'none', label: 'None' },
   { value: 'left', label: 'Left' },
   { value: 'right', label: 'Right' },
   { value: 'both', label: 'Both' },
-];
+]
 
 // ─── Position Dropdown ─────────────────────────────────────────────
 
@@ -67,23 +67,24 @@ function PositionDropdown({
   value,
   onChange,
 }: {
-  value: string;
-  onChange: (v: string) => void;
+  value: string
+  onChange: (v: string) => void
 }) {
-  const [open, setOpen] = useState(false);
-  const [hoveredDesc, setHoveredDesc] = useState<string | null>(null);
-  const ref = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false)
+  const [hoveredDesc, setHoveredDesc] = useState<string | null>(null)
+  const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
 
-  const current = POSITION_OPTIONS.find((o) => o.value === value) || POSITION_OPTIONS[0];
-  const displayDesc = hoveredDesc ?? current.desc;
+  const current =
+    POSITION_OPTIONS.find((o) => o.value === value) || POSITION_OPTIONS[0]
+  const displayDesc = hoveredDesc ?? current.desc
 
   return (
     <div ref={ref} className="relative">
@@ -97,12 +98,27 @@ function PositionDropdown({
           color: 'var(--text-primary)',
         }}
       >
-        <span className="flex items-center justify-center w-4 h-4 mr-1.5" style={{ color: 'var(--text-secondary)' }}>
+        <span
+          className="flex items-center justify-center w-4 h-4 mr-1.5"
+          style={{ color: 'var(--text-secondary)' }}
+        >
           {current.icon}
         </span>
         <span className="flex-1 text-left">{current.label}</span>
-        <svg width={8} height={8} viewBox="0 0 8 8" fill="none" style={{ color: 'var(--text-muted)', flexShrink: 0 }}>
-          <path d="M2 3l2 2 2-2" stroke="currentColor" strokeWidth={1.2} strokeLinecap="round" strokeLinejoin="round" />
+        <svg
+          width={8}
+          height={8}
+          viewBox="0 0 8 8"
+          fill="none"
+          style={{ color: 'var(--text-muted)', flexShrink: 0 }}
+        >
+          <path
+            d="M2 3l2 2 2-2"
+            stroke="currentColor"
+            strokeWidth={1.2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
         </svg>
       </button>
 
@@ -115,29 +131,45 @@ function PositionDropdown({
           }}
         >
           {POSITION_OPTIONS.map((opt) => {
-            const isActive = opt.value === value;
+            const isActive = opt.value === value
             return (
               <button
                 key={opt.value}
                 type="button"
-                onClick={() => { onChange(opt.value); setOpen(false); }}
+                onClick={() => {
+                  onChange(opt.value)
+                  setOpen(false)
+                }}
                 onMouseEnter={() => setHoveredDesc(opt.desc)}
                 onMouseLeave={() => setHoveredDesc(null)}
                 className="flex items-center w-full px-2.5 py-1.5 text-[11px] transition-colors"
                 style={{
-                  color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
-                  background: isActive ? 'rgba(74, 158, 255, 0.08)' : 'transparent',
+                  color: isActive
+                    ? 'var(--text-primary)'
+                    : 'var(--text-secondary)',
+                  background: isActive
+                    ? 'rgba(74, 158, 255, 0.08)'
+                    : 'transparent',
                 }}
               >
-                <span className="w-4 text-center mr-2" style={{ fontSize: 10, color: isActive ? 'var(--accent)' : 'transparent' }}>
+                <span
+                  className="w-4 text-center mr-2"
+                  style={{
+                    fontSize: 10,
+                    color: isActive ? 'var(--accent)' : 'transparent',
+                  }}
+                >
                   {isActive ? '✓' : ''}
                 </span>
-                <span className="flex items-center justify-center w-4 h-4 mr-2" style={{ color: 'var(--text-secondary)' }}>
+                <span
+                  className="flex items-center justify-center w-4 h-4 mr-2"
+                  style={{ color: 'var(--text-secondary)' }}
+                >
                   {opt.icon}
                 </span>
                 <span>{opt.label}</span>
               </button>
-            );
+            )
           })}
           {/* Description area */}
           <div
@@ -153,12 +185,12 @@ function PositionDropdown({
         </div>
       )}
     </div>
-  );
+  )
 }
 
 // ─── Preset values for position offsets ─────────────────────────────
 
-const OFFSET_PRESETS = [0, 5, 10, 15, 25, 50, 75, 100];
+const OFFSET_PRESETS = [0, 5, 10, 15, 25, 50, 75, 100]
 
 // ─── Offset Input (compact, for spatial layout) ────────────────────
 
@@ -168,123 +200,144 @@ function OffsetInput({
   onChange,
   placeholder = 'Auto',
 }: {
-  value: string;
-  property: string;
-  onChange: (prop: string, val: string) => void;
-  placeholder?: string;
+  value: string
+  property: string
+  onChange: (prop: string, val: string) => void
+  placeholder?: string
 }) {
-  const isAuto = !value || value === 'auto';
-  const parsed = parseCSSValue(value || '0px');
-  const [localVal, setLocalVal] = useState(isAuto ? '' : String(parsed.number));
-  const [focused, setFocused] = useState(false);
-  const [showPresets, setShowPresets] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const popoverRef = useRef<HTMLDivElement>(null);
-  const isDragging = useRef(false);
-  const dragStartX = useRef(0);
-  const dragStartValue = useRef(0);
+  const isAuto = !value || value === 'auto'
+  const parsed = parseCSSValue(value || '0px')
+  const [localVal, setLocalVal] = useState(isAuto ? '' : String(parsed.number))
+  const [focused, setFocused] = useState(false)
+  const [showPresets, setShowPresets] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const popoverRef = useRef<HTMLDivElement>(null)
+  const isDragging = useRef(false)
+  const dragStartX = useRef(0)
+  const dragStartValue = useRef(0)
 
   const hasChange = useEditorStore((s) => {
-    const sp = s.selectorPath;
-    return sp ? s.styleChanges.some((c) => c.elementSelector === sp && c.property === property) : false;
-  });
+    const sp = s.selectorPath
+    return sp
+      ? s.styleChanges.some(
+          (c) => c.elementSelector === sp && c.property === property,
+        )
+      : false
+  })
 
   useEffect(() => {
-    const a = !value || value === 'auto';
+    const a = !value || value === 'auto'
     if (a) {
-      setLocalVal('');
+      setLocalVal('')
     } else {
-      const p = parseCSSValue(value);
-      setLocalVal(String(p.number));
+      const p = parseCSSValue(value)
+      setLocalVal(String(p.number))
     }
-  }, [value]);
+  }, [value])
 
   // Close presets on outside click
   useEffect(() => {
-    if (!showPresets) return;
+    if (!showPresets) return
     const handle = (e: MouseEvent) => {
       if (
-        containerRef.current && !containerRef.current.contains(e.target as Node) &&
-        popoverRef.current && !popoverRef.current.contains(e.target as Node)
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node) &&
+        popoverRef.current &&
+        !popoverRef.current.contains(e.target as Node)
       ) {
-        setShowPresets(false);
+        setShowPresets(false)
       }
-    };
-    document.addEventListener('mousedown', handle);
-    return () => document.removeEventListener('mousedown', handle);
-  }, [showPresets]);
-
-  const commit = useCallback((num: string) => {
-    if (!num || num.trim() === '') {
-      onChange(property, 'auto');
-    } else {
-      const n = parseFloat(num);
-      if (!isNaN(n)) onChange(property, formatCSSValue(n, 'px'));
     }
-  }, [onChange, property]);
+    document.addEventListener('mousedown', handle)
+    return () => document.removeEventListener('mousedown', handle)
+  }, [showPresets])
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      commit(localVal);
-      inputRef.current?.blur();
-      setShowPresets(false);
-    } else if (e.key === 'Escape') {
-      setShowPresets(false);
-      inputRef.current?.blur();
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      const inc = e.shiftKey ? 10 : 1;
-      const next = parseFloat(localVal || '0') + inc;
-      setLocalVal(String(next));
-      commit(String(next));
-    } else if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      const dec = e.shiftKey ? 10 : 1;
-      const next = parseFloat(localVal || '0') - dec;
-      setLocalVal(String(next));
-      commit(String(next));
-    }
-  }, [localVal, commit]);
+  const commit = useCallback(
+    (num: string) => {
+      if (!num || num.trim() === '') {
+        onChange(property, 'auto')
+      } else {
+        const n = parseFloat(num)
+        if (!isNaN(n)) onChange(property, formatCSSValue(n, 'px'))
+      }
+    },
+    [onChange, property],
+  )
 
-  const selectPreset = useCallback((val: number | 'auto') => {
-    if (val === 'auto') {
-      setLocalVal('');
-      onChange(property, 'auto');
-    } else {
-      setLocalVal(String(val));
-      onChange(property, formatCSSValue(val, 'px'));
-    }
-    setShowPresets(false);
-  }, [onChange, property]);
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        commit(localVal)
+        inputRef.current?.blur()
+        setShowPresets(false)
+      } else if (e.key === 'Escape') {
+        setShowPresets(false)
+        inputRef.current?.blur()
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        const inc = e.shiftKey ? 10 : 1
+        const next = parseFloat(localVal || '0') + inc
+        setLocalVal(String(next))
+        commit(String(next))
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        const dec = e.shiftKey ? 10 : 1
+        const next = parseFloat(localVal || '0') - dec
+        setLocalVal(String(next))
+        commit(String(next))
+      }
+    },
+    [localVal, commit],
+  )
+
+  const selectPreset = useCallback(
+    (val: number | 'auto') => {
+      if (val === 'auto') {
+        setLocalVal('')
+        onChange(property, 'auto')
+      } else {
+        setLocalVal(String(val))
+        onChange(property, formatCSSValue(val, 'px'))
+      }
+      setShowPresets(false)
+    },
+    [onChange, property],
+  )
 
   // Drag-to-scrub (2px step per pixel of movement)
-  const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    if ((e.target as HTMLElement).tagName === 'INPUT') return;
-    e.preventDefault();
-    isDragging.current = true;
-    dragStartX.current = e.clientX;
-    dragStartValue.current = parseFloat(localVal || '0');
-    containerRef.current?.setPointerCapture(e.pointerId);
-    document.body.style.cursor = 'ew-resize';
-    document.body.style.userSelect = 'none';
-  }, [localVal]);
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      if ((e.target as HTMLElement).tagName === 'INPUT') return
+      e.preventDefault()
+      isDragging.current = true
+      dragStartX.current = e.clientX
+      dragStartValue.current = parseFloat(localVal || '0')
+      containerRef.current?.setPointerCapture(e.pointerId)
+      document.body.style.cursor = 'ew-resize'
+      document.body.style.userSelect = 'none'
+    },
+    [localVal],
+  )
 
-  const handlePointerMove = useCallback((e: React.PointerEvent) => {
-    if (!isDragging.current) return;
-    const delta = e.clientX - dragStartX.current;
-    const next = Math.round(dragStartValue.current + delta * 2);
-    setLocalVal(String(next));
-    onChange(property, formatCSSValue(next, 'px'));
-  }, [onChange, property]);
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (!isDragging.current) return
+      const delta = e.clientX - dragStartX.current
+      const next = Math.round(dragStartValue.current + delta * 2)
+      setLocalVal(String(next))
+      onChange(property, formatCSSValue(next, 'px'))
+    },
+    [onChange, property],
+  )
 
   const handlePointerUp = useCallback((e: React.PointerEvent) => {
-    if (!isDragging.current) return;
-    isDragging.current = false;
-    containerRef.current?.releasePointerCapture(e.pointerId);
-    document.body.style.cursor = '';
-    document.body.style.userSelect = '';
-  }, []);
+    if (!isDragging.current) return
+    isDragging.current = false
+    containerRef.current?.releasePointerCapture(e.pointerId)
+    document.body.style.cursor = ''
+    document.body.style.userSelect = ''
+  }, [])
 
   return (
     <div className="relative">
@@ -307,12 +360,22 @@ function OffsetInput({
           value={localVal}
           placeholder={placeholder}
           onChange={(e) => setLocalVal(e.target.value)}
-          onFocus={() => { setFocused(true); setShowPresets(true); }}
-          onBlur={() => { setFocused(false); commit(localVal); }}
+          onFocus={() => {
+            setFocused(true)
+            setShowPresets(true)
+          }}
+          onBlur={() => {
+            setFocused(false)
+            commit(localVal)
+          }}
           onKeyDown={handleKeyDown}
           className="w-full text-center text-[11px] bg-transparent border-none outline-none"
           style={{
-            color: hasChange ? 'var(--accent)' : (isAuto && !focused ? 'var(--text-muted)' : 'var(--text-primary)'),
+            color: hasChange
+              ? 'var(--accent)'
+              : isAuto && !focused
+                ? 'var(--text-muted)'
+                : 'var(--text-primary)',
             cursor: focused ? 'text' : 'ew-resize',
           }}
         />
@@ -337,12 +400,19 @@ function OffsetInput({
           {/* Auto button */}
           <button
             type="button"
-            onMouseDown={(e) => { e.preventDefault(); selectPreset('auto'); }}
+            onMouseDown={(e) => {
+              e.preventDefault()
+              selectPreset('auto')
+            }}
             className="w-full h-6 rounded text-[10px] mb-1 transition-colors"
             style={{
-              background: isAuto ? 'rgba(74,158,255,0.12)' : 'var(--bg-tertiary)',
+              background: isAuto
+                ? 'rgba(74,158,255,0.12)'
+                : 'var(--bg-tertiary)',
               color: isAuto ? 'var(--accent)' : 'var(--text-secondary)',
-              border: isAuto ? '1px solid rgba(74,158,255,0.3)' : '1px solid var(--border)',
+              border: isAuto
+                ? '1px solid rgba(74,158,255,0.3)'
+                : '1px solid var(--border)',
               cursor: 'pointer',
             }}
           >
@@ -358,7 +428,9 @@ function OffsetInput({
               className="absolute h-full rounded-full"
               style={{
                 background: 'var(--accent)',
-                width: isAuto ? '0%' : `${Math.min(100, (parsed.number / 100) * 100)}%`,
+                width: isAuto
+                  ? '0%'
+                  : `${Math.min(100, (parsed.number / 100) * 100)}%`,
                 transition: 'width 0.15s',
               }}
             />
@@ -379,29 +451,36 @@ function OffsetInput({
           {/* Preset grid */}
           <div className="grid grid-cols-4 gap-1">
             {OFFSET_PRESETS.map((val) => {
-              const isActive = !isAuto && parsed.number === val;
+              const isActive = !isAuto && parsed.number === val
               return (
                 <button
                   key={val}
                   type="button"
-                  onMouseDown={(e) => { e.preventDefault(); selectPreset(val); }}
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    selectPreset(val)
+                  }}
                   className="h-5 rounded text-[9px] tabular-nums transition-colors"
                   style={{
-                    background: isActive ? 'rgba(74,158,255,0.12)' : 'var(--bg-tertiary)',
+                    background: isActive
+                      ? 'rgba(74,158,255,0.12)'
+                      : 'var(--bg-tertiary)',
                     color: isActive ? 'var(--accent)' : 'var(--text-secondary)',
-                    border: isActive ? '1px solid rgba(74,158,255,0.3)' : '1px solid transparent',
+                    border: isActive
+                      ? '1px solid rgba(74,158,255,0.3)'
+                      : '1px solid transparent',
                     cursor: 'pointer',
                   }}
                 >
                   {val}
                 </button>
-              );
+              )
             })}
           </div>
         </div>
       )}
     </div>
-  );
+  )
 }
 
 // ─── Spatial Offset Widget (visual-editor-style) ─────────────────────────
@@ -413,14 +492,17 @@ function SpatialOffsetWidget({
   left,
   onChange,
 }: {
-  top: string;
-  right: string;
-  bottom: string;
-  left: string;
-  onChange: (prop: string, val: string) => void;
+  top: string
+  right: string
+  bottom: string
+  left: string
+  onChange: (prop: string, val: string) => void
 }) {
   return (
-    <div className="relative flex flex-col items-center" style={{ padding: '2px 0' }}>
+    <div
+      className="relative flex flex-col items-center"
+      style={{ padding: '2px 0' }}
+    >
       {/* Top */}
       <div className="flex justify-center mb-0.5">
         <OffsetInput value={top} property="top" onChange={onChange} />
@@ -453,7 +535,7 @@ function SpatialOffsetWidget({
         <OffsetInput value={bottom} property="bottom" onChange={onChange} />
       </div>
     </div>
-  );
+  )
 }
 
 // ─── z-Index Input ─────────────────────────────────────────────────
@@ -462,41 +544,50 @@ function ZIndexInput({
   value,
   onChange,
 }: {
-  value: string;
-  onChange: (prop: string, val: string) => void;
+  value: string
+  onChange: (prop: string, val: string) => void
 }) {
-  const isAuto = !value || value === 'auto' || value === '0';
-  const [localVal, setLocalVal] = useState(isAuto ? '' : value);
-  const [isAutoMode, setIsAutoMode] = useState(isAuto);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const isAuto = !value || value === 'auto' || value === '0'
+  const [localVal, setLocalVal] = useState(isAuto ? '' : value)
+  const [isAutoMode, setIsAutoMode] = useState(isAuto)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    const a = !value || value === 'auto';
-    setIsAutoMode(a);
-    setLocalVal(a ? '' : value);
-  }, [value]);
+    const a = !value || value === 'auto'
+    setIsAutoMode(a)
+    setLocalVal(a ? '' : value)
+  }, [value])
 
-  const commit = useCallback((v: string) => {
-    if (!v || v.trim() === '') {
-      onChange('zIndex', 'auto');
-      setIsAutoMode(true);
-    } else {
-      const n = parseInt(v, 10);
-      if (!isNaN(n)) {
-        onChange('zIndex', String(n));
-        setIsAutoMode(false);
+  const commit = useCallback(
+    (v: string) => {
+      if (!v || v.trim() === '') {
+        onChange('zIndex', 'auto')
+        setIsAutoMode(true)
+      } else {
+        const n = parseInt(v, 10)
+        if (!isNaN(n)) {
+          onChange('zIndex', String(n))
+          setIsAutoMode(false)
+        }
       }
-    }
-  }, [onChange]);
+    },
+    [onChange],
+  )
 
   return (
     <div className="flex items-center gap-2">
-      <span className="text-[11px] flex-shrink-0" style={{ color: 'var(--text-secondary)' }}>
+      <span
+        className="text-[11px] flex-shrink-0"
+        style={{ color: 'var(--text-secondary)' }}
+      >
         z-Index
       </span>
       <div
         className="flex items-center h-6 rounded flex-1 overflow-hidden"
-        style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border)' }}
+        style={{
+          background: 'var(--bg-tertiary)',
+          border: '1px solid var(--border)',
+        }}
       >
         <input
           ref={inputRef}
@@ -504,39 +595,46 @@ function ZIndexInput({
           inputMode="numeric"
           value={isAutoMode ? '' : localVal}
           placeholder="Auto"
-          onChange={(e) => { setLocalVal(e.target.value); setIsAutoMode(false); }}
+          onChange={(e) => {
+            setLocalVal(e.target.value)
+            setIsAutoMode(false)
+          }}
           onBlur={() => commit(localVal)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') { commit(localVal); inputRef.current?.blur(); }
-            else if (e.key === 'ArrowUp') {
-              e.preventDefault();
-              const next = parseInt(localVal || '0', 10) + (e.shiftKey ? 10 : 1);
-              setLocalVal(String(next));
-              setIsAutoMode(false);
-              commit(String(next));
+            if (e.key === 'Enter') {
+              commit(localVal)
+              inputRef.current?.blur()
+            } else if (e.key === 'ArrowUp') {
+              e.preventDefault()
+              const next = parseInt(localVal || '0', 10) + (e.shiftKey ? 10 : 1)
+              setLocalVal(String(next))
+              setIsAutoMode(false)
+              commit(String(next))
             } else if (e.key === 'ArrowDown') {
-              e.preventDefault();
-              const next = parseInt(localVal || '0', 10) - (e.shiftKey ? 10 : 1);
-              setLocalVal(String(next));
-              setIsAutoMode(false);
-              commit(String(next));
+              e.preventDefault()
+              const next = parseInt(localVal || '0', 10) - (e.shiftKey ? 10 : 1)
+              setLocalVal(String(next))
+              setIsAutoMode(false)
+              commit(String(next))
             }
           }}
           className="flex-1 min-w-0 h-full px-2 text-[11px] bg-transparent border-none outline-none"
-          style={{ color: isAutoMode ? 'var(--text-muted)' : 'var(--text-primary)' }}
+          style={{
+            color: isAutoMode ? 'var(--text-muted)' : 'var(--text-primary)',
+          }}
         />
         <button
           type="button"
           onClick={() => {
             if (isAutoMode) {
-              setIsAutoMode(false);
-              setLocalVal('0');
-              onChange('zIndex', '0');
-              inputRef.current?.focus();
+              setIsAutoMode(false)
+              setLocalVal('0')
+              onChange('zIndex', '0')
+              inputRef.current?.focus()
             } else {
-              setIsAutoMode(true);
-              setLocalVal('');
-              onChange('zIndex', 'auto');
+              setIsAutoMode(true)
+              setLocalVal('')
+              onChange('zIndex', 'auto')
             }
           }}
           className="flex-shrink-0 h-full px-2 text-[10px] transition-colors bg-transparent border-none outline-none cursor-pointer"
@@ -549,7 +647,7 @@ function ZIndexInput({
         </button>
       </div>
     </div>
-  );
+  )
 }
 
 // ─── Float & Clear Section ─────────────────────────────────────────
@@ -559,11 +657,11 @@ function FloatClearSection({
   clear: clearVal,
   onChange,
 }: {
-  float: string;
-  clear: string;
-  onChange: (prop: string, val: string) => void;
+  float: string
+  clear: string
+  onChange: (prop: string, val: string) => void
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(false)
 
   return (
     <div>
@@ -589,8 +687,16 @@ function FloatClearSection({
       {open && (
         <div className="space-y-2 pt-1 pb-1">
           <div className="flex items-center gap-2">
-            <span className="text-[11px] w-10 flex-shrink-0" style={{ color: 'var(--text-secondary)' }}>Float</span>
-            <div className="flex-1 flex rounded overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+            <span
+              className="text-[11px] w-10 flex-shrink-0"
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              Float
+            </span>
+            <div
+              className="flex-1 flex rounded overflow-hidden"
+              style={{ border: '1px solid var(--border)' }}
+            >
               {FLOAT_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
@@ -598,8 +704,12 @@ function FloatClearSection({
                   onClick={() => onChange('float', opt.value)}
                   className="flex-1 h-6 text-[10px] transition-colors"
                   style={{
-                    background: opt.value === floatVal ? '#3a3a3a' : 'var(--bg-tertiary)',
-                    color: opt.value === floatVal ? 'var(--text-primary)' : 'var(--text-muted)',
+                    background:
+                      opt.value === floatVal ? '#3a3a3a' : 'var(--bg-tertiary)',
+                    color:
+                      opt.value === floatVal
+                        ? 'var(--text-primary)'
+                        : 'var(--text-muted)',
                   }}
                 >
                   {opt.label}
@@ -608,8 +718,16 @@ function FloatClearSection({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[11px] w-10 flex-shrink-0" style={{ color: 'var(--text-secondary)' }}>Clear</span>
-            <div className="flex-1 flex rounded overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+            <span
+              className="text-[11px] w-10 flex-shrink-0"
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              Clear
+            </span>
+            <div
+              className="flex-1 flex rounded overflow-hidden"
+              style={{ border: '1px solid var(--border)' }}
+            >
               {CLEAR_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
@@ -617,8 +735,12 @@ function FloatClearSection({
                   onClick={() => onChange('clear', opt.value)}
                   className="flex-1 h-6 text-[10px] transition-colors"
                   style={{
-                    background: opt.value === clearVal ? '#3a3a3a' : 'var(--bg-tertiary)',
-                    color: opt.value === clearVal ? 'var(--text-primary)' : 'var(--text-muted)',
+                    background:
+                      opt.value === clearVal ? '#3a3a3a' : 'var(--bg-tertiary)',
+                    color:
+                      opt.value === clearVal
+                        ? 'var(--text-primary)'
+                        : 'var(--text-muted)',
                   }}
                 >
                   {opt.label}
@@ -629,51 +751,75 @@ function FloatClearSection({
         </div>
       )}
     </div>
-  );
+  )
 }
 
 // ─── Main PositionSection ──────────────────────────────────────────
 
 const POSITION_PROPERTIES = [
-  'position', 'top', 'right', 'bottom', 'left', 'zIndex', 'float', 'clear',
-];
+  'position',
+  'top',
+  'right',
+  'bottom',
+  'left',
+  'zIndex',
+  'float',
+  'clear',
+]
 
 export function PositionSection() {
-  const computedStyles = useEditorStore((state) => state.computedStyles);
-  const { applyChange, resetProperty } = useChangeTracker();
+  const computedStyles = useEditorStore((state) => state.computedStyles)
+  const { applyChange, resetProperty } = useChangeTracker()
 
   const hasChanges = useEditorStore((s) => {
-    const sp = s.selectorPath;
-    if (!sp) return false;
-    return s.styleChanges.some((c) => c.elementSelector === sp && POSITION_PROPERTIES.includes(c.property));
-  });
+    const sp = s.selectorPath
+    if (!sp) return false
+    return s.styleChanges.some(
+      (c) =>
+        c.elementSelector === sp && POSITION_PROPERTIES.includes(c.property),
+    )
+  })
 
   const handleResetAll = useCallback(() => {
-    const { selectorPath, styleChanges } = useEditorStore.getState();
-    if (!selectorPath) return;
-    const matching = styleChanges.filter((c) => c.elementSelector === selectorPath && POSITION_PROPERTIES.includes(c.property));
-    for (const c of matching) resetProperty(c.property);
-  }, [resetProperty]);
+    const { selectorPath, styleChanges } = useEditorStore.getState()
+    if (!selectorPath) return
+    const matching = styleChanges.filter(
+      (c) =>
+        c.elementSelector === selectorPath &&
+        POSITION_PROPERTIES.includes(c.property),
+    )
+    for (const c of matching) resetProperty(c.property)
+  }, [resetProperty])
 
   const handleChange = (property: string, value: string) => {
-    applyChange(property, value);
-  };
+    applyChange(property, value)
+  }
 
-  const position = computedStyles.position || 'static';
-  const isPositioned = position !== 'static';
+  const position = computedStyles.position || 'static'
+  const isPositioned = position !== 'static'
 
   return (
-    <SectionHeader title="Position" defaultOpen={true} hasChanges={hasChanges} onReset={handleResetAll}>
+    <SectionHeader
+      title="Position"
+      defaultOpen={true}
+      hasChanges={hasChanges}
+      onReset={handleResetAll}
+    >
       {/* Position label + dropdown */}
       <div className="flex items-center gap-2">
         <span
           className="text-[11px] flex-shrink-0"
-          style={{ color: isPositioned ? 'var(--accent)' : 'var(--text-secondary)' }}
+          style={{
+            color: isPositioned ? 'var(--accent)' : 'var(--text-secondary)',
+          }}
         >
           Position
         </span>
         <div className="flex-1">
-          <PositionDropdown value={position} onChange={(v) => handleChange('position', v)} />
+          <PositionDropdown
+            value={position}
+            onChange={(v) => handleChange('position', v)}
+          />
         </div>
       </div>
 
@@ -704,7 +850,10 @@ export function PositionSection() {
       )}
 
       {/* Float & Clear */}
-      <div className="mt-1" style={{ borderTop: '1px solid var(--border)', paddingTop: 6 }}>
+      <div
+        className="mt-1"
+        style={{ borderTop: '1px solid var(--border)', paddingTop: 6 }}
+      >
         <FloatClearSection
           float={computedStyles.float || 'none'}
           clear={computedStyles.clear || 'none'}
@@ -712,5 +861,5 @@ export function PositionSection() {
         />
       </div>
     </SectionHeader>
-  );
+  )
 }

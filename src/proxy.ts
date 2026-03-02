@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server'
 
-const PROXY_HEADER = 'x-dev-editor-target';
+const PROXY_HEADER = 'x-dev-editor-target'
 
 /**
  * Middleware that intercepts asset requests originating from the proxied
@@ -19,51 +19,52 @@ const PROXY_HEADER = 'x-dev-editor-target';
  */
 
 // Asset file extensions that should be proxied from the iframe
-const ASSET_EXT_RE = /\.(woff2?|ttf|eot|otf|svg|png|jpe?g|gif|webp|avif|ico|mp4|webm|css|js|json|map)(\?|$)/i;
+const ASSET_EXT_RE =
+  /\.(woff2?|ttf|eot|otf|svg|png|jpe?g|gif|webp|avif|ico|mp4|webm|css|js|json|map)(\?|$)/i
 
-export function middleware(request: NextRequest) {
-  const targetUrl = request.cookies.get(PROXY_HEADER)?.value;
-  if (!targetUrl) return NextResponse.next();
+export function proxy(request: NextRequest) {
+  const targetUrl = request.cookies.get(PROXY_HEADER)?.value
+  if (!targetUrl) return NextResponse.next()
 
-  const { pathname } = request.nextUrl;
+  const { pathname } = request.nextUrl
 
   // Never intercept our own editor API routes
-  if (pathname.startsWith('/api/')) return NextResponse.next();
+  if (pathname.startsWith('/api/')) return NextResponse.next()
 
   // Check if this request originates from the proxied iframe.
   // After the navigation blocker calls history.replaceState, the referer
   // no longer contains /api/proxy. For dynamically loaded chunks, the
   // navigation blocker adds ?_devproxy=1 to /_next/ URLs as a proxy marker.
   // NOTE: Do NOT use "_dp" — Next.js uses ?_dp=1 internally for CSS preloading.
-  const referer = request.headers.get('referer') || '';
-  const isFromProxy = referer.includes('/api/proxy');
-  const fetchDest = request.headers.get('sec-fetch-dest') || '';
-  const hasDynamicProxyMarker = request.nextUrl.searchParams.has('_devproxy');
+  const referer = request.headers.get('referer') || ''
+  const isFromProxy = referer.includes('/api/proxy')
+  const fetchDest = request.headers.get('sec-fetch-dest') || ''
+  const hasDynamicProxyMarker = request.nextUrl.searchParams.has('_devproxy')
 
   if (!isFromProxy && fetchDest !== 'iframe' && !hasDynamicProxyMarker) {
-    return NextResponse.next();
+    return NextResponse.next()
   }
 
   // Only proxy requests that look like assets (have a file extension).
   // This prevents page-level paths from being proxied.
   if (!pathname.startsWith('/_next/') && !ASSET_EXT_RE.test(pathname)) {
-    return NextResponse.next();
+    return NextResponse.next()
   }
 
   // Rewrite to proxy route (rewrite is transparent — doesn't change the
   // client-visible URL and doesn't confuse HMR since these are asset paths,
   // not page routes).
-  const proxyUrl = new URL(`/api/proxy${pathname}`, request.url);
-  proxyUrl.searchParams.set(PROXY_HEADER, targetUrl);
+  const proxyUrl = new URL(`/api/proxy${pathname}`, request.url)
+  proxyUrl.searchParams.set(PROXY_HEADER, targetUrl)
 
   // Preserve original query params (strip internal markers)
   request.nextUrl.searchParams.forEach((value, key) => {
     if (key !== PROXY_HEADER && key !== '_devproxy') {
-      proxyUrl.searchParams.set(key, value);
+      proxyUrl.searchParams.set(key, value)
     }
-  });
+  })
 
-  return NextResponse.rewrite(proxyUrl);
+  return NextResponse.rewrite(proxyUrl)
 }
 
 export const config = {
@@ -88,4 +89,4 @@ export const config = {
     '/img/:path*',
     '/pics/:path*',
   ],
-};
+}

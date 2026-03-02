@@ -1,15 +1,19 @@
-'use client';
+'use client'
 
-import { useState } from 'react';
+import { useState } from 'react'
 
 interface CollapsibleSectionProps {
-  title: string;
-  defaultOpen?: boolean;
-  children: React.ReactNode;
+  title: string
+  defaultOpen?: boolean
+  children: React.ReactNode
 }
 
-export function CollapsibleSection({ title, defaultOpen = true, children }: CollapsibleSectionProps) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
+export function CollapsibleSection({
+  title,
+  defaultOpen = true,
+  children,
+}: CollapsibleSectionProps) {
+  const [isOpen, setIsOpen] = useState(defaultOpen)
 
   return (
     <div style={{ borderBottom: '1px solid var(--border)' }}>
@@ -26,11 +30,7 @@ export function CollapsibleSection({ title, defaultOpen = true, children }: Coll
         </span>
         {title}
       </button>
-      {isOpen && (
-        <div className="px-3 pb-3 space-y-2">
-          {children}
-        </div>
-      )}
+      {isOpen && <div className="px-3 pb-3 space-y-2">{children}</div>}
     </div>
-  );
+  )
 }

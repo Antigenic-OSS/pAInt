@@ -4,24 +4,27 @@
  * Runtime code is inlined in the proxy; this is the source reference.
  */
 
-import type { InspectorToEditorMessage, EditorToInspectorMessage } from '@/types/messages';
+import type {
+  InspectorToEditorMessage,
+  EditorToInspectorMessage,
+} from '@/types/messages'
 
-const parentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+const parentOrigin = typeof window !== 'undefined' ? window.location.origin : ''
 
 export function sendToEditor(message: InspectorToEditorMessage): void {
-  window.parent.postMessage(message, parentOrigin);
+  window.parent.postMessage(message, parentOrigin)
 }
 
-export type MessageHandler = (message: EditorToInspectorMessage) => void;
+export type MessageHandler = (message: EditorToInspectorMessage) => void
 
 export function listenForEditorMessages(handler: MessageHandler): () => void {
   const listener = (event: MessageEvent) => {
-    if (event.origin !== parentOrigin) return;
-    const data = event.data;
-    if (!data || !data.type) return;
-    handler(data as EditorToInspectorMessage);
-  };
+    if (event.origin !== parentOrigin) return
+    const data = event.data
+    if (!data || !data.type) return
+    handler(data as EditorToInspectorMessage)
+  }
 
-  window.addEventListener('message', listener);
-  return () => window.removeEventListener('message', listener);
+  window.addEventListener('message', listener)
+  return () => window.removeEventListener('message', listener)
 }

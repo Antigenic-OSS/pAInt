@@ -1,23 +1,31 @@
-'use client';
+'use client'
 
-import { useEditorStore } from '@/store';
+import { useEditorStore } from '@/store'
 
 export function PanelTabs() {
-  const activeRightTab = useEditorStore((s) => s.activeRightTab);
-  const setActiveRightTab = useEditorStore((s) => s.setActiveRightTab);
-  const activeBreakpoint = useEditorStore((s) => s.activeBreakpoint);
-  const changeCount = useEditorStore((s) => s.styleChanges.filter((c) => c.breakpoint === activeBreakpoint).length);
-  const consoleErrorCount = useEditorStore((s) => s.consoleErrorCount);
+  const activeRightTab = useEditorStore((s) => s.activeRightTab)
+  const setActiveRightTab = useEditorStore((s) => s.setActiveRightTab)
+  const activeBreakpoint = useEditorStore((s) => s.activeBreakpoint)
+  const changeCount = useEditorStore(
+    (s) =>
+      s.styleChanges.filter((c) => c.breakpoint === activeBreakpoint).length,
+  )
+  const consoleErrorCount = useEditorStore((s) => s.consoleErrorCount)
 
-  const varCount = useEditorStore((s) => Object.keys(s.cssVariableDefinitions).length);
+  const varCount = useEditorStore(
+    (s) => Object.keys(s.cssVariableDefinitions).length,
+  )
 
-  const tabs: Array<{ id: 'design' | 'variables' | 'changes' | 'claude' | 'console'; label: string }> = [
+  const tabs: Array<{
+    id: 'design' | 'variables' | 'changes' | 'claude' | 'console'
+    label: string
+  }> = [
     { id: 'design', label: 'Design' },
     { id: 'variables', label: 'Variables' },
     { id: 'changes', label: 'Changes' },
     // { id: 'claude', label: 'Claude' },
     { id: 'console', label: 'Console' },
-  ];
+  ]
 
   return (
     <div
@@ -30,7 +38,10 @@ export function PanelTabs() {
           onClick={() => setActiveRightTab(tab.id)}
           className="flex items-center gap-1.5 px-3 h-full text-xs font-medium transition-colors relative"
           style={{
-            color: activeRightTab === tab.id ? 'var(--text-primary)' : 'var(--text-muted)',
+            color:
+              activeRightTab === tab.id
+                ? 'var(--text-primary)'
+                : 'var(--text-muted)',
             background: 'transparent',
           }}
         >
@@ -68,5 +79,5 @@ export function PanelTabs() {
         </button>
       ))}
     </div>
-  );
+  )
 }

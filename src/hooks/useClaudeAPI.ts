@@ -1,108 +1,118 @@
-'use client';
+'use client'
 
-import { useCallback } from 'react';
-import { useEditorStore } from '@/store';
-import { getApiBase } from '@/lib/apiBase';
-import type { ClaudeAnalyzeResponse, ClaudeApplyResponse, ClaudeStatusResponse } from '@/types/claude';
+import { useCallback } from 'react'
+import { useEditorStore } from '@/store'
+import { getApiBase } from '@/lib/apiBase'
+import type {
+  ClaudeAnalyzeResponse,
+  ClaudeApplyResponse,
+  ClaudeStatusResponse,
+} from '@/types/claude'
 
 export function useClaudeAPI() {
-  const setClaudeStatus = useEditorStore((s) => s.setClaudeStatus);
-  const setCliAvailable = useEditorStore((s) => s.setCliAvailable);
-  const setSessionId = useEditorStore((s) => s.setSessionId);
-  const setParsedDiffs = useEditorStore((s) => s.setParsedDiffs);
-  const setClaudeError = useEditorStore((s) => s.setClaudeError);
-  const resetClaude = useEditorStore((s) => s.resetClaude);
+  const setClaudeStatus = useEditorStore((s) => s.setClaudeStatus)
+  const setCliAvailable = useEditorStore((s) => s.setCliAvailable)
+  const setSessionId = useEditorStore((s) => s.setSessionId)
+  const setParsedDiffs = useEditorStore((s) => s.setParsedDiffs)
+  const setClaudeError = useEditorStore((s) => s.setClaudeError)
+  const resetClaude = useEditorStore((s) => s.resetClaude)
 
   const checkStatus = useCallback(async (): Promise<boolean> => {
     try {
-      const res = await fetch(`${getApiBase()}/api/claude/status`);
-      const data: ClaudeStatusResponse = await res.json();
-      setCliAvailable(data.available);
-      return data.available;
+      const res = await fetch(`${getApiBase()}/api/claude/status`)
+      const data: ClaudeStatusResponse = await res.json()
+      setCliAvailable(data.available)
+      return data.available
     } catch {
-      setCliAvailable(false);
-      return false;
+      setCliAvailable(false)
+      return false
     }
-  }, [setCliAvailable]);
+  }, [setCliAvailable])
 
   const analyze = useCallback(
     async (changelog: string, projectRoot: string) => {
-      resetClaude();
-      setClaudeStatus('analyzing');
+      resetClaude()
+      setClaudeStatus('analyzing')
 
       try {
         const res = await fetch(`${getApiBase()}/api/claude/analyze`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ changelog, projectRoot }),
-        });
+        })
 
         if (!res.ok) {
-          const err = await res.json();
-          setClaudeStatus('error');
+          const err = await res.json()
+          setClaudeStatus('error')
           setClaudeError({
             code: err.code || 'UNKNOWN',
             message: err.error || 'Analysis failed',
-          });
-          return;
+          })
+          return
         }
 
-        const data: ClaudeAnalyzeResponse = await res.json();
-        setSessionId(data.sessionId);
-        setParsedDiffs(data.diffs);
-        setClaudeStatus('complete');
+        const data: ClaudeAnalyzeResponse = await res.json()
+        setSessionId(data.sessionId)
+        setParsedDiffs(data.diffs)
+        setClaudeStatus('complete')
       } catch (e) {
-        setClaudeStatus('error');
+        setClaudeStatus('error')
         setClaudeError({
           code: 'UNKNOWN',
           message: e instanceof Error ? e.message : 'Network error',
-        });
+        })
       }
     },
-    [resetClaude, setClaudeStatus, setSessionId, setParsedDiffs, setClaudeError]
-  );
+    [
+      resetClaude,
+      setClaudeStatus,
+      setSessionId,
+      setParsedDiffs,
+      setClaudeError,
+    ],
+  )
 
   const apply = useCallback(
     async (sessionId: string, projectRoot: string) => {
-      setClaudeStatus('applying');
+      setClaudeStatus('applying')
 
       try {
         const res = await fetch(`${getApiBase()}/api/claude/apply`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ sessionId, projectRoot }),
-        });
+        })
 
         if (!res.ok) {
-          const err = await res.json();
-          setClaudeStatus('error');
+          const err = await res.json()
+          setClaudeStatus('error')
           setClaudeError({
             code: err.code || 'UNKNOWN',
             message: err.error || 'Apply failed',
-          });
-          return;
+          })
+          return
         }
 
-        const data: ClaudeApplyResponse = await res.json();
+        const data: ClaudeApplyResponse = await res.json()
         if (data.success) {
-          setClaudeStatus('applied');
+          setClaudeStatus('applied')
         } else {
-          setClaudeStatus('error');
+          setClaudeStatus('error')
           setClaudeError({
             code: 'UNKNOWN',
             message: data.summary || 'Apply returned unsuccessful',
-          });
+          })
         }
       } catch (e) {
-        setClaudeStatus('error');
+        setClaudeStatus('error')
         setClaudeError({
           code: 'UNKNOWN',
           message: e instanceof Error ? e.message : 'Network error',
-        });
+        })
       }
     },
-    [setClaudeStatus, setClaudeError]
-  );
+    [setClaudeStatus, setClaudeError],
+  )
 
-  return { checkStatus, analyze, apply };
+  return { checkStatus, analyze, apply }
 }

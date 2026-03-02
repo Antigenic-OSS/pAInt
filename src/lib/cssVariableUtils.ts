@@ -1,4 +1,7 @@
-import type { CSSVariableDefinition, CSSVariableFamily } from '@/types/cssVariables';
+import type {
+  CSSVariableDefinition,
+  CSSVariableFamily,
+} from '@/types/cssVariables'
 
 /**
  * Extract the variable name from a var() expression.
@@ -6,8 +9,8 @@ import type { CSSVariableDefinition, CSSVariableFamily } from '@/types/cssVariab
  *      'var(--primary-500, #fff)' → '--primary-500'
  */
 export function extractVariableName(expr: string): string | null {
-  const match = expr.match(/var\(\s*(--[^,)]+)/);
-  return match ? match[1].trim() : null;
+  const match = expr.match(/var\(\s*(--[^,)]+)/)
+  return match ? match[1].trim() : null
 }
 
 /**
@@ -16,37 +19,40 @@ export function extractVariableName(expr: string): string | null {
  * e.g. --primary-100, --primary-200 → family prefix '--primary'
  */
 export function groupVariablesIntoFamilies(
-  definitions: Record<string, CSSVariableDefinition>
+  definitions: Record<string, CSSVariableDefinition>,
 ): CSSVariableFamily[] {
-  const prefixMap = new Map<string, { name: string; suffix: string; value: string; resolvedValue: string }[]>();
+  const prefixMap = new Map<
+    string,
+    { name: string; suffix: string; value: string; resolvedValue: string }[]
+  >()
 
   for (const [name, def] of Object.entries(definitions)) {
     // Find last hyphen-separated segment as suffix
-    const lastDash = name.lastIndexOf('-');
-    if (lastDash <= 2) continue; // skip if no meaningful prefix (-- is index 0-1)
+    const lastDash = name.lastIndexOf('-')
+    if (lastDash <= 2) continue // skip if no meaningful prefix (-- is index 0-1)
 
-    const prefix = name.substring(0, lastDash);
-    const suffix = name.substring(lastDash + 1);
+    const prefix = name.substring(0, lastDash)
+    const suffix = name.substring(lastDash + 1)
 
     if (!prefixMap.has(prefix)) {
-      prefixMap.set(prefix, []);
+      prefixMap.set(prefix, [])
     }
     prefixMap.get(prefix)!.push({
       name,
       suffix,
       value: def.value,
       resolvedValue: def.resolvedValue,
-    });
+    })
   }
 
-  const families: CSSVariableFamily[] = [];
+  const families: CSSVariableFamily[] = []
   for (const [prefix, members] of prefixMap) {
     if (members.length >= 2) {
-      families.push({ prefix, members });
+      families.push({ prefix, members })
     }
   }
 
-  return families;
+  return families
 }
 
 /**
@@ -54,62 +60,188 @@ export function groupVariablesIntoFamilies(
  */
 export function findFamilyForVariable(
   name: string,
-  families: CSSVariableFamily[]
+  families: CSSVariableFamily[],
 ): CSSVariableFamily | null {
   for (const family of families) {
     if (family.members.some((m) => m.name === name)) {
-      return family;
+      return family
     }
   }
-  return null;
+  return null
 }
 
-const COLOR_PATTERN = /^(#[0-9a-f]{3,8}|rgba?\(|hsla?\(|transparent|currentcolor|inherit)$/i;
+const COLOR_PATTERN =
+  /^(#[0-9a-f]{3,8}|rgba?\(|hsla?\(|transparent|currentcolor|inherit)$/i
 
 // Tailwind CSS channel formats: space-separated RGB (e.g. "5 5 5", "74 255 215")
 // or HSL (e.g. "0 0% 3.9%", "220 70% 50%") used with opacity support.
-const RGB_CHANNELS_PATTERN = /^\d{1,3}\s+\d{1,3}\s+\d{1,3}$/;
-const HSL_CHANNELS_PATTERN = /^\d{1,3}(\.\d+)?\s+\d{1,3}(\.\d+)?%\s+\d{1,3}(\.\d+)?%$/;
+const RGB_CHANNELS_PATTERN = /^\d{1,3}\s+\d{1,3}\s+\d{1,3}$/
+const HSL_CHANNELS_PATTERN =
+  /^\d{1,3}(\.\d+)?\s+\d{1,3}(\.\d+)?%\s+\d{1,3}(\.\d+)?%$/
 
 const NAMED_COLORS = new Set([
-  'aliceblue', 'antiquewhite', 'aqua', 'aquamarine', 'azure', 'beige', 'bisque',
-  'black', 'blanchedalmond', 'blue', 'blueviolet', 'brown', 'burlywood', 'cadetblue',
-  'chartreuse', 'chocolate', 'coral', 'cornflowerblue', 'cornsilk', 'crimson', 'cyan',
-  'darkblue', 'darkcyan', 'darkgoldenrod', 'darkgray', 'darkgreen', 'darkgrey',
-  'darkkhaki', 'darkmagenta', 'darkolivegreen', 'darkorange', 'darkorchid', 'darkred',
-  'darksalmon', 'darkseagreen', 'darkslateblue', 'darkslategray', 'darkslategrey',
-  'darkturquoise', 'darkviolet', 'deeppink', 'deepskyblue', 'dimgray', 'dimgrey',
-  'dodgerblue', 'firebrick', 'floralwhite', 'forestgreen', 'fuchsia', 'gainsboro',
-  'ghostwhite', 'gold', 'goldenrod', 'gray', 'green', 'greenyellow', 'grey',
-  'honeydew', 'hotpink', 'indianred', 'indigo', 'ivory', 'khaki', 'lavender',
-  'lavenderblush', 'lawngreen', 'lemonchiffon', 'lightblue', 'lightcoral', 'lightcyan',
-  'lightgoldenrodyellow', 'lightgray', 'lightgreen', 'lightgrey', 'lightpink',
-  'lightsalmon', 'lightseagreen', 'lightskyblue', 'lightslategray', 'lightslategrey',
-  'lightsteelblue', 'lightyellow', 'lime', 'limegreen', 'linen', 'magenta', 'maroon',
-  'mediumaquamarine', 'mediumblue', 'mediumorchid', 'mediumpurple', 'mediumseagreen',
-  'mediumslateblue', 'mediumspringgreen', 'mediumturquoise', 'mediumvioletred',
-  'midnightblue', 'mintcream', 'mistyrose', 'moccasin', 'navajowhite', 'navy',
-  'oldlace', 'olive', 'olivedrab', 'orange', 'orangered', 'orchid', 'palegoldenrod',
-  'palegreen', 'paleturquoise', 'palevioletred', 'papayawhip', 'peachpuff', 'peru',
-  'pink', 'plum', 'powderblue', 'purple', 'rebeccapurple', 'red', 'rosybrown',
-  'royalblue', 'saddlebrown', 'salmon', 'sandybrown', 'seagreen', 'seashell', 'sienna',
-  'silver', 'skyblue', 'slateblue', 'slategray', 'slategrey', 'snow', 'springgreen',
-  'steelblue', 'tan', 'teal', 'thistle', 'tomato', 'turquoise', 'violet', 'wheat',
-  'white', 'whitesmoke', 'yellow', 'yellowgreen',
-]);
+  'aliceblue',
+  'antiquewhite',
+  'aqua',
+  'aquamarine',
+  'azure',
+  'beige',
+  'bisque',
+  'black',
+  'blanchedalmond',
+  'blue',
+  'blueviolet',
+  'brown',
+  'burlywood',
+  'cadetblue',
+  'chartreuse',
+  'chocolate',
+  'coral',
+  'cornflowerblue',
+  'cornsilk',
+  'crimson',
+  'cyan',
+  'darkblue',
+  'darkcyan',
+  'darkgoldenrod',
+  'darkgray',
+  'darkgreen',
+  'darkgrey',
+  'darkkhaki',
+  'darkmagenta',
+  'darkolivegreen',
+  'darkorange',
+  'darkorchid',
+  'darkred',
+  'darksalmon',
+  'darkseagreen',
+  'darkslateblue',
+  'darkslategray',
+  'darkslategrey',
+  'darkturquoise',
+  'darkviolet',
+  'deeppink',
+  'deepskyblue',
+  'dimgray',
+  'dimgrey',
+  'dodgerblue',
+  'firebrick',
+  'floralwhite',
+  'forestgreen',
+  'fuchsia',
+  'gainsboro',
+  'ghostwhite',
+  'gold',
+  'goldenrod',
+  'gray',
+  'green',
+  'greenyellow',
+  'grey',
+  'honeydew',
+  'hotpink',
+  'indianred',
+  'indigo',
+  'ivory',
+  'khaki',
+  'lavender',
+  'lavenderblush',
+  'lawngreen',
+  'lemonchiffon',
+  'lightblue',
+  'lightcoral',
+  'lightcyan',
+  'lightgoldenrodyellow',
+  'lightgray',
+  'lightgreen',
+  'lightgrey',
+  'lightpink',
+  'lightsalmon',
+  'lightseagreen',
+  'lightskyblue',
+  'lightslategray',
+  'lightslategrey',
+  'lightsteelblue',
+  'lightyellow',
+  'lime',
+  'limegreen',
+  'linen',
+  'magenta',
+  'maroon',
+  'mediumaquamarine',
+  'mediumblue',
+  'mediumorchid',
+  'mediumpurple',
+  'mediumseagreen',
+  'mediumslateblue',
+  'mediumspringgreen',
+  'mediumturquoise',
+  'mediumvioletred',
+  'midnightblue',
+  'mintcream',
+  'mistyrose',
+  'moccasin',
+  'navajowhite',
+  'navy',
+  'oldlace',
+  'olive',
+  'olivedrab',
+  'orange',
+  'orangered',
+  'orchid',
+  'palegoldenrod',
+  'palegreen',
+  'paleturquoise',
+  'palevioletred',
+  'papayawhip',
+  'peachpuff',
+  'peru',
+  'pink',
+  'plum',
+  'powderblue',
+  'purple',
+  'rebeccapurple',
+  'red',
+  'rosybrown',
+  'royalblue',
+  'saddlebrown',
+  'salmon',
+  'sandybrown',
+  'seagreen',
+  'seashell',
+  'sienna',
+  'silver',
+  'skyblue',
+  'slateblue',
+  'slategray',
+  'slategrey',
+  'snow',
+  'springgreen',
+  'steelblue',
+  'tan',
+  'teal',
+  'thistle',
+  'tomato',
+  'turquoise',
+  'violet',
+  'wheat',
+  'white',
+  'whitesmoke',
+  'yellow',
+  'yellowgreen',
+])
 
 /**
  * Check if a resolved value looks like a color.
  */
 export function isColorValue(value: string): boolean {
-  const trimmed = value.trim().toLowerCase();
-  if (COLOR_PATTERN.test(trimmed)) return true;
-  if (NAMED_COLORS.has(trimmed)) return true;
+  const trimmed = value.trim().toLowerCase()
+  if (COLOR_PATTERN.test(trimmed)) return true
+  if (NAMED_COLORS.has(trimmed)) return true
   // Tailwind-style space-separated RGB channels (e.g. "5 5 5", "74 255 215")
-  if (RGB_CHANNELS_PATTERN.test(trimmed)) return true;
+  if (RGB_CHANNELS_PATTERN.test(trimmed)) return true
   // Tailwind-style space-separated HSL channels (e.g. "0 0% 3.9%", "220 70% 50%")
-  if (HSL_CHANNELS_PATTERN.test(trimmed)) return true;
-  return false;
+  if (HSL_CHANNELS_PATTERN.test(trimmed)) return true
+  return false
 }
 
 /**
@@ -119,31 +251,31 @@ export function isColorValue(value: string): boolean {
  * Returns the original value if it's already a valid CSS color.
  */
 export function toDisplayableColor(value: string): string {
-  const trimmed = value.trim();
+  const trimmed = value.trim()
   if (RGB_CHANNELS_PATTERN.test(trimmed)) {
-    const parts = trimmed.split(/\s+/);
-    return `rgb(${parts[0]}, ${parts[1]}, ${parts[2]})`;
+    const parts = trimmed.split(/\s+/)
+    return `rgb(${parts[0]}, ${parts[1]}, ${parts[2]})`
   }
   if (HSL_CHANNELS_PATTERN.test(trimmed)) {
-    const parts = trimmed.split(/\s+/);
-    return `hsl(${parts[0]}, ${parts[1]}, ${parts[2]})`;
+    const parts = trimmed.split(/\s+/)
+    return `hsl(${parts[0]}, ${parts[1]}, ${parts[2]})`
   }
-  return trimmed;
+  return trimmed
 }
 
 /**
  * Filter variable definitions to only those whose resolved values are colors.
  */
 export function filterColorVariables(
-  definitions: Record<string, CSSVariableDefinition>
+  definitions: Record<string, CSSVariableDefinition>,
 ): Record<string, CSSVariableDefinition> {
-  const result: Record<string, CSSVariableDefinition> = {};
+  const result: Record<string, CSSVariableDefinition> = {}
   for (const [name, def] of Object.entries(definitions)) {
     if (isColorValue(def.resolvedValue)) {
-      result[name] = def;
+      result[name] = def
     }
   }
-  return result;
+  return result
 }
 
 /**
@@ -152,8 +284,10 @@ export function filterColorVariables(
  *      '--color-red-400' → 'color/red/400'
  */
 export function formatTokenDisplayName(cssVarName: string): string {
-  const stripped = cssVarName.startsWith('--') ? cssVarName.slice(2) : cssVarName;
-  return stripped.replace(/-/g, '/');
+  const stripped = cssVarName.startsWith('--')
+    ? cssVarName.slice(2)
+    : cssVarName
+  return stripped.replace(/-/g, '/')
 }
 
 /**
@@ -161,16 +295,16 @@ export function formatTokenDisplayName(cssVarName: string): string {
  * e.g. 'coreBlue' → 'core-blue', 'textPrimary' → 'text-primary'
  */
 function camelToKebab(str: string): string {
-  return str.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
+  return str.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase()
 }
 
 // Matches: key: '#hex' or key: 'rgba(...)' or key: "value" or key: number
 const TOKEN_ENTRY_RE =
-  /(\w+)\s*:\s*(?:'([^']*)'|"([^"]*)"|(\d+(?:\.\d+)?))\s*,?/g;
+  /(\w+)\s*:\s*(?:'([^']*)'|"([^"]*)"|(\d+(?:\.\d+)?))\s*,?/g
 
 // Matches: export const NAME = { ... } as const  (captures NAME and the braced body)
 const EXPORT_BLOCK_RE =
-  /export\s+const\s+(\w+)\s*=\s*\{([^]*?)\}\s*(?:as\s+const\s*)?;/g;
+  /export\s+const\s+(\w+)\s*=\s*\{([^]*?)\}\s*(?:as\s+const\s*)?;/g
 
 /**
  * Extract design tokens from a JS/TS/Dart source file and convert them
@@ -188,78 +322,88 @@ export function extractDesignTokensFromSource(
   source: string,
   filePath: string,
 ): Record<string, CSSVariableDefinition> {
-  const results: Record<string, CSSVariableDefinition> = {};
+  const results: Record<string, CSSVariableDefinition> = {}
 
   // Strip single-line and block comments to avoid matching inside them
-  const cleaned = source
-    .replace(/\/\/.*$/gm, '')
-    .replace(/\/\*[^]*?\*\//g, '');
+  const cleaned = source.replace(/\/\/.*$/gm, '').replace(/\/\*[^]*?\*\//g, '')
 
-  EXPORT_BLOCK_RE.lastIndex = 0;
-  let blockMatch: RegExpExecArray | null;
+  EXPORT_BLOCK_RE.lastIndex = 0
+  let blockMatch: RegExpExecArray | null
 
   while ((blockMatch = EXPORT_BLOCK_RE.exec(cleaned)) !== null) {
-    const groupName = blockMatch[1]; // e.g. 'colors', 'spacing', 'onGradient'
-    const body = blockMatch[2];
+    const groupName = blockMatch[1] // e.g. 'colors', 'spacing', 'onGradient'
+    const body = blockMatch[2]
 
     // Check for nested objects: key: { subKey: value }
     // Split into top-level entries and nested blocks
-    const nestedRe = /(\w+)\s*:\s*\{([^}]*)\}/g;
-    const nestedKeys = new Set<string>();
-    let nestedMatch: RegExpExecArray | null;
-    nestedRe.lastIndex = 0;
+    const nestedRe = /(\w+)\s*:\s*\{([^}]*)\}/g
+    const nestedKeys = new Set<string>()
+    let nestedMatch: RegExpExecArray | null
+    nestedRe.lastIndex = 0
 
     while ((nestedMatch = nestedRe.exec(body)) !== null) {
-      const nestedGroupName = nestedMatch[1];
-      nestedKeys.add(nestedGroupName);
-      const nestedBody = nestedMatch[2];
+      const nestedGroupName = nestedMatch[1]
+      nestedKeys.add(nestedGroupName)
+      const nestedBody = nestedMatch[2]
 
-      TOKEN_ENTRY_RE.lastIndex = 0;
-      let entryMatch: RegExpExecArray | null;
+      TOKEN_ENTRY_RE.lastIndex = 0
+      let entryMatch: RegExpExecArray | null
       while ((entryMatch = TOKEN_ENTRY_RE.exec(nestedBody)) !== null) {
-        const key = entryMatch[1];
-        const value = entryMatch[2] ?? entryMatch[3] ?? entryMatch[4] ?? '';
-        if (!value) continue;
+        const key = entryMatch[1]
+        const value = entryMatch[2] ?? entryMatch[3] ?? entryMatch[4] ?? ''
+        if (!value) continue
 
-        const varName = `--${camelToKebab(groupName)}-${camelToKebab(nestedGroupName)}-${camelToKebab(key)}`;
+        const varName = `--${camelToKebab(groupName)}-${camelToKebab(nestedGroupName)}-${camelToKebab(key)}`
         results[varName] = {
           value,
           resolvedValue: value,
           selector: `tokens:${filePath}`,
-        };
+        }
       }
     }
 
     // Top-level entries (skip keys that were nested objects)
-    TOKEN_ENTRY_RE.lastIndex = 0;
-    let entryMatch: RegExpExecArray | null;
+    TOKEN_ENTRY_RE.lastIndex = 0
+    let entryMatch: RegExpExecArray | null
     while ((entryMatch = TOKEN_ENTRY_RE.exec(body)) !== null) {
-      const key = entryMatch[1];
-      if (nestedKeys.has(key)) continue;
+      const key = entryMatch[1]
+      if (nestedKeys.has(key)) continue
       // Skip non-value keys (functions, objects, arrays)
-      const value = entryMatch[2] ?? entryMatch[3] ?? entryMatch[4] ?? '';
-      if (!value) continue;
+      const value = entryMatch[2] ?? entryMatch[3] ?? entryMatch[4] ?? ''
+      if (!value) continue
 
-      const varName = `--${camelToKebab(groupName)}-${camelToKebab(key)}`;
+      const varName = `--${camelToKebab(groupName)}-${camelToKebab(key)}`
       results[varName] = {
         value,
         resolvedValue: value,
         selector: `tokens:${filePath}`,
-      };
+      }
     }
   }
 
-  return results;
+  return results
 }
 
 /** File names commonly used for design tokens in JS/TS/Dart projects */
 export const TOKEN_FILE_NAMES = new Set([
-  'colors.ts', 'colors.js', 'colors.dart',
-  'theme.ts', 'theme.js', 'theme.dart',
-  'tokens.ts', 'tokens.js', 'tokens.dart',
-  'design-tokens.ts', 'design-tokens.js',
-  'palette.ts', 'palette.js', 'palette.dart',
-  'app_colors.dart', 'app_theme.dart',
-  'constants.ts', 'constants.js',
-  'styles.ts', 'styles.js',
-]);
+  'colors.ts',
+  'colors.js',
+  'colors.dart',
+  'theme.ts',
+  'theme.js',
+  'theme.dart',
+  'tokens.ts',
+  'tokens.js',
+  'tokens.dart',
+  'design-tokens.ts',
+  'design-tokens.js',
+  'palette.ts',
+  'palette.js',
+  'palette.dart',
+  'app_colors.dart',
+  'app_theme.dart',
+  'constants.ts',
+  'constants.js',
+  'styles.ts',
+  'styles.js',
+])

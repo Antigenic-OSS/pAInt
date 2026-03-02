@@ -1,4 +1,4 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
   async headers() {
@@ -6,14 +6,14 @@ const nextConfig: NextConfig = {
       {
         // Serve inspector script with CORS + CORP headers so it loads
         // on target pages that set Cross-Origin-Embedder-Policy: require-corp
-        source: "/dev-editor-inspector.js",
+        source: '/dev-editor-inspector.js',
         headers: [
-          { key: "Access-Control-Allow-Origin", value: "*" },
-          { key: "Cross-Origin-Resource-Policy", value: "cross-origin" },
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Cross-Origin-Resource-Policy', value: 'cross-origin' },
         ],
       },
-    ];
+    ]
   },
-};
+}
 
-export default nextConfig;
+export default nextConfig

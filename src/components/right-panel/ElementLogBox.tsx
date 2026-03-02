@@ -1,158 +1,225 @@
-'use client';
+'use client'
 
-import { useMemo, useState, useCallback, useRef } from 'react';
-import { useEditorStore } from '@/store';
-import { buildInstructionsFooter, BREAKPOINTS, getBreakpointDeviceInfo, getBreakpointRange } from '@/lib/constants';
-import { EditablePre } from '@/components/common/EditablePre';
-import type { Breakpoint } from '@/types/changelog';
+import { useMemo, useState, useCallback, useRef } from 'react'
+import { useEditorStore } from '@/store'
+import {
+  buildInstructionsFooter,
+  BREAKPOINTS,
+  getBreakpointDeviceInfo,
+  getBreakpointRange,
+} from '@/lib/constants'
+import { EditablePre } from '@/components/common/EditablePre'
+import type { Breakpoint } from '@/types/changelog'
 
 function CopyIcon({ size = 14 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
       <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
     </svg>
-  );
+  )
 }
 
 function CheckIcon({ size = 14 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <polyline points="20 6 9 17 4 12" />
     </svg>
-  );
+  )
 }
 
 function buildElementLogText(opts: {
-  tagName: string | null;
-  className: string | null;
-  elementId: string | null;
-  selectorPath: string | null;
-  attributes: Record<string, string>;
-  innerText: string | null;
-  computedStyles: Record<string, string>;
-  pagePath: string;
-  changeScope: 'all' | 'breakpoint-only';
-  activeBreakpoint: Breakpoint;
-  changeCount: number;
-  framework?: string | null;
-  cssStrategy?: string[] | null;
+  tagName: string | null
+  className: string | null
+  elementId: string | null
+  selectorPath: string | null
+  attributes: Record<string, string>
+  innerText: string | null
+  computedStyles: Record<string, string>
+  pagePath: string
+  changeScope: 'all' | 'breakpoint-only'
+  activeBreakpoint: Breakpoint
+  changeCount: number
+  framework?: string | null
+  cssStrategy?: string[] | null
 }): string {
-  const lines: string[] = [];
-  if (!opts.tagName) return '';
+  const lines: string[] = []
+  if (!opts.tagName) return ''
 
-  const attrParts: string[] = [];
-  if (opts.elementId) attrParts.push(`id="${opts.elementId}"`);
-  if (opts.className) attrParts.push(`class="${opts.className}"`);
-  const tag = `<${opts.tagName}${attrParts.length ? ' ' + attrParts.join(' ') : ''}>`;
+  const attrParts: string[] = []
+  if (opts.elementId) attrParts.push(`id="${opts.elementId}"`)
+  if (opts.className) attrParts.push(`class="${opts.className}"`)
+  const tag = `<${opts.tagName}${attrParts.length ? ' ' + attrParts.join(' ') : ''}>`
 
-  const isMobileApp = opts.framework === 'flutter' || opts.framework === 'react-native';
-  const { deviceName, range } = getBreakpointDeviceInfo(opts.activeBreakpoint);
+  const isMobileApp =
+    opts.framework === 'flutter' || opts.framework === 'react-native'
+  const { deviceName, range } = getBreakpointDeviceInfo(opts.activeBreakpoint)
 
-  lines.push('PAGE NAME');
-  lines.push(opts.pagePath || '/');
-  lines.push('');
+  lines.push('PAGE NAME')
+  lines.push(opts.pagePath || '/')
+  lines.push('')
 
-  lines.push('ELEMENT');
-  lines.push(tag);
-  lines.push('');
+  lines.push('ELEMENT')
+  lines.push(tag)
+  lines.push('')
 
   if (!isMobileApp) {
-    lines.push('DEVICE');
-    lines.push(`Device Name: ${deviceName}`);
-    lines.push(`Breakpoint: ${range}`);
-    lines.push('');
+    lines.push('DEVICE')
+    lines.push(`Device Name: ${deviceName}`)
+    lines.push(`Breakpoint: ${range}`)
+    lines.push('')
 
-    lines.push('APPLIES TO');
-    lines.push(opts.changeScope === 'all' ? 'All breakpoints' : `${deviceName} (${range})`);
-    lines.push('');
+    lines.push('APPLIES TO')
+    lines.push(
+      opts.changeScope === 'all'
+        ? 'All breakpoints'
+        : `${deviceName} (${range})`,
+    )
+    lines.push('')
   }
 
-  const attrEntries = Object.entries(opts.attributes);
+  const attrEntries = Object.entries(opts.attributes)
   if (attrEntries.length > 0) {
-    lines.push('ATTRIBUTES');
+    lines.push('ATTRIBUTES')
     for (const [key, value] of attrEntries) {
-      lines.push(`  ${key}: ${value}`);
+      lines.push(`  ${key}: ${value}`)
     }
-    lines.push('');
+    lines.push('')
   }
 
   if (opts.innerText) {
-    lines.push('INNER TEXT');
-    lines.push(opts.innerText);
-    lines.push('');
+    lines.push('INNER TEXT')
+    lines.push(opts.innerText)
+    lines.push('')
   }
 
-  lines.push(buildInstructionsFooter(opts.changeCount, 1, { framework: opts.framework, cssStrategy: opts.cssStrategy }));
+  lines.push(
+    buildInstructionsFooter(opts.changeCount, 1, {
+      framework: opts.framework,
+      cssStrategy: opts.cssStrategy,
+    }),
+  )
 
-  return lines.join('\n').trim();
+  return lines.join('\n').trim()
 }
 
 export function ElementLogBox() {
-  const [copied, setCopied] = useState(false);
-  const editedTextRef = useRef<string | null>(null);
+  const [copied, setCopied] = useState(false)
+  const editedTextRef = useRef<string | null>(null)
 
-  const tagName = useEditorStore((s) => s.tagName);
-  const className = useEditorStore((s) => s.className);
-  const elementId = useEditorStore((s) => s.elementId);
-  const selectorPath = useEditorStore((s) => s.selectorPath);
-  const attributes = useEditorStore((s) => s.attributes);
-  const innerText = useEditorStore((s) => s.innerText);
-  const computedStyles = useEditorStore((s) => s.computedStyles);
-  const currentPagePath = useEditorStore((s) => s.currentPagePath);
-  const changeScope = useEditorStore((s) => s.changeScope);
-  const activeBreakpoint = useEditorStore((s) => s.activeBreakpoint);
-  const styleChanges = useEditorStore((s) => s.styleChanges);
-  const targetUrl = useEditorStore((s) => s.targetUrl);
-  const getProjectScanForUrl = useEditorStore((s) => s.getProjectScanForUrl);
+  const tagName = useEditorStore((s) => s.tagName)
+  const className = useEditorStore((s) => s.className)
+  const elementId = useEditorStore((s) => s.elementId)
+  const selectorPath = useEditorStore((s) => s.selectorPath)
+  const attributes = useEditorStore((s) => s.attributes)
+  const innerText = useEditorStore((s) => s.innerText)
+  const computedStyles = useEditorStore((s) => s.computedStyles)
+  const currentPagePath = useEditorStore((s) => s.currentPagePath)
+  const changeScope = useEditorStore((s) => s.changeScope)
+  const activeBreakpoint = useEditorStore((s) => s.activeBreakpoint)
+  const styleChanges = useEditorStore((s) => s.styleChanges)
+  const targetUrl = useEditorStore((s) => s.targetUrl)
+  const getProjectScanForUrl = useEditorStore((s) => s.getProjectScanForUrl)
 
   const projectScan = useMemo(() => {
-    return getProjectScanForUrl(targetUrl);
-  }, [targetUrl, getProjectScanForUrl]);
+    return getProjectScanForUrl(targetUrl)
+  }, [targetUrl, getProjectScanForUrl])
 
-  const framework = projectScan?.framework ?? null;
-  const cssStrategy = projectScan?.cssStrategy ?? null;
+  const framework = projectScan?.framework ?? null
+  const cssStrategy = projectScan?.cssStrategy ?? null
 
   const changeCount = useMemo(() => {
-    if (!selectorPath) return 0;
-    return styleChanges.filter((c) => c.elementSelector === selectorPath).length;
-  }, [styleChanges, selectorPath]);
+    if (!selectorPath) return 0
+    return styleChanges.filter((c) => c.elementSelector === selectorPath).length
+  }, [styleChanges, selectorPath])
 
-  const logText = useMemo(() => buildElementLogText({
-    tagName, className, elementId, selectorPath,
-    attributes, innerText, computedStyles,
-    pagePath: currentPagePath, changeScope, activeBreakpoint, changeCount, framework, cssStrategy,
-  }), [tagName, className, elementId, selectorPath, attributes, innerText, computedStyles, currentPagePath, changeScope, activeBreakpoint, changeCount, framework, cssStrategy]);
+  const logText = useMemo(
+    () =>
+      buildElementLogText({
+        tagName,
+        className,
+        elementId,
+        selectorPath,
+        attributes,
+        innerText,
+        computedStyles,
+        pagePath: currentPagePath,
+        changeScope,
+        activeBreakpoint,
+        changeCount,
+        framework,
+        cssStrategy,
+      }),
+    [
+      tagName,
+      className,
+      elementId,
+      selectorPath,
+      attributes,
+      innerText,
+      computedStyles,
+      currentPagePath,
+      changeScope,
+      activeBreakpoint,
+      changeCount,
+      framework,
+      cssStrategy,
+    ],
+  )
 
-  const handleTextChange = useCallback((edited: string) => {
-    editedTextRef.current = edited === logText ? null : edited;
-  }, [logText]);
+  const handleTextChange = useCallback(
+    (edited: string) => {
+      editedTextRef.current = edited === logText ? null : edited
+    },
+    [logText],
+  )
 
   const handleCopy = useCallback(async () => {
-    const textToCopy = editedTextRef.current ?? logText;
-    if (!textToCopy) return;
+    const textToCopy = editedTextRef.current ?? logText
+    if (!textToCopy) return
     try {
-      await navigator.clipboard.writeText(textToCopy);
+      await navigator.clipboard.writeText(textToCopy)
     } catch {
-      const textarea = document.createElement('textarea');
-      textarea.value = textToCopy;
-      textarea.style.position = 'fixed';
-      textarea.style.opacity = '0';
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textarea);
+      const textarea = document.createElement('textarea')
+      textarea.value = textToCopy
+      textarea.style.position = 'fixed'
+      textarea.style.opacity = '0'
+      document.body.appendChild(textarea)
+      textarea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textarea)
     }
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }, [logText]);
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }, [logText])
 
-  if (!tagName) return null;
+  if (!tagName) return null
 
   return (
     <div>
       <div className="flex items-center justify-between px-3 py-1.5">
-        <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+        <span
+          className="text-xs font-medium"
+          style={{ color: 'var(--text-secondary)' }}
+        >
           Element Info
         </span>
         <button
@@ -177,5 +244,5 @@ export function ElementLogBox() {
         />
       </div>
     </div>
-  );
+  )
 }

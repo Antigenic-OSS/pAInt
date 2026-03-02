@@ -1,14 +1,14 @@
-'use client';
+'use client'
 
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef } from 'react'
 
 interface ResizablePanelProps {
-  width: number;
-  minWidth: number;
-  maxWidth: number;
-  onResize: (width: number) => void;
-  side: 'left' | 'right';
-  children: React.ReactNode;
+  width: number
+  minWidth: number
+  maxWidth: number
+  onResize: (width: number) => void
+  side: 'left' | 'right'
+  children: React.ReactNode
 }
 
 export function ResizablePanel({
@@ -19,40 +19,44 @@ export function ResizablePanel({
   side,
   children,
 }: ResizablePanelProps) {
-  const panelRef = useRef<HTMLDivElement>(null);
-  const isDragging = useRef(false);
+  const panelRef = useRef<HTMLDivElement>(null)
+  const isDragging = useRef(false)
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
-      e.preventDefault();
-      isDragging.current = true;
-      const startX = e.clientX;
-      const startWidth = width;
+      e.preventDefault()
+      isDragging.current = true
+      const startX = e.clientX
+      const startWidth = width
 
       const handleMouseMove = (moveEvent: MouseEvent) => {
-        if (!isDragging.current) return;
-        const delta = side === 'left'
-          ? moveEvent.clientX - startX
-          : startX - moveEvent.clientX;
-        const newWidth = Math.min(Math.max(startWidth + delta, minWidth), maxWidth);
-        onResize(newWidth);
-      };
+        if (!isDragging.current) return
+        const delta =
+          side === 'left'
+            ? moveEvent.clientX - startX
+            : startX - moveEvent.clientX
+        const newWidth = Math.min(
+          Math.max(startWidth + delta, minWidth),
+          maxWidth,
+        )
+        onResize(newWidth)
+      }
 
       const handleMouseUp = () => {
-        isDragging.current = false;
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-        document.body.style.cursor = '';
-        document.body.style.userSelect = '';
-      };
+        isDragging.current = false
+        document.removeEventListener('mousemove', handleMouseMove)
+        document.removeEventListener('mouseup', handleMouseUp)
+        document.body.style.cursor = ''
+        document.body.style.userSelect = ''
+      }
 
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      document.body.style.cursor = 'col-resize';
-      document.body.style.userSelect = 'none';
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+      document.body.style.cursor = 'col-resize'
+      document.body.style.userSelect = 'none'
     },
-    [width, minWidth, maxWidth, onResize, side]
-  );
+    [width, minWidth, maxWidth, onResize, side],
+  )
 
   return (
     <div
@@ -75,5 +79,5 @@ export function ResizablePanel({
         onMouseDown={handleMouseDown}
       />
     </div>
-  );
+  )
 }

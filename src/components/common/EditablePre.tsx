@@ -1,6 +1,6 @@
-'use client';
+'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react'
 
 /**
  * A <pre> block that becomes an editable <textarea> on double-click.
@@ -13,61 +13,67 @@ export function EditablePre({
   className = '',
   style,
 }: {
-  text: string;
-  onTextChange?: (edited: string) => void;
-  className?: string;
-  style?: React.CSSProperties;
+  text: string
+  onTextChange?: (edited: string) => void
+  className?: string
+  style?: React.CSSProperties
 }) {
-  const [editing, setEditing] = useState(false);
-  const [localText, setLocalText] = useState(text);
-  const [modified, setModified] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [editing, setEditing] = useState(false)
+  const [localText, setLocalText] = useState(text)
+  const [modified, setModified] = useState(false)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // When the source text changes and user hasn't edited, sync
   useEffect(() => {
     if (!modified) {
-      setLocalText(text);
+      setLocalText(text)
     }
-  }, [text, modified]);
+  }, [text, modified])
 
   // Auto-focus and select when entering edit mode
   useEffect(() => {
     if (editing && textareaRef.current) {
-      textareaRef.current.focus();
+      textareaRef.current.focus()
     }
-  }, [editing]);
+  }, [editing])
 
   const handleDoubleClick = useCallback(() => {
     if (!editing) {
       // If not yet modified, reset to latest computed text
-      if (!modified) setLocalText(text);
-      setEditing(true);
+      if (!modified) setLocalText(text)
+      setEditing(true)
     }
-  }, [editing, modified, text]);
+  }, [editing, modified, text])
 
   const handleBlur = useCallback(() => {
-    setEditing(false);
-  }, []);
+    setEditing(false)
+  }, [])
 
-  const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const val = e.target.value;
-    setLocalText(val);
-    setModified(true);
-    onTextChange?.(val);
-  }, [onTextChange]);
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const val = e.target.value
+      setLocalText(val)
+      setModified(true)
+      onTextChange?.(val)
+    },
+    [onTextChange],
+  )
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
-      setEditing(false);
+      setEditing(false)
     }
-  }, []);
+  }, [])
 
-  const handleReset = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    setLocalText(text);
-    setModified(false);
-    onTextChange?.(text);
-  }, [text, onTextChange]);
+  const handleReset = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation()
+      setLocalText(text)
+      setModified(false)
+      onTextChange?.(text)
+    },
+    [text, onTextChange],
+  )
 
   if (editing) {
     return (
@@ -93,7 +99,7 @@ export function EditablePre({
           spellCheck={false}
         />
       </div>
-    );
+    )
   }
 
   return (
@@ -126,5 +132,5 @@ export function EditablePre({
         </button>
       )}
     </div>
-  );
+  )
 }

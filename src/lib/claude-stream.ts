@@ -14,44 +14,47 @@ const ANSI = {
   magenta: '\x1b[35m',
   cyan: '\x1b[36m',
   gray: '\x1b[90m',
-} as const;
+} as const
 
 /**
  * Classify a stderr line and wrap it in ANSI colors for xterm.js display.
  */
 export function formatStderrLine(line: string): string {
-  const trimmed = line.trim();
-  if (!trimmed) return '';
+  const trimmed = line.trim()
+  if (!trimmed) return ''
 
   // File reads
-  if (/^(Reading|Read)\s/i.test(trimmed) || /\.tsx?|\.jsx?|\.css|\.html/i.test(trimmed)) {
-    return `${ANSI.magenta}  ${trimmed}${ANSI.reset}`;
+  if (
+    /^(Reading|Read)\s/i.test(trimmed) ||
+    /\.tsx?|\.jsx?|\.css|\.html/i.test(trimmed)
+  ) {
+    return `${ANSI.magenta}  ${trimmed}${ANSI.reset}`
   }
   // Tool usage
   if (/^Tool:\s/i.test(trimmed) || /^Using\s/i.test(trimmed)) {
-    return `${ANSI.cyan}  ${trimmed}${ANSI.reset}`;
+    return `${ANSI.cyan}  ${trimmed}${ANSI.reset}`
   }
   // Success
   if (/success|complete|done|finished/i.test(trimmed)) {
-    return `${ANSI.green}  ${trimmed}${ANSI.reset}`;
+    return `${ANSI.green}  ${trimmed}${ANSI.reset}`
   }
   // Errors
   if (/error|fail|exception/i.test(trimmed)) {
-    return `${ANSI.red}  ${trimmed}${ANSI.reset}`;
+    return `${ANSI.red}  ${trimmed}${ANSI.reset}`
   }
   // Warnings
   if (/warn|warning|caution/i.test(trimmed)) {
-    return `${ANSI.yellow}  ${trimmed}${ANSI.reset}`;
+    return `${ANSI.yellow}  ${trimmed}${ANSI.reset}`
   }
   // Unclassified
-  return `${ANSI.gray}  ${trimmed}${ANSI.reset}`;
+  return `${ANSI.gray}  ${trimmed}${ANSI.reset}`
 }
 
 export interface StreamCallbacks<T> {
-  onStderr?: (line: string) => void;
-  onResult?: (data: T) => void;
-  onError?: (error: { code: string; message: string }) => void;
-  onDone?: () => void;
+  onStderr?: (line: string) => void
+  onResult?: (data: T) => void
+  onError?: (error: { code: string; message: string }) => void
+  onDone?: () => void
 }
 
 /**
@@ -63,76 +66,76 @@ export function consumeClaudeStream<T>(
   body: Record<string, unknown>,
   callbacks: StreamCallbacks<T>,
 ): AbortController {
-  const controller = new AbortController();
+  const controller = new AbortController()
 
-  (async () => {
+  ;(async () => {
     try {
       const res = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'text/event-stream',
+          Accept: 'text/event-stream',
         },
         body: JSON.stringify(body),
         signal: controller.signal,
-      });
+      })
 
       if (!res.ok || !res.body) {
-        const data = await res.json().catch(() => ({}));
+        const data = await res.json().catch(() => ({}))
         callbacks.onError?.({
           code: data.code || 'HTTP_ERROR',
           message: data.error || `Request failed with status ${res.status}`,
-        });
-        callbacks.onDone?.();
-        return;
+        })
+        callbacks.onDone?.()
+        return
       }
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
 
       while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+        const { done, value } = await reader.read()
+        if (done) break
 
-        buffer += decoder.decode(value, { stream: true });
+        buffer += decoder.decode(value, { stream: true })
 
         // Parse SSE events from buffer
-        const parts = buffer.split('\n\n');
+        const parts = buffer.split('\n\n')
         // Keep the last part — it may be incomplete
-        buffer = parts.pop() || '';
+        buffer = parts.pop() || ''
 
         for (const part of parts) {
-          const lines = part.split('\n');
-          let eventType = '';
-          let dataStr = '';
+          const lines = part.split('\n')
+          let eventType = ''
+          let dataStr = ''
 
           for (const line of lines) {
             if (line.startsWith('event: ')) {
-              eventType = line.slice(7);
+              eventType = line.slice(7)
             } else if (line.startsWith('data: ')) {
-              dataStr = line.slice(6);
+              dataStr = line.slice(6)
             }
           }
 
-          if (!eventType || !dataStr) continue;
+          if (!eventType || !dataStr) continue
 
           try {
-            const payload = JSON.parse(dataStr);
+            const payload = JSON.parse(dataStr)
 
             switch (eventType) {
               case 'stderr':
-                callbacks.onStderr?.(payload.line);
-                break;
+                callbacks.onStderr?.(payload.line)
+                break
               case 'result':
-                callbacks.onResult?.(payload as T);
-                break;
+                callbacks.onResult?.(payload as T)
+                break
               case 'error':
-                callbacks.onError?.(payload);
-                break;
+                callbacks.onError?.(payload)
+                break
               case 'done':
                 // Stream ended
-                break;
+                break
             }
           } catch {
             // Skip malformed JSON
@@ -144,12 +147,12 @@ export function consumeClaudeStream<T>(
         callbacks.onError?.({
           code: 'NETWORK_ERROR',
           message: err instanceof Error ? err.message : 'Network error',
-        });
+        })
       }
     } finally {
-      callbacks.onDone?.();
+      callbacks.onDone?.()
     }
-  })();
+  })()
 
-  return controller;
+  return controller
 }

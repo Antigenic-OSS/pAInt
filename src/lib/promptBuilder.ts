@@ -5,14 +5,14 @@
  * buildApplyPrompt     — resume session to apply edits (--allowedTools Read,Edit)
  */
 
-import type { ProjectScanResult } from '@/types/claude';
+import type { ProjectScanResult } from '@/types/claude'
 
 /**
  * Build framework-specific styling instructions for Claude analysis prompts.
  */
 function buildFrameworkInstructions(scan?: ProjectScanResult | null): string {
-  const framework = scan?.framework ?? null;
-  const usesTailwind = scan?.cssStrategy?.includes('tailwind') ?? false;
+  const framework = scan?.framework ?? null
+  const usesTailwind = scan?.cssStrategy?.includes('tailwind') ?? false
 
   if (framework === 'flutter') {
     return [
@@ -29,7 +29,7 @@ function buildFrameworkInstructions(scan?: ProjectScanResult | null): string {
       '   - border-radius → BoxDecoration(borderRadius: BorderRadius.circular(n))',
       '   - width/height → SizedBox(width: n, height: n)',
       '   - opacity → Opacity(opacity: n, child: ...)',
-    ].join('\n');
+    ].join('\n')
   }
 
   if (framework === 'react-native') {
@@ -48,7 +48,7 @@ function buildFrameworkInstructions(scan?: ProjectScanResult | null): string {
       '   - align-items → alignItems: "center"',
       '   - border-radius → borderRadius: n (number only)',
       '   - box-shadow → iOS: shadowColor/shadowOffset/shadowOpacity; Android: elevation',
-    ].join('\n');
+    ].join('\n')
   }
 
   if (usesTailwind) {
@@ -69,7 +69,7 @@ function buildFrameworkInstructions(scan?: ProjectScanResult | null): string {
       '     - Example: `className="text-sm md:text-base lg:text-lg"`',
       '   - When using clsx/cn helper, preserve the conditional structure:',
       '     `cn("base-classes", condition && "conditional-classes")`.',
-    ].join('\n');
+    ].join('\n')
   }
 
   // Generic web — unknown CSS approach
@@ -78,68 +78,69 @@ function buildFrameworkInstructions(scan?: ProjectScanResult | null): string {
     '   styled-components, inline styles, global stylesheets, etc.) and',
     '   apply changes using that same approach. For Tailwind, update className',
     '   utility classes. For CSS files, edit the declarations directly.',
-  ].join('\n');
+  ].join('\n')
 }
 
 /**
  * Build a "## Project Context" section from scan results.
  */
 function buildProjectContextSection(scan: ProjectScanResult): string {
-  const lines: string[] = ['', '## Project Context', ''];
+  const lines: string[] = ['', '## Project Context', '']
   if (scan.framework) {
-    lines.push(`- Framework: ${scan.framework}`);
+    lines.push(`- Framework: ${scan.framework}`)
   }
   if (scan.cssStrategy.length > 0) {
-    lines.push(`- CSS: ${scan.cssStrategy.join(', ')}`);
+    lines.push(`- CSS: ${scan.cssStrategy.join(', ')}`)
   }
   if (scan.cssFiles.length > 0) {
-    lines.push(`- Key CSS files: ${scan.cssFiles.join(', ')}`);
+    lines.push(`- Key CSS files: ${scan.cssFiles.join(', ')}`)
   }
   if (scan.srcDirs.length > 0) {
-    lines.push(`- Source directories: ${scan.srcDirs.join(', ')}`);
+    lines.push(`- Source directories: ${scan.srcDirs.join(', ')}`)
   }
   if (scan.packageName) {
-    lines.push(`- Package: ${scan.packageName}`);
+    lines.push(`- Package: ${scan.packageName}`)
   }
 
   // File map summary
   if (scan.fileMap) {
-    const { routes, components } = scan.fileMap;
+    const { routes, components } = scan.fileMap
 
     if (routes.length > 0) {
-      const pageRoutes = routes.filter((r) => r.type === 'page');
-      const layoutRoutes = routes.filter((r) => r.type === 'layout');
-      lines.push('');
-      lines.push('### Route Files');
+      const pageRoutes = routes.filter((r) => r.type === 'page')
+      const layoutRoutes = routes.filter((r) => r.type === 'layout')
+      lines.push('')
+      lines.push('### Route Files')
       for (const r of pageRoutes) {
-        lines.push(`- ${r.urlPattern} → ${r.filePath}`);
+        lines.push(`- ${r.urlPattern} → ${r.filePath}`)
       }
       for (const r of layoutRoutes) {
-        lines.push(`- ${r.urlPattern} (layout) → ${r.filePath}`);
+        lines.push(`- ${r.urlPattern} (layout) → ${r.filePath}`)
       }
     }
 
     if (components.length > 0) {
       // Group by category and list directory with counts
-      const dirCounts = new Map<string, { count: number; category: string }>();
+      const dirCounts = new Map<string, { count: number; category: string }>()
       for (const comp of components) {
-        const dir = comp.filePath.substring(0, comp.filePath.lastIndexOf('/')) || '.';
-        const existing = dirCounts.get(dir);
+        const dir =
+          comp.filePath.substring(0, comp.filePath.lastIndexOf('/')) || '.'
+        const existing = dirCounts.get(dir)
         if (existing) {
-          existing.count++;
+          existing.count++
         } else {
-          dirCounts.set(dir, { count: 1, category: comp.category });
+          dirCounts.set(dir, { count: 1, category: comp.category })
         }
       }
-      lines.push('');
-      lines.push('### Source Files');
+      lines.push('')
+      lines.push('### Source Files')
       for (const [dir, { count, category }] of dirCounts) {
-        lines.push(`- ${dir}/ (${count} ${category}${count !== 1 ? 's' : ''})`);
+        lines.push(`- ${dir}/ (${count} ${category}${count !== 1 ? 's' : ''})`)
       }
     }
   }
 
-  return lines.join('\n');
+  return lines.join('\n')
 }
 
 /**
@@ -202,12 +203,12 @@ export function buildAnalysisPrompt(
     'Include enough context lines (3 is ideal) around each change so the',
     'diff can be applied unambiguously. If multiple hunks affect the same',
     'file, combine them under a single --- / +++ header.',
-  ].join('\n');
+  ].join('\n')
 
   if (scan) {
-    return prompt + buildProjectContextSection(scan);
+    return prompt + buildProjectContextSection(scan)
   }
-  return prompt;
+  return prompt
 }
 
 /**
@@ -287,7 +288,7 @@ export function buildScanPrompt(
     '### Conflict Detection',
     'Flag potential issues:',
     '- Breakpoint-specific changes that might conflict with other breakpoints',
-    '- Values that don\'t match the project\'s existing design system',
+    "- Values that don't match the project's existing design system",
     '- Accessibility concerns (font-size below 12px, insufficient contrast)',
     '',
     '## Changelog',
@@ -329,12 +330,12 @@ export function buildScanPrompt(
     'provided below, use it to infer file paths instead of reading the filesystem.',
     'Only read 1-3 key files to confirm the CSS approach (Tailwind, CSS modules, etc.).',
     'Do not read every component file — focus on the most relevant ones.',
-  ].join('\n');
+  ].join('\n')
 
   if (scan) {
-    return prompt + buildProjectContextSection(scan);
+    return prompt + buildProjectContextSection(scan)
   }
-  return prompt;
+  return prompt
 }
 
 /**
@@ -382,7 +383,7 @@ export function buildSmartAnalysisPrompt(
     'Include enough context lines (3 is ideal) around each change so the',
     'diff can be applied unambiguously. If multiple hunks affect the same',
     'file, combine them under a single --- / +++ header.',
-  ].join('\n');
+  ].join('\n')
 }
 
 export function buildApplyPrompt(): string {
@@ -397,5 +398,5 @@ export function buildApplyPrompt(): string {
     '3. Do NOT make any changes beyond what was specified in the diffs.',
     '4. After all edits are applied, output a brief summary listing each',
     '   file modified and the number of hunks applied.',
-  ].join('\n');
+  ].join('\n')
 }

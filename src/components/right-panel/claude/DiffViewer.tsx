@@ -1,22 +1,22 @@
-'use client';
+'use client'
 
-import { useMemo } from 'react';
-import { useEditorStore } from '@/store';
-import { DiffCard } from './DiffCard';
+import { useMemo } from 'react'
+import { useEditorStore } from '@/store'
+import { DiffCard } from './DiffCard'
 
 export function DiffViewer() {
-  const parsedDiffs = useEditorStore((s) => s.parsedDiffs);
+  const parsedDiffs = useEditorStore((s) => s.parsedDiffs)
 
   const summary = useMemo(() => {
-    let totalFiles = parsedDiffs.length;
-    let totalAdded = 0;
-    let totalRemoved = 0;
+    let totalFiles = parsedDiffs.length
+    let totalAdded = 0
+    let totalRemoved = 0
     for (const diff of parsedDiffs) {
-      totalAdded += diff.linesAdded;
-      totalRemoved += diff.linesRemoved;
+      totalAdded += diff.linesAdded
+      totalRemoved += diff.linesRemoved
     }
-    return { totalFiles, totalAdded, totalRemoved };
-  }, [parsedDiffs]);
+    return { totalFiles, totalAdded, totalRemoved }
+  }, [parsedDiffs])
 
   if (parsedDiffs.length === 0) {
     return (
@@ -26,7 +26,7 @@ export function DiffViewer() {
       >
         No diffs to display
       </div>
-    );
+    )
   }
 
   return (
@@ -40,12 +40,8 @@ export function DiffViewer() {
           {summary.totalFiles} file{summary.totalFiles !== 1 ? 's' : ''} changed
         </span>
         <div className="flex items-center gap-3">
-          <span style={{ color: 'var(--success)' }}>
-            +{summary.totalAdded}
-          </span>
-          <span style={{ color: 'var(--error)' }}>
-            -{summary.totalRemoved}
-          </span>
+          <span style={{ color: 'var(--success)' }}>+{summary.totalAdded}</span>
+          <span style={{ color: 'var(--error)' }}>-{summary.totalRemoved}</span>
         </div>
       </div>
 
@@ -54,5 +50,5 @@ export function DiffViewer() {
         <DiffCard key={`${diff.filePath}-${idx}`} diff={diff} />
       ))}
     </div>
-  );
+  )
 }

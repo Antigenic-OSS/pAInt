@@ -1,235 +1,241 @@
-'use client';
+'use client'
 
-import { useState, useEffect, useRef } from 'react';
-import { useEditorStore } from '@/store';
-import { normalizeTargetUrl } from '@/lib/utils';
-import { BREAKPOINTS } from '@/lib/constants';
-import { useProjectScan } from '@/hooks/useProjectScan';
-import { pickFolder } from '@/lib/folderPicker';
-import { isEditorOnLocalhost } from '@/hooks/usePostMessage';
-import { ScanAnimation } from './common/ScanAnimation';
-import type { Breakpoint } from '@/types/changelog';
-import type { ScanResult } from '@/hooks/useProjectScan';
+import { useState, useEffect, useRef } from 'react'
+import { useEditorStore } from '@/store'
+import { normalizeTargetUrl } from '@/lib/utils'
+import { BREAKPOINTS } from '@/lib/constants'
+import { useProjectScan } from '@/hooks/useProjectScan'
+import { pickFolder } from '@/lib/folderPicker'
+import { isEditorOnLocalhost } from '@/hooks/usePostMessage'
+import { ScanAnimation } from './common/ScanAnimation'
+import type { Breakpoint } from '@/types/changelog'
+import type { ScanResult } from '@/hooks/useProjectScan'
 
 export function ConnectModal() {
-  const setTargetUrl = useEditorStore((s) => s.setTargetUrl);
-  const setConnectionStatus = useEditorStore((s) => s.setConnectionStatus);
-  const addRecentUrl = useEditorStore((s) => s.addRecentUrl);
-  const connectionStatus = useEditorStore((s) => s.connectionStatus);
-  const recentUrls = useEditorStore((s) => s.recentUrls);
-  const activeBreakpoint = useEditorStore((s) => s.activeBreakpoint);
-  const setActiveBreakpoint = useEditorStore((s) => s.setActiveBreakpoint);
-  const setPreviewWidth = useEditorStore((s) => s.setPreviewWidth);
-  const portRoots = useEditorStore((s) => s.portRoots);
-  const setProjectRoot = useEditorStore((s) => s.setProjectRoot);
-  const setPendingConnection = useEditorStore((s) => s.setPendingConnection);
-  const finalizeConnection = useEditorStore((s) => s.finalizeConnection);
-  const cancelPendingConnection = useEditorStore((s) => s.cancelPendingConnection);
-  const pendingTargetUrl = useEditorStore((s) => s.pendingTargetUrl);
-  const pendingFolderPath = useEditorStore((s) => s.pendingFolderPath);
-  const targetUrl = useEditorStore((s) => s.targetUrl);
+  const setTargetUrl = useEditorStore((s) => s.setTargetUrl)
+  const setConnectionStatus = useEditorStore((s) => s.setConnectionStatus)
+  const addRecentUrl = useEditorStore((s) => s.addRecentUrl)
+  const connectionStatus = useEditorStore((s) => s.connectionStatus)
+  const recentUrls = useEditorStore((s) => s.recentUrls)
+  const activeBreakpoint = useEditorStore((s) => s.activeBreakpoint)
+  const setActiveBreakpoint = useEditorStore((s) => s.setActiveBreakpoint)
+  const setPreviewWidth = useEditorStore((s) => s.setPreviewWidth)
+  const portRoots = useEditorStore((s) => s.portRoots)
+  const setProjectRoot = useEditorStore((s) => s.setProjectRoot)
+  const setPendingConnection = useEditorStore((s) => s.setPendingConnection)
+  const finalizeConnection = useEditorStore((s) => s.finalizeConnection)
+  const cancelPendingConnection = useEditorStore(
+    (s) => s.cancelPendingConnection,
+  )
+  const pendingTargetUrl = useEditorStore((s) => s.pendingTargetUrl)
+  const pendingFolderPath = useEditorStore((s) => s.pendingFolderPath)
+  const targetUrl = useEditorStore((s) => s.targetUrl)
 
-  const setDirectoryHandle = useEditorStore((s) => s.setDirectoryHandle);
-  const directoryHandle = useEditorStore((s) => s.directoryHandle);
-  const { triggerScan, triggerClientScan } = useProjectScan();
-  const [isLocal, setIsLocal] = useState(false);
+  const setDirectoryHandle = useEditorStore((s) => s.setDirectoryHandle)
+  const directoryHandle = useEditorStore((s) => s.directoryHandle)
+  const { triggerScan, triggerClientScan } = useProjectScan()
+  const [isLocal, setIsLocal] = useState(false)
 
   useEffect(() => {
-    setIsLocal(isEditorOnLocalhost());
-  }, []);
+    setIsLocal(isEditorOnLocalhost())
+  }, [])
 
-  const portOptions = Array.from({ length: 8 }, (_, i) => 3000 + i);
-  const [selectedPort, setSelectedPort] = useState(3000);
-  const [urlMode, setUrlMode] = useState(false);
-  const [customUrl, setCustomUrl] = useState('http://localhost:3000');
-  const [folderPath, setFolderPath] = useState('');
-  const [folderError, setFolderError] = useState<string | null>(null);
-  const [isBrowsing, setIsBrowsing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [howToOpen, setHowToOpen] = useState(false);
-  const [showScriptFallback, setShowScriptFallback] = useState(false);
-  const [scriptCopied, setScriptCopied] = useState(false);
-  const [scanResult, setScanResult] = useState<ScanResult | null>(null);
-  const [scanDone, setScanDone] = useState(false);
-  const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const autoAdvanceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const portOptions = Array.from({ length: 8 }, (_, i) => 3000 + i)
+  const [selectedPort, setSelectedPort] = useState(3000)
+  const [urlMode, setUrlMode] = useState(false)
+  const [customUrl, setCustomUrl] = useState('http://localhost:3000')
+  const [folderPath, setFolderPath] = useState('')
+  const [folderError, setFolderError] = useState<string | null>(null)
+  const [isBrowsing, setIsBrowsing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [howToOpen, setHowToOpen] = useState(false)
+  const [showScriptFallback, setShowScriptFallback] = useState(false)
+  const [scriptCopied, setScriptCopied] = useState(false)
+  const [scanResult, setScanResult] = useState<ScanResult | null>(null)
+  const [scanDone, setScanDone] = useState(false)
+  const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const autoAdvanceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const isConnecting = connectionStatus === 'connecting';
-  const isConfirming = connectionStatus === 'confirming';
-  const isScanning = connectionStatus === 'scanning';
+  const isConnecting = connectionStatus === 'connecting'
+  const isConfirming = connectionStatus === 'confirming'
+  const isScanning = connectionStatus === 'scanning'
 
   // Show script tag fallback after 5s of connecting (immediately when deployed)
   useEffect(() => {
     if (isConnecting && targetUrl) {
       if (!isLocal) {
         // On Vercel, show immediately — proxy won't inject the script
-        setShowScriptFallback(true);
+        setShowScriptFallback(true)
       } else {
         fallbackTimerRef.current = setTimeout(() => {
-          setShowScriptFallback(true);
-        }, 5000);
+          setShowScriptFallback(true)
+        }, 5000)
       }
     } else {
-      setShowScriptFallback(false);
+      setShowScriptFallback(false)
       if (fallbackTimerRef.current) {
-        clearTimeout(fallbackTimerRef.current);
-        fallbackTimerRef.current = null;
+        clearTimeout(fallbackTimerRef.current)
+        fallbackTimerRef.current = null
       }
     }
     return () => {
       if (fallbackTimerRef.current) {
-        clearTimeout(fallbackTimerRef.current);
-        fallbackTimerRef.current = null;
+        clearTimeout(fallbackTimerRef.current)
+        fallbackTimerRef.current = null
       }
-    };
-  }, [isConnecting, targetUrl, isLocal]);
+    }
+  }, [isConnecting, targetUrl, isLocal])
 
   // Cleanup auto-advance timer
   useEffect(() => {
     return () => {
       if (autoAdvanceRef.current) {
-        clearTimeout(autoAdvanceRef.current);
+        clearTimeout(autoAdvanceRef.current)
       }
-    };
-  }, []);
+    }
+  }, [])
 
   // Cancel current connection and reset to editable state
   const cancelConnection = () => {
     if (isConnecting) {
-      setConnectionStatus('disconnected');
-      setTargetUrl(null);
+      setConnectionStatus('disconnected')
+      setTargetUrl(null)
     }
     if (isConfirming || isScanning) {
-      cancelPendingConnection();
+      cancelPendingConnection()
     }
-    setShowScriptFallback(false);
-    setScriptCopied(false);
-    setScanResult(null);
-    setScanDone(false);
+    setShowScriptFallback(false)
+    setScriptCopied(false)
+    setScanResult(null)
+    setScanDone(false)
     if (fallbackTimerRef.current) {
-      clearTimeout(fallbackTimerRef.current);
-      fallbackTimerRef.current = null;
+      clearTimeout(fallbackTimerRef.current)
+      fallbackTimerRef.current = null
     }
     if (autoAdvanceRef.current) {
-      clearTimeout(autoAdvanceRef.current);
-      autoAdvanceRef.current = null;
+      clearTimeout(autoAdvanceRef.current)
+      autoAdvanceRef.current = null
     }
-  };
+  }
 
   const handleCopyScript = async () => {
-    const scriptTag = `<script src="${window.location.origin}/dev-editor-inspector.js"></script>`;
+    const scriptTag = `<script src="${window.location.origin}/dev-editor-inspector.js"></script>`
     try {
-      await navigator.clipboard.writeText(scriptTag);
-      setScriptCopied(true);
-      setTimeout(() => setScriptCopied(false), 2000);
-    } catch { /* fallback: user can manually copy */ }
-  };
+      await navigator.clipboard.writeText(scriptTag)
+      setScriptCopied(true)
+      setTimeout(() => setScriptCopied(false), 2000)
+    } catch {
+      /* fallback: user can manually copy */
+    }
+  }
 
   // Pre-fill folder path from portRoots when selected URL changes
-  const currentUrl = urlMode ? customUrl.trim() : `http://localhost:${selectedPort}`;
+  const currentUrl = urlMode
+    ? customUrl.trim()
+    : `http://localhost:${selectedPort}`
   useEffect(() => {
-    if (connectionStatus !== 'disconnected') return;
-    const normalized = normalizeTargetUrl(currentUrl);
-    const saved = portRoots[normalized];
+    if (connectionStatus !== 'disconnected') return
+    const normalized = normalizeTargetUrl(currentUrl)
+    const saved = portRoots[normalized]
     if (saved) {
-      setFolderPath(saved);
-      setFolderError(null);
+      setFolderPath(saved)
+      setFolderError(null)
     }
-  }, [selectedPort, urlMode, currentUrl, portRoots, connectionStatus]);
+  }, [selectedPort, urlMode, currentUrl, portRoots, connectionStatus])
 
   const handleBrowse = async () => {
-    setIsBrowsing(true);
-    setFolderError(null);
+    setIsBrowsing(true)
+    setFolderError(null)
     try {
-      const result = await pickFolder();
+      const result = await pickFolder()
       if (result.type === 'path') {
-        setFolderPath(result.path);
-        setDirectoryHandle(null);
+        setFolderPath(result.path)
+        setDirectoryHandle(null)
       } else if (result.type === 'handle') {
-        setFolderPath(result.name);
-        setDirectoryHandle(result.handle);
+        setFolderPath(result.name)
+        setDirectoryHandle(result.handle)
       } else if (result.type === 'error') {
-        setFolderError(result.message);
+        setFolderError(result.message)
       }
       // type === 'cancelled' — do nothing
     } catch {
-      setFolderError('Failed to open folder picker');
+      setFolderError('Failed to open folder picker')
     } finally {
-      setIsBrowsing(false);
+      setIsBrowsing(false)
     }
-  };
+  }
 
   const handleConnect = () => {
-    setError(null);
-    setFolderError(null);
-    const raw = urlMode ? customUrl.trim() : `http://localhost:${selectedPort}`;
+    setError(null)
+    setFolderError(null)
+    const raw = urlMode ? customUrl.trim() : `http://localhost:${selectedPort}`
     if (urlMode && !raw) {
-      setError('Enter a URL');
-      return;
+      setError('Enter a URL')
+      return
     }
-    const normalized = normalizeTargetUrl(raw);
-    const trimmedFolder = folderPath.trim();
+    const normalized = normalizeTargetUrl(raw)
+    const trimmedFolder = folderPath.trim()
 
     if (trimmedFolder) {
       // Save folder and go to confirmation step
       // For client-side handles, store the folder name (not a server path)
       if (isLocal || !directoryHandle) {
-        setProjectRoot(normalized, trimmedFolder);
+        setProjectRoot(normalized, trimmedFolder)
       }
-      setPendingConnection(normalized, trimmedFolder);
-      addRecentUrl(normalized);
+      setPendingConnection(normalized, trimmedFolder)
+      addRecentUrl(normalized)
     } else {
       // No folder — skip confirmation and scan, connect directly
-      setPendingConnection(normalized, '');
-      addRecentUrl(normalized);
+      setPendingConnection(normalized, '')
+      addRecentUrl(normalized)
     }
-  };
+  }
 
   const handleConfirm = async () => {
-    if (!pendingTargetUrl || !pendingFolderPath) return;
-    setConnectionStatus('scanning');
-    setScanResult(null);
-    setScanDone(false);
+    if (!pendingTargetUrl || !pendingFolderPath) return
+    setConnectionStatus('scanning')
+    setScanResult(null)
+    setScanDone(false)
 
     // Use client-side scan when we have a directory handle (Vercel / FSAA mode)
     const result = directoryHandle
       ? await triggerClientScan(directoryHandle)
-      : await triggerScan(pendingFolderPath);
-    setScanResult(result);
-    setScanDone(true);
+      : await triggerScan(pendingFolderPath)
+    setScanResult(result)
+    setScanDone(true)
 
     // Auto-advance to connecting after brief display
     autoAdvanceRef.current = setTimeout(() => {
-      finalizeConnection();
-    }, 1200);
-  };
+      finalizeConnection()
+    }, 1200)
+  }
 
   const handleContinueAnyway = () => {
     if (autoAdvanceRef.current) {
-      clearTimeout(autoAdvanceRef.current);
+      clearTimeout(autoAdvanceRef.current)
     }
-    finalizeConnection();
-  };
+    finalizeConnection()
+  }
 
   const handleBack = () => {
-    cancelPendingConnection();
-    setScanResult(null);
-    setScanDone(false);
-  };
+    cancelPendingConnection()
+    setScanResult(null)
+    setScanDone(false)
+  }
 
   const handleRecentClick = (url: string) => {
-    cancelConnection();
-    setError(null);
+    cancelConnection()
+    setError(null)
     // Pre-fill the URL input so the user can review before clicking Connect
-    setUrlMode(true);
-    setCustomUrl(url);
-  };
+    setUrlMode(true)
+    setCustomUrl(url)
+  }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      handleConnect();
+      handleConnect()
     }
-  };
+  }
 
   // Header subtitle changes per step
   const headerSubtitle = isConfirming
@@ -238,7 +244,9 @@ export function ConnectModal() {
       ? 'Scanning project folder'
       : isConnecting
         ? 'Connecting to your project'
-        : isLocal ? 'Connect to your localhost project' : 'Connect to your project';
+        : isLocal
+          ? 'Connect to your localhost project'
+          : 'Connect to your project'
 
   return (
     <div
@@ -291,7 +299,6 @@ export function ConnectModal() {
 
         {/* Body — scrollable */}
         <div className="flex-1 overflow-y-auto px-6 py-5">
-
           {/* ─── STEP: SETUP (disconnected) ─── */}
           {connectionStatus === 'disconnected' && (
             <>
@@ -300,24 +307,44 @@ export function ConnectModal() {
                 {/* URL mode toggle */}
                 <button
                   onClick={() => {
-                    setUrlMode(!urlMode);
-                    setError(null);
+                    setUrlMode(!urlMode)
+                    setError(null)
                   }}
                   className="p-1.5 rounded transition-colors flex-shrink-0"
                   style={{
                     color: urlMode ? 'var(--accent)' : 'var(--text-muted)',
                     background: urlMode ? 'var(--accent-bg)' : 'transparent',
                   }}
-                  title={urlMode ? 'Switch to port selector' : 'Switch to URL input'}
+                  title={
+                    urlMode ? 'Switch to port selector' : 'Switch to URL input'
+                  }
                 >
                   {urlMode ? (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
                       <polyline points="6 9 6 2 18 2 18 9" />
                       <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
                       <rect x="6" y="14" width="12" height="8" />
                     </svg>
                   ) : (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
                       <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                       <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                     </svg>
@@ -329,7 +356,10 @@ export function ConnectModal() {
                   <input
                     type="text"
                     value={customUrl}
-                    onChange={(e) => { setCustomUrl(e.target.value); setError(null); }}
+                    onChange={(e) => {
+                      setCustomUrl(e.target.value)
+                      setError(null)
+                    }}
                     onKeyDown={handleKeyDown}
                     placeholder="http://localhost:3000/path"
                     className="flex-1 text-xs rounded px-2.5 py-1.5 outline-none"
@@ -343,7 +373,10 @@ export function ConnectModal() {
                 ) : (
                   <select
                     value={selectedPort}
-                    onChange={(e) => { setSelectedPort(parseInt(e.target.value, 10)); setError(null); }}
+                    onChange={(e) => {
+                      setSelectedPort(parseInt(e.target.value, 10))
+                      setError(null)
+                    }}
                     onKeyDown={handleKeyDown}
                     className="flex-1 text-xs rounded px-2.5 py-1.5 outline-none"
                     style={{
@@ -369,19 +402,30 @@ export function ConnectModal() {
                 >
                   Viewport
                 </span>
-                {(Object.entries(BREAKPOINTS) as [Breakpoint, { label: string; width: number }][])
+                {(
+                  Object.entries(BREAKPOINTS) as [
+                    Breakpoint,
+                    { label: string; width: number },
+                  ][]
+                )
                   .reverse()
                   .map(([bp, { label, width }]) => (
                     <button
                       key={bp}
                       onClick={() => {
-                        setActiveBreakpoint(bp);
-                        setPreviewWidth(width);
+                        setActiveBreakpoint(bp)
+                        setPreviewWidth(width)
                       }}
                       className="text-[11px] px-2.5 py-1 rounded transition-colors"
                       style={{
-                        background: activeBreakpoint === bp ? 'var(--accent-bg)' : 'var(--bg-tertiary)',
-                        color: activeBreakpoint === bp ? 'var(--accent)' : 'var(--text-secondary)',
+                        background:
+                          activeBreakpoint === bp
+                            ? 'var(--accent-bg)'
+                            : 'var(--bg-tertiary)',
+                        color:
+                          activeBreakpoint === bp
+                            ? 'var(--accent)'
+                            : 'var(--text-secondary)',
                         border: `1px solid ${activeBreakpoint === bp ? 'var(--accent)' : 'var(--border)'}`,
                       }}
                     >
@@ -403,7 +447,10 @@ export function ConnectModal() {
                   style={{ color: 'var(--text-muted)' }}
                 >
                   Project folder
-                  <span className="ml-1" style={{ color: 'var(--text-muted)', opacity: 0.6 }}>
+                  <span
+                    className="ml-1"
+                    style={{ color: 'var(--text-muted)', opacity: 0.6 }}
+                  >
                     (optional)
                   </span>
                 </span>
@@ -412,7 +459,9 @@ export function ConnectModal() {
                     className="flex-1 text-xs rounded px-2.5 py-1.5 font-mono truncate cursor-default select-none"
                     style={{
                       background: 'var(--bg-secondary)',
-                      color: folderPath ? 'var(--text-primary)' : 'var(--text-muted)',
+                      color: folderPath
+                        ? 'var(--text-primary)'
+                        : 'var(--text-muted)',
                       border: `1px solid ${folderError ? 'var(--error)' : 'var(--border)'}`,
                       minHeight: '28px',
                       lineHeight: '16px',
@@ -438,7 +487,10 @@ export function ConnectModal() {
                   </button>
                 </div>
                 {folderError && (
-                  <p className="text-[11px] mt-1" style={{ color: 'var(--error)' }}>
+                  <p
+                    className="text-[11px] mt-1"
+                    style={{ color: 'var(--error)' }}
+                  >
                     {folderError}
                   </p>
                 )}
@@ -465,12 +517,12 @@ export function ConnectModal() {
                           border: '1px solid var(--border)',
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.borderColor = 'var(--accent)';
-                          e.currentTarget.style.color = 'var(--text-primary)';
+                          e.currentTarget.style.borderColor = 'var(--accent)'
+                          e.currentTarget.style.color = 'var(--text-primary)'
                         }}
                         onMouseLeave={(e) => {
-                          e.currentTarget.style.borderColor = 'var(--border)';
-                          e.currentTarget.style.color = 'var(--text-secondary)';
+                          e.currentTarget.style.borderColor = 'var(--border)'
+                          e.currentTarget.style.color = 'var(--text-secondary)'
                         }}
                       >
                         {url.replace(/^https?:\/\//, '')}
@@ -533,13 +585,25 @@ export function ConnectModal() {
                     </h4>
                     <div className="flex flex-col gap-2">
                       <div>
-                        <span style={{ color: 'var(--success)' }}>Automatic (Reverse Proxy)</span> — Default. The editor loads your page through a built-in proxy and injects the inspector script automatically.
+                        <span style={{ color: 'var(--success)' }}>
+                          Automatic (Reverse Proxy)
+                        </span>{' '}
+                        — Default. The editor loads your page through a built-in
+                        proxy and injects the inspector script automatically.
                       </div>
                       <div>
-                        <span style={{ color: 'var(--warning)' }}>Manual (Script Tag)</span> — If auto-connect takes longer than 5s, add the provided script tag to your project&apos;s HTML layout.
+                        <span style={{ color: 'var(--warning)' }}>
+                          Manual (Script Tag)
+                        </span>{' '}
+                        — If auto-connect takes longer than 5s, add the provided
+                        script tag to your project&apos;s HTML layout.
                       </div>
                       <div>
-                        <span style={{ color: 'var(--accent)' }}>React Native / Expo Web</span> — Add the inspector script dynamically in your root layout:
+                        <span style={{ color: 'var(--accent)' }}>
+                          React Native / Expo Web
+                        </span>{' '}
+                        — Add the inspector script dynamically in your root
+                        layout:
                         <pre
                           className="mt-1.5 px-3 py-2.5 rounded text-[11px] leading-relaxed overflow-x-auto whitespace-pre"
                           style={{
@@ -576,10 +640,32 @@ export function ConnectModal() {
                       What You Can Do
                     </h4>
                     <ul className="flex flex-col gap-1">
-                      <li><span style={{ color: 'var(--accent)' }}>Style Editing</span> — Adjust colors, spacing, typography, borders, and layout live</li>
-                      <li><span style={{ color: 'var(--accent)' }}>Responsive Testing</span> — Switch between Mobile, Tablet, and Desktop breakpoints</li>
-                      <li><span style={{ color: 'var(--accent)' }}>Change Tracking</span> — Every edit recorded with original and new values</li>
-                      <li><span style={{ color: 'var(--accent)' }}>Changelog Export</span> — Copy or send changes to Claude Code for source file updates</li>
+                      <li>
+                        <span style={{ color: 'var(--accent)' }}>
+                          Style Editing
+                        </span>{' '}
+                        — Adjust colors, spacing, typography, borders, and
+                        layout live
+                      </li>
+                      <li>
+                        <span style={{ color: 'var(--accent)' }}>
+                          Responsive Testing
+                        </span>{' '}
+                        — Switch between Mobile, Tablet, and Desktop breakpoints
+                      </li>
+                      <li>
+                        <span style={{ color: 'var(--accent)' }}>
+                          Change Tracking
+                        </span>{' '}
+                        — Every edit recorded with original and new values
+                      </li>
+                      <li>
+                        <span style={{ color: 'var(--accent)' }}>
+                          Changelog Export
+                        </span>{' '}
+                        — Copy or send changes to Claude Code for source file
+                        updates
+                      </li>
                     </ul>
                   </div>
                 </div>
@@ -635,7 +721,8 @@ export function ConnectModal() {
                 className="text-[11px]"
                 style={{ color: 'var(--text-secondary)' }}
               >
-                Clicking Confirm will scan this folder for components and CSS files before loading the page.
+                Clicking Confirm will scan this folder for components and CSS
+                files before loading the page.
               </p>
             </div>
           )}
@@ -662,20 +749,33 @@ export function ConnectModal() {
                     style={{ color: 'var(--success)' }}
                   >
                     {[
-                      scanResult.count > 0 ? `${scanResult.count} component${scanResult.count !== 1 ? 's' : ''}` : null,
-                      scanResult.pageCount > 0 ? `${scanResult.pageCount} page${scanResult.pageCount !== 1 ? 's' : ''}` : null,
-                      scanResult.cssFileCount > 0 ? `${scanResult.cssFileCount} CSS file${scanResult.cssFileCount !== 1 ? 's' : ''}` : null,
-                    ].filter(Boolean).join(', ') || 'No files found'}
+                      scanResult.count > 0
+                        ? `${scanResult.count} component${scanResult.count !== 1 ? 's' : ''}`
+                        : null,
+                      scanResult.pageCount > 0
+                        ? `${scanResult.pageCount} page${scanResult.pageCount !== 1 ? 's' : ''}`
+                        : null,
+                      scanResult.cssFileCount > 0
+                        ? `${scanResult.cssFileCount} CSS file${scanResult.cssFileCount !== 1 ? 's' : ''}`
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join(', ') || 'No files found'}
                   </div>
-                  {(scanResult.framework || scanResult.cssStrategy.length > 0) && (
+                  {(scanResult.framework ||
+                    scanResult.cssStrategy.length > 0) && (
                     <div
                       className="text-[11px] text-center"
                       style={{ color: 'var(--text-secondary)' }}
                     >
                       {[
                         scanResult.framework,
-                        scanResult.cssStrategy.length > 0 ? scanResult.cssStrategy.join(', ') : null,
-                      ].filter(Boolean).join('  \u00b7  ')}
+                        scanResult.cssStrategy.length > 0
+                          ? scanResult.cssStrategy.join(', ')
+                          : null,
+                      ]
+                        .filter(Boolean)
+                        .join('  \u00b7  ')}
                     </div>
                   )}
                 </div>
@@ -730,10 +830,7 @@ export function ConnectModal() {
                   animation: 'spin 0.8s linear infinite',
                 }}
               />
-              <p
-                className="text-xs"
-                style={{ color: 'var(--text-secondary)' }}
-              >
+              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
                 Connecting to {targetUrl?.replace(/^https?:\/\//, '')}...
               </p>
             </div>
@@ -753,7 +850,9 @@ export function ConnectModal() {
               className="text-xs font-medium mb-1"
               style={{ color: 'var(--warning)' }}
             >
-              {isLocal ? 'Inspector script not detected' : 'Script tag required'}
+              {isLocal
+                ? 'Inspector script not detected'
+                : 'Script tag required'}
             </div>
             <div
               className="text-[11px] mb-2"
@@ -819,8 +918,12 @@ export function ConnectModal() {
                   rel="noopener noreferrer"
                   className="text-xs no-underline transition-colors"
                   style={{ color: 'var(--text-muted)' }}
-                  onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--accent)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.color = 'var(--accent)')
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.color = 'var(--text-muted)')
+                  }
                 >
                   Setup Guide & Docs
                 </a>
@@ -887,5 +990,5 @@ export function ConnectModal() {
         </div>
       </div>
     </div>
-  );
+  )
 }

@@ -1,53 +1,82 @@
-'use client';
+'use client'
 
-import { useEditorStore } from '@/store';
-import { SectionHeader } from '@/components/right-panel/design/inputs/SectionHeader';
-import { CompactInput } from '@/components/right-panel/design/inputs/CompactInput';
-import { ColorInput } from '@/components/right-panel/design/inputs/ColorInput';
-import { useChangeTracker } from '@/hooks/useChangeTracker';
+import { useEditorStore } from '@/store'
+import { SectionHeader } from '@/components/right-panel/design/inputs/SectionHeader'
+import { CompactInput } from '@/components/right-panel/design/inputs/CompactInput'
+import { ColorInput } from '@/components/right-panel/design/inputs/ColorInput'
+import { useChangeTracker } from '@/hooks/useChangeTracker'
 
-const BORDER_STYLES = ['none', 'solid', 'dashed', 'dotted', 'double', 'groove', 'ridge', 'inset', 'outset'];
+const BORDER_STYLES = [
+  'none',
+  'solid',
+  'dashed',
+  'dotted',
+  'double',
+  'groove',
+  'ridge',
+  'inset',
+  'outset',
+]
 
 const BORDER_PROPERTIES = [
-  'borderWidth', 'borderStyle', 'borderColor',
-  'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
-];
+  'borderWidth',
+  'borderStyle',
+  'borderColor',
+  'borderTopWidth',
+  'borderRightWidth',
+  'borderBottomWidth',
+  'borderLeftWidth',
+]
 
 export function BorderSection() {
-  const computedStyles = useEditorStore((state) => state.computedStyles);
-  const cssVariableUsages = useEditorStore((state) => state.cssVariableUsages);
-  const { applyChange, resetProperty } = useChangeTracker();
+  const computedStyles = useEditorStore((state) => state.computedStyles)
+  const cssVariableUsages = useEditorStore((state) => state.cssVariableUsages)
+  const { applyChange, resetProperty } = useChangeTracker()
 
   const hasChanges = useEditorStore((s) => {
-    const sp = s.selectorPath;
-    if (!sp) return false;
-    return s.styleChanges.some((c) => c.elementSelector === sp && BORDER_PROPERTIES.includes(c.property));
-  });
+    const sp = s.selectorPath
+    if (!sp) return false
+    return s.styleChanges.some(
+      (c) => c.elementSelector === sp && BORDER_PROPERTIES.includes(c.property),
+    )
+  })
 
   const handleResetAll = () => {
-    const { selectorPath, styleChanges } = useEditorStore.getState();
-    if (!selectorPath) return;
-    const matching = styleChanges.filter((c) => c.elementSelector === selectorPath && BORDER_PROPERTIES.includes(c.property));
-    for (const c of matching) resetProperty(c.property);
-  };
+    const { selectorPath, styleChanges } = useEditorStore.getState()
+    if (!selectorPath) return
+    const matching = styleChanges.filter(
+      (c) =>
+        c.elementSelector === selectorPath &&
+        BORDER_PROPERTIES.includes(c.property),
+    )
+    for (const c of matching) resetProperty(c.property)
+  }
 
   const handleChange = (property: string, value: string) => {
-    applyChange(property, value);
-  };
+    applyChange(property, value)
+  }
 
-  const borderWidth = computedStyles.borderWidth || '0px';
-  const borderStyle = computedStyles.borderStyle || 'solid';
-  const borderColor = computedStyles.borderColor || '#000000';
+  const borderWidth = computedStyles.borderWidth || '0px'
+  const borderStyle = computedStyles.borderStyle || 'solid'
+  const borderColor = computedStyles.borderColor || '#000000'
 
-  const borderTopWidth = computedStyles.borderTopWidth || borderWidth;
-  const borderRightWidth = computedStyles.borderRightWidth || borderWidth;
-  const borderBottomWidth = computedStyles.borderBottomWidth || borderWidth;
-  const borderLeftWidth = computedStyles.borderLeftWidth || borderWidth;
+  const borderTopWidth = computedStyles.borderTopWidth || borderWidth
+  const borderRightWidth = computedStyles.borderRightWidth || borderWidth
+  const borderBottomWidth = computedStyles.borderBottomWidth || borderWidth
+  const borderLeftWidth = computedStyles.borderLeftWidth || borderWidth
 
   return (
-    <SectionHeader title="Border" defaultOpen={false} hasChanges={hasChanges} onReset={handleResetAll}>
+    <SectionHeader
+      title="Border"
+      defaultOpen={false}
+      hasChanges={hasChanges}
+      onReset={handleResetAll}
+    >
       {/* General Border */}
-      <div className="space-y-1.5 pb-2" style={{ borderBottom: '1px solid var(--border)' }}>
+      <div
+        className="space-y-1.5 pb-2"
+        style={{ borderBottom: '1px solid var(--border)' }}
+      >
         <div className="grid grid-cols-2 gap-1.5">
           <CompactInput
             label="W"
@@ -68,7 +97,9 @@ export function BorderSection() {
             }}
           >
             {BORDER_STYLES.map((s) => (
-              <option key={s} value={s}>{s}</option>
+              <option key={s} value={s}>
+                {s}
+              </option>
             ))}
           </select>
         </div>
@@ -84,7 +115,10 @@ export function BorderSection() {
 
       {/* Individual Widths */}
       <div className="pt-1.5">
-        <div className="text-[10px] font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>
+        <div
+          className="text-[10px] font-medium mb-1.5"
+          style={{ color: 'var(--text-muted)' }}
+        >
           Individual Widths
         </div>
         <div className="grid grid-cols-2 gap-1.5">
@@ -123,5 +157,5 @@ export function BorderSection() {
         </div>
       </div>
     </SectionHeader>
-  );
+  )
 }

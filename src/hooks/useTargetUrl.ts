@@ -1,73 +1,81 @@
-'use client';
+'use client'
 
-import { useEffect, useRef, useCallback } from 'react';
-import { useEditorStore } from '@/store';
-import { usePostMessage } from './usePostMessage';
+import { useEffect, useRef, useCallback } from 'react'
+import { useEditorStore } from '@/store'
+import { usePostMessage } from './usePostMessage'
 import {
   HEARTBEAT_INTERVAL_MS,
   RECONNECT_MAX_RETRIES,
   RECONNECT_BASE_DELAY_MS,
-} from '@/lib/constants';
+} from '@/lib/constants'
 
 export function useTargetUrl() {
-  const connectionStatus = useEditorStore((s) => s.connectionStatus);
-  const targetUrl = useEditorStore((s) => s.targetUrl);
-  const setConnectionStatus = useEditorStore((s) => s.setConnectionStatus);
-  const { sendHeartbeat } = usePostMessage();
+  const connectionStatus = useEditorStore((s) => s.connectionStatus)
+  const targetUrl = useEditorStore((s) => s.targetUrl)
+  const setConnectionStatus = useEditorStore((s) => s.setConnectionStatus)
+  const { sendHeartbeat } = usePostMessage()
 
-  const heartbeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const retryCountRef = useRef(0);
-  const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const heartbeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
+    null,
+  )
+  const retryCountRef = useRef(0)
+  const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const startHeartbeat = useCallback(() => {
-    if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current);
+    if (heartbeatIntervalRef.current)
+      clearInterval(heartbeatIntervalRef.current)
 
     heartbeatIntervalRef.current = setInterval(async () => {
-      const alive = await sendHeartbeat();
+      const alive = await sendHeartbeat()
       if (!alive) {
-        setConnectionStatus('disconnected');
+        setConnectionStatus('disconnected')
       }
-    }, HEARTBEAT_INTERVAL_MS);
-  }, [sendHeartbeat, setConnectionStatus]);
+    }, HEARTBEAT_INTERVAL_MS)
+  }, [sendHeartbeat, setConnectionStatus])
 
   const stopHeartbeat = useCallback(() => {
     if (heartbeatIntervalRef.current) {
-      clearInterval(heartbeatIntervalRef.current);
-      heartbeatIntervalRef.current = null;
+      clearInterval(heartbeatIntervalRef.current)
+      heartbeatIntervalRef.current = null
     }
-  }, []);
+  }, [])
 
   // Start heartbeat when connected
   useEffect(() => {
     if (connectionStatus === 'connected') {
-      retryCountRef.current = 0;
-      startHeartbeat();
+      retryCountRef.current = 0
+      startHeartbeat()
     } else {
-      stopHeartbeat();
+      stopHeartbeat()
     }
-    return stopHeartbeat;
-  }, [connectionStatus, startHeartbeat, stopHeartbeat]);
+    return stopHeartbeat
+  }, [connectionStatus, startHeartbeat, stopHeartbeat])
 
   // Auto-reconnect on disconnect (confirming/scanning have null targetUrl so they won't trigger this)
   useEffect(() => {
-    if (connectionStatus !== 'disconnected' || !targetUrl || retryCountRef.current >= RECONNECT_MAX_RETRIES) return;
+    if (
+      connectionStatus !== 'disconnected' ||
+      !targetUrl ||
+      retryCountRef.current >= RECONNECT_MAX_RETRIES
+    )
+      return
 
-    const delay = RECONNECT_BASE_DELAY_MS * Math.pow(2, retryCountRef.current);
+    const delay = RECONNECT_BASE_DELAY_MS * Math.pow(2, retryCountRef.current)
     retryTimeoutRef.current = setTimeout(() => {
-      retryCountRef.current++;
-      setConnectionStatus('connecting');
-    }, delay);
+      retryCountRef.current++
+      setConnectionStatus('connecting')
+    }, delay)
 
     return () => {
       if (retryTimeoutRef.current) {
-        clearTimeout(retryTimeoutRef.current);
+        clearTimeout(retryTimeoutRef.current)
       }
-    };
-  }, [connectionStatus, targetUrl, setConnectionStatus]);
+    }
+  }, [connectionStatus, targetUrl, setConnectionStatus])
 
   return {
     isConnected: connectionStatus === 'connected',
     isConnecting: connectionStatus === 'connecting',
     isDisconnected: connectionStatus === 'disconnected',
-  };
+  }
 }

@@ -1,33 +1,33 @@
-'use client';
+'use client'
 
-import { useCallback } from 'react';
-import { useEditorStore } from '@/store';
+import { useCallback } from 'react'
+import { useEditorStore } from '@/store'
 
 export function PagesPanel() {
-  const pageLinks = useEditorStore((s) => s.pageLinks);
-  const currentPagePath = useEditorStore((s) => s.currentPagePath);
-  const setCurrentPagePath = useEditorStore((s) => s.setCurrentPagePath);
-  const targetUrl = useEditorStore((s) => s.targetUrl);
+  const pageLinks = useEditorStore((s) => s.pageLinks)
+  const currentPagePath = useEditorStore((s) => s.currentPagePath)
+  const setCurrentPagePath = useEditorStore((s) => s.setCurrentPagePath)
+  const targetUrl = useEditorStore((s) => s.targetUrl)
 
   const handleNavigate = useCallback(
     (path: string) => {
-      if (!targetUrl) return;
-      setCurrentPagePath(path);
+      if (!targetUrl) return
+      setCurrentPagePath(path)
     },
-    [targetUrl, setCurrentPagePath]
-  );
+    [targetUrl, setCurrentPagePath],
+  )
 
   // Build page list: always include "/" plus discovered links
-  const seen = new Set<string>();
-  const pages: Array<{ href: string; text: string }> = [];
+  const seen = new Set<string>()
+  const pages: Array<{ href: string; text: string }> = []
 
-  pages.push({ href: '/', text: 'Home' });
-  seen.add('/');
+  pages.push({ href: '/', text: 'Home' })
+  seen.add('/')
 
   for (const link of pageLinks) {
     if (!seen.has(link.href)) {
-      seen.add(link.href);
-      pages.push(link);
+      seen.add(link.href)
+      pages.push(link)
     }
   }
 
@@ -47,7 +47,7 @@ export function PagesPanel() {
       {/* Page list */}
       <div className="flex-1 overflow-y-auto">
         {pages.map((page) => {
-          const isActive = page.href === currentPagePath;
+          const isActive = page.href === currentPagePath
           return (
             <button
               key={page.href}
@@ -55,7 +55,9 @@ export function PagesPanel() {
               className="w-full text-left px-3 py-2 text-xs transition-colors flex items-center gap-2"
               style={{
                 color: isActive ? 'var(--accent)' : 'var(--text-primary)',
-                background: isActive ? 'rgba(74, 158, 255, 0.08)' : 'transparent',
+                background: isActive
+                  ? 'rgba(74, 158, 255, 0.08)'
+                  : 'transparent',
                 borderBottom: '1px solid var(--border)',
               }}
               title={page.href}
@@ -80,7 +82,10 @@ export function PagesPanel() {
                   {page.text || page.href}
                 </div>
                 {page.text && page.href !== page.text && (
-                  <div className="truncate" style={{ color: 'var(--text-muted)', fontSize: '10px' }}>
+                  <div
+                    className="truncate"
+                    style={{ color: 'var(--text-muted)', fontSize: '10px' }}
+                  >
                     {page.href}
                   </div>
                 )}
@@ -92,7 +97,7 @@ export function PagesPanel() {
                 />
               )}
             </button>
-          );
+          )
         })}
 
         {pages.length <= 1 && (
@@ -105,5 +110,5 @@ export function PagesPanel() {
         )}
       </div>
     </div>
-  );
+  )
 }

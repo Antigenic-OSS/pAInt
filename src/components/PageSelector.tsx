@@ -1,61 +1,64 @@
-'use client';
+'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { useEditorStore } from '@/store';
-import { sendViaIframe } from '@/hooks/usePostMessage';
+import { useState, useRef, useEffect, useCallback } from 'react'
+import { useEditorStore } from '@/store'
+import { sendViaIframe } from '@/hooks/usePostMessage'
 
 export function PageSelector() {
-  const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const pageLinks = useEditorStore((s) => s.pageLinks);
-  const currentPagePath = useEditorStore((s) => s.currentPagePath);
-  const setCurrentPagePath = useEditorStore((s) => s.setCurrentPagePath);
-  const targetUrl = useEditorStore((s) => s.targetUrl);
-  const setConnectionStatus = useEditorStore((s) => s.setConnectionStatus);
+  const [isOpen, setIsOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+  const pageLinks = useEditorStore((s) => s.pageLinks)
+  const currentPagePath = useEditorStore((s) => s.currentPagePath)
+  const setCurrentPagePath = useEditorStore((s) => s.setCurrentPagePath)
+  const targetUrl = useEditorStore((s) => s.targetUrl)
+  const setConnectionStatus = useEditorStore((s) => s.setConnectionStatus)
 
   // Close dropdown on outside click
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) return
     const handleClick = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node)
+      ) {
+        setIsOpen(false)
       }
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [isOpen]);
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [isOpen])
 
   const handleNavigate = useCallback(
     (path: string) => {
-      if (!targetUrl) return;
-      setCurrentPagePath(path);
-      sendViaIframe({ type: 'NAVIGATE_TO', payload: { path } });
-      setIsOpen(false);
+      if (!targetUrl) return
+      setCurrentPagePath(path)
+      sendViaIframe({ type: 'NAVIGATE_TO', payload: { path } })
+      setIsOpen(false)
     },
-    [targetUrl, setCurrentPagePath]
-  );
+    [targetUrl, setCurrentPagePath],
+  )
 
   const handleRefresh = useCallback(() => {
-    setConnectionStatus('connecting');
-  }, [setConnectionStatus]);
+    setConnectionStatus('connecting')
+  }, [setConnectionStatus])
 
   // Build page list: always include "/" plus discovered links
-  const allPages = useRef<Array<{ href: string; text: string }>>([]);
-  const seen = new Set<string>();
-  const pages: Array<{ href: string; text: string }> = [];
+  const allPages = useRef<Array<{ href: string; text: string }>>([])
+  const seen = new Set<string>()
+  const pages: Array<{ href: string; text: string }> = []
 
   // Always add root
-  pages.push({ href: '/', text: 'Home' });
-  seen.add('/');
+  pages.push({ href: '/', text: 'Home' })
+  seen.add('/')
 
   // Add discovered links (deduplicated)
   for (const link of pageLinks) {
     if (!seen.has(link.href)) {
-      seen.add(link.href);
-      pages.push(link);
+      seen.add(link.href)
+      pages.push(link)
     }
   }
-  allPages.current = pages;
+  allPages.current = pages
 
   return (
     <div ref={dropdownRef} className="relative flex items-center gap-1">
@@ -69,15 +72,27 @@ export function PageSelector() {
         }}
         title="Navigate to another page"
       >
-        <span className="truncate max-w-[140px] font-medium">{currentPagePath}</span>
+        <span className="truncate max-w-[140px] font-medium">
+          {currentPagePath}
+        </span>
         <svg
           width="8"
           height="8"
           viewBox="0 0 8 8"
           fill="currentColor"
-          style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}
+          style={{
+            transform: isOpen ? 'rotate(180deg)' : 'none',
+            transition: 'transform 0.15s',
+          }}
         >
-          <path d="M1 2.5L4 5.5L7 2.5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          <path
+            d="M1 2.5L4 5.5L7 2.5"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
         </svg>
       </button>
 
@@ -88,7 +103,16 @@ export function PageSelector() {
         style={{ color: 'var(--text-muted)' }}
         title="Refresh page"
       >
-        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <path d="M1 1v5h5" />
           <path d="M3.51 10a6 6 0 1 0 .49-5.5L1 6" />
         </svg>
@@ -115,7 +139,7 @@ export function PageSelector() {
           </div>
 
           {pages.map((page, i) => {
-            const isActive = page.href === currentPagePath;
+            const isActive = page.href === currentPagePath
             return (
               <button
                 key={page.href}
@@ -123,8 +147,11 @@ export function PageSelector() {
                 className="w-full text-left px-3 py-1.5 text-xs transition-colors flex items-center gap-2"
                 style={{
                   color: isActive ? 'var(--accent)' : 'var(--text-primary)',
-                  background: isActive ? 'rgba(74, 158, 255, 0.08)' : 'transparent',
-                  borderBottom: i < pages.length - 1 ? '1px solid var(--border)' : 'none',
+                  background: isActive
+                    ? 'rgba(74, 158, 255, 0.08)'
+                    : 'transparent',
+                  borderBottom:
+                    i < pages.length - 1 ? '1px solid var(--border)' : 'none',
                 }}
                 title={page.href}
               >
@@ -148,7 +175,10 @@ export function PageSelector() {
                     {page.text || page.href}
                   </div>
                   {page.text && page.href !== page.text && (
-                    <div className="truncate" style={{ color: 'var(--text-muted)', fontSize: '10px' }}>
+                    <div
+                      className="truncate"
+                      style={{ color: 'var(--text-muted)', fontSize: '10px' }}
+                    >
                       {page.href}
                     </div>
                   )}
@@ -160,7 +190,7 @@ export function PageSelector() {
                   />
                 )}
               </button>
-            );
+            )
           })}
 
           {pages.length <= 1 && (
@@ -174,5 +204,5 @@ export function PageSelector() {
         </div>
       )}
     </div>
-  );
+  )
 }

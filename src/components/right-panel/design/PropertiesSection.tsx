@@ -1,18 +1,18 @@
-'use client';
+'use client'
 
-import { useEditorStore } from '@/store';
-import { SectionHeader } from '@/components/right-panel/design/inputs/SectionHeader';
+import { useEditorStore } from '@/store'
+import { SectionHeader } from '@/components/right-panel/design/inputs/SectionHeader'
 
 export function PropertiesSection() {
-  const tagName = useEditorStore((s) => s.tagName);
-  const elementId = useEditorStore((s) => s.elementId);
-  const className = useEditorStore((s) => s.className);
-  const attributes = useEditorStore((s) => s.attributes);
+  const tagName = useEditorStore((s) => s.tagName)
+  const elementId = useEditorStore((s) => s.elementId)
+  const className = useEditorStore((s) => s.className)
+  const attributes = useEditorStore((s) => s.attributes)
 
-  const classes = className ? className.split(/\s+/).filter(Boolean) : [];
+  const classes = className ? className.split(/\s+/).filter(Boolean) : []
   const attrEntries = Object.entries(attributes).filter(
-    ([key]) => key !== 'class' && key !== 'id' && key !== 'style'
-  );
+    ([key]) => key !== 'class' && key !== 'id' && key !== 'style',
+  )
 
   return (
     <SectionHeader title="Properties" defaultOpen={false}>
@@ -34,7 +34,12 @@ export function PropertiesSection() {
         {/* Classes */}
         {classes.length > 0 && (
           <div>
-            <span className="block mb-1" style={{ color: 'var(--text-secondary)' }}>Classes</span>
+            <span
+              className="block mb-1"
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              Classes
+            </span>
             <div className="flex flex-wrap gap-1">
               {classes.map((cls, i) => (
                 <span
@@ -56,13 +61,20 @@ export function PropertiesSection() {
         {/* Attributes */}
         {attrEntries.length > 0 && (
           <div>
-            <span className="block mb-1" style={{ color: 'var(--text-secondary)' }}>Attributes</span>
+            <span
+              className="block mb-1"
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              Attributes
+            </span>
             <div className="space-y-0.5">
               {attrEntries.map(([key, value]) => (
                 <div key={key}>
                   <span style={{ color: 'var(--accent)' }}>{key}</span>
                   <span style={{ color: 'var(--text-muted)' }}>=</span>
-                  <span style={{ color: 'var(--text-primary)' }}>&quot;{value}&quot;</span>
+                  <span style={{ color: 'var(--text-primary)' }}>
+                    &quot;{value}&quot;
+                  </span>
                 </div>
               ))}
             </div>
@@ -70,5 +82,5 @@ export function PropertiesSection() {
         )}
       </div>
     </SectionHeader>
-  );
+  )
 }

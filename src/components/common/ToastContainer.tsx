@@ -1,29 +1,41 @@
-'use client';
+'use client'
 
-import { useEditorStore } from '@/store';
+import { useEditorStore } from '@/store'
 
 const ICON_MAP = {
   success: '\u2713',
   error: '!',
   info: 'i',
-} as const;
+} as const
 
 const COLOR_MAP = {
-  success: { bg: 'rgba(74, 222, 128, 0.12)', border: 'var(--success)', text: 'var(--success)' },
-  error: { bg: 'rgba(248, 113, 113, 0.12)', border: 'var(--error)', text: 'var(--error)' },
-  info: { bg: 'rgba(74, 158, 255, 0.12)', border: 'var(--accent)', text: 'var(--accent)' },
-} as const;
+  success: {
+    bg: 'rgba(74, 222, 128, 0.12)',
+    border: 'var(--success)',
+    text: 'var(--success)',
+  },
+  error: {
+    bg: 'rgba(248, 113, 113, 0.12)',
+    border: 'var(--error)',
+    text: 'var(--error)',
+  },
+  info: {
+    bg: 'rgba(74, 158, 255, 0.12)',
+    border: 'var(--accent)',
+    text: 'var(--accent)',
+  },
+} as const
 
 export function ToastContainer() {
-  const toasts = useEditorStore((s) => s.toasts);
-  const dismissToast = useEditorStore((s) => s.dismissToast);
+  const toasts = useEditorStore((s) => s.toasts)
+  const dismissToast = useEditorStore((s) => s.dismissToast)
 
-  if (toasts.length === 0) return null;
+  if (toasts.length === 0) return null
 
   return (
     <div className="fixed bottom-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none">
       {toasts.map((toast) => {
-        const colors = COLOR_MAP[toast.type];
+        const colors = COLOR_MAP[toast.type]
         return (
           <div
             key={toast.id}
@@ -43,7 +55,10 @@ export function ToastContainer() {
             </div>
 
             {/* Message */}
-            <span className="flex-1 text-xs leading-relaxed" style={{ color: 'var(--text-primary)' }}>
+            <span
+              className="flex-1 text-xs leading-relaxed"
+              style={{ color: 'var(--text-primary)' }}
+            >
               {toast.message}
             </span>
 
@@ -53,13 +68,22 @@ export function ToastContainer() {
               className="flex-shrink-0 p-0.5 rounded hover:bg-[var(--bg-hover)] transition-colors"
               style={{ color: 'var(--text-muted)' }}
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <line x1="18" y1="6" x2="6" y2="18" />
                 <line x1="6" y1="6" x2="18" y2="18" />
               </svg>
             </button>
           </div>
-        );
+        )
       })}
 
       <style>{`
@@ -69,5 +93,5 @@ export function ToastContainer() {
         }
       `}</style>
     </div>
-  );
+  )
 }

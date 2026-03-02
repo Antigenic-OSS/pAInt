@@ -1,32 +1,32 @@
-'use client';
+'use client'
 
-import { Component, type ReactNode } from 'react';
+import { Component, type ReactNode } from 'react'
 
 interface Props {
-  children: ReactNode;
-  fallback?: ReactNode;
-  panelName?: string;
+  children: ReactNode
+  fallback?: ReactNode
+  panelName?: string
 }
 
 interface State {
-  hasError: boolean;
-  error: Error | null;
+  hasError: boolean
+  error: Error | null
 }
 
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
-    super(props);
-    this.state = { hasError: false, error: null };
+    super(props)
+    this.state = { hasError: false, error: null }
   }
 
   static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error };
+    return { hasError: true, error }
   }
 
   render() {
     if (this.state.hasError) {
       if (this.props.fallback) {
-        return this.props.fallback;
+        return this.props.fallback
       }
 
       return (
@@ -38,7 +38,9 @@ export class ErrorBoundary extends Component<Props, State> {
             className="text-sm font-medium mb-1"
             style={{ color: 'var(--error)' }}
           >
-            {this.props.panelName ? `${this.props.panelName} error` : 'Something went wrong'}
+            {this.props.panelName
+              ? `${this.props.panelName} error`
+              : 'Something went wrong'}
           </div>
           <div className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
             {this.state.error?.message || 'An unexpected error occurred'}
@@ -55,9 +57,9 @@ export class ErrorBoundary extends Component<Props, State> {
             Try Again
           </button>
         </div>
-      );
+      )
     }
 
-    return this.props.children;
+    return this.props.children
   }
 }

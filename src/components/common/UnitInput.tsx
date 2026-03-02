@@ -1,13 +1,13 @@
-'use client';
+'use client'
 
-import { useState, useCallback, useEffect } from 'react';
-import { parseCSSValue, formatCSSValue } from '@/lib/utils';
+import { useState, useCallback, useEffect } from 'react'
+import { parseCSSValue, formatCSSValue } from '@/lib/utils'
 
 interface UnitInputProps {
-  value: string;
-  onChange: (value: string) => void;
-  units?: string[];
-  placeholder?: string;
+  value: string
+  onChange: (value: string) => void
+  units?: string[]
+  placeholder?: string
 }
 
 export function UnitInput({
@@ -16,27 +16,27 @@ export function UnitInput({
   units = ['px', '%', 'em', 'rem', 'auto'],
   placeholder = '0',
 }: UnitInputProps) {
-  const parsed = parseCSSValue(value);
-  const [localValue, setLocalValue] = useState(String(parsed.number));
-  const [unit, setUnit] = useState(parsed.unit || 'px');
+  const parsed = parseCSSValue(value)
+  const [localValue, setLocalValue] = useState(String(parsed.number))
+  const [unit, setUnit] = useState(parsed.unit || 'px')
 
   useEffect(() => {
-    const p = parseCSSValue(value);
-    setLocalValue(String(p.number));
-    setUnit(p.unit || 'px');
-  }, [value]);
+    const p = parseCSSValue(value)
+    setLocalValue(String(p.number))
+    setUnit(p.unit || 'px')
+  }, [value])
 
   const commit = useCallback(
     (num: string, u: string) => {
       if (u === 'auto') {
-        onChange('auto');
+        onChange('auto')
       } else {
-        const n = parseFloat(num);
-        if (!isNaN(n)) onChange(formatCSSValue(n, u));
+        const n = parseFloat(num)
+        if (!isNaN(n)) onChange(formatCSSValue(n, u))
       }
     },
-    [onChange]
-  );
+    [onChange],
+  )
 
   return (
     <div className="flex gap-1">
@@ -46,7 +46,7 @@ export function UnitInput({
         onChange={(e) => setLocalValue(e.target.value)}
         onBlur={() => commit(localValue, unit)}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') commit(localValue, unit);
+          if (e.key === 'Enter') commit(localValue, unit)
         }}
         disabled={unit === 'auto'}
         placeholder={placeholder}
@@ -56,8 +56,8 @@ export function UnitInput({
       <select
         value={unit}
         onChange={(e) => {
-          setUnit(e.target.value);
-          commit(localValue, e.target.value);
+          setUnit(e.target.value)
+          commit(localValue, e.target.value)
         }}
         className="w-14 text-[11px] py-1 px-1 rounded"
         style={{
@@ -67,9 +67,11 @@ export function UnitInput({
         }}
       >
         {units.map((u) => (
-          <option key={u} value={u}>{u}</option>
+          <option key={u} value={u}>
+            {u}
+          </option>
         ))}
       </select>
     </div>
-  );
+  )
 }

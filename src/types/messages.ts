@@ -1,343 +1,343 @@
-import type { TreeNode } from './tree';
-import type { CSSVariableDefinition } from './cssVariables';
-import type { DetectedComponent } from './component';
-import type { SourceInfo } from './claude';
+import type { TreeNode } from './tree'
+import type { CSSVariableDefinition } from './cssVariables'
+import type { DetectedComponent } from './component'
+import type { SourceInfo } from './claude'
 
 // Inspector → Editor messages
 
 export interface InspectorReadyMessage {
-  type: 'INSPECTOR_READY';
+  type: 'INSPECTOR_READY'
 }
 
 export interface ElementSelectedMessage {
-  type: 'ELEMENT_SELECTED';
+  type: 'ELEMENT_SELECTED'
   payload: {
-    selectorPath: string;
-    tagName: string;
-    className: string | null;
-    id: string | null;
-    attributes: Record<string, string>;
-    innerText: string | null;
-    computedStyles: Record<string, string>;
-    cssVariableUsages?: Record<string, string>;
-    sourceInfo?: SourceInfo | null;
+    selectorPath: string
+    tagName: string
+    className: string | null
+    id: string | null
+    attributes: Record<string, string>
+    innerText: string | null
+    computedStyles: Record<string, string>
+    cssVariableUsages?: Record<string, string>
+    sourceInfo?: SourceInfo | null
     boundingRect: {
-      x: number;
-      y: number;
-      width: number;
-      height: number;
-      top: number;
-      right: number;
-      bottom: number;
-      left: number;
-    };
-  };
+      x: number
+      y: number
+      width: number
+      height: number
+      top: number
+      right: number
+      bottom: number
+      left: number
+    }
+  }
 }
 
 export interface ElementHoveredMessage {
-  type: 'ELEMENT_HOVERED';
+  type: 'ELEMENT_HOVERED'
   payload: {
-    selectorPath: string | null;
-  };
+    selectorPath: string | null
+  }
 }
 
 export interface DOMUpdatedMessage {
-  type: 'DOM_UPDATED';
+  type: 'DOM_UPDATED'
   payload: {
-    tree: TreeNode;
-    removedSelectors: string[];
-  };
+    tree: TreeNode
+    removedSelectors: string[]
+  }
 }
 
 export interface DOMTreeMessage {
-  type: 'DOM_TREE';
+  type: 'DOM_TREE'
   payload: {
-    tree: TreeNode;
-  };
+    tree: TreeNode
+  }
 }
 
 export interface PageLinksMessage {
-  type: 'PAGE_LINKS';
+  type: 'PAGE_LINKS'
   payload: {
-    links: Array<{ href: string; text: string }>;
-  };
+    links: Array<{ href: string; text: string }>
+  }
 }
 
 export interface HeartbeatResponseMessage {
-  type: 'HEARTBEAT_RESPONSE';
+  type: 'HEARTBEAT_RESPONSE'
 }
 
 export interface CSSVariablesMessage {
-  type: 'CSS_VARIABLES';
+  type: 'CSS_VARIABLES'
   payload: {
-    definitions: Record<string, CSSVariableDefinition>;
-    isExplicit: boolean;
-    scopes?: string[];  // selectors where variables are defined: ':root', '.dark', etc.
-  };
+    definitions: Record<string, CSSVariableDefinition>
+    isExplicit: boolean
+    scopes?: string[] // selectors where variables are defined: ':root', '.dark', etc.
+  }
 }
 
 export interface ComponentsDetectedMessage {
-  type: 'COMPONENTS_DETECTED';
+  type: 'COMPONENTS_DETECTED'
   payload: {
-    components: DetectedComponent[];
-  };
+    components: DetectedComponent[]
+  }
 }
 
 export interface VariantAppliedMessage {
-  type: 'VARIANT_APPLIED';
+  type: 'VARIANT_APPLIED'
   payload: {
-    selectorPath: string;
-    computedStyles: Record<string, string>;
-    cssVariableUsages: Record<string, string>;
-    boundingRect: { top: number; left: number; width: number; height: number };
-  };
+    selectorPath: string
+    computedStyles: Record<string, string>
+    cssVariableUsages: Record<string, string>
+    boundingRect: { top: number; left: number; width: number; height: number }
+  }
 }
 
 export interface PageNavigateMessage {
-  type: 'PAGE_NAVIGATE';
+  type: 'PAGE_NAVIGATE'
   payload: {
-    path: string;
-  };
+    path: string
+  }
 }
 
 export interface TextChangedMessage {
-  type: 'TEXT_CHANGED';
+  type: 'TEXT_CHANGED'
   payload: {
-    selectorPath: string;
-    originalText: string;
-    newText: string;
-  };
+    selectorPath: string
+    originalText: string
+    newText: string
+  }
 }
 
 export interface ElementDeletedMessage {
-  type: 'ELEMENT_DELETED';
+  type: 'ELEMENT_DELETED'
   payload: {
-    selectorPath: string;
-    originalDisplay: string;
-    tagName: string;
-    className: string | null;
-    elementId: string | null;
-    innerText: string | null;
-    attributes: Record<string, string>;
-    computedStyles: Record<string, string>;
-  };
+    selectorPath: string
+    originalDisplay: string
+    tagName: string
+    className: string | null
+    elementId: string | null
+    innerText: string | null
+    attributes: Record<string, string>
+    computedStyles: Record<string, string>
+  }
 }
 
-export type ConsoleLevel = 'log' | 'info' | 'warn' | 'error';
+export type ConsoleLevel = 'log' | 'info' | 'warn' | 'error'
 
 export interface ConsoleMessageMessage {
-  type: 'CONSOLE_MESSAGE';
+  type: 'CONSOLE_MESSAGE'
   payload: {
-    level: ConsoleLevel;
-    args: string[];
-    timestamp: number;
-    source?: string;
-    line?: number;
-    column?: number;
-  };
+    level: ConsoleLevel
+    args: string[]
+    timestamp: number
+    source?: string
+    line?: number
+    column?: number
+  }
 }
 
 // Editor → Inspector messages
 
 export interface SelectElementMessage {
-  type: 'SELECT_ELEMENT';
+  type: 'SELECT_ELEMENT'
   payload: {
-    selectorPath: string;
-  };
+    selectorPath: string
+  }
 }
 
 export interface PreviewChangeMessage {
-  type: 'PREVIEW_CHANGE';
+  type: 'PREVIEW_CHANGE'
   payload: {
-    selectorPath: string;
-    property: string;
-    value: string;
-  };
+    selectorPath: string
+    property: string
+    value: string
+  }
 }
 
 export interface RevertChangeMessage {
-  type: 'REVERT_CHANGE';
+  type: 'REVERT_CHANGE'
   payload: {
-    selectorPath: string;
-    property: string;
-  };
+    selectorPath: string
+    property: string
+  }
 }
 
 export interface RevertAllMessage {
-  type: 'REVERT_ALL';
+  type: 'REVERT_ALL'
 }
 
 export interface SetBreakpointMessage {
-  type: 'SET_BREAKPOINT';
+  type: 'SET_BREAKPOINT'
   payload: {
-    width: number;
-  };
+    width: number
+  }
 }
 
 export interface RequestDOMTreeMessage {
-  type: 'REQUEST_DOM_TREE';
+  type: 'REQUEST_DOM_TREE'
 }
 
 export interface RequestPageLinksMessage {
-  type: 'REQUEST_PAGE_LINKS';
+  type: 'REQUEST_PAGE_LINKS'
 }
 
 export interface HeartbeatMessage {
-  type: 'HEARTBEAT';
+  type: 'HEARTBEAT'
 }
 
 export interface RequestCSSVariablesMessage {
-  type: 'REQUEST_CSS_VARIABLES';
+  type: 'REQUEST_CSS_VARIABLES'
 }
 
 export interface SetSelectionModeMessage {
-  type: 'SET_SELECTION_MODE';
+  type: 'SET_SELECTION_MODE'
   payload: {
-    enabled: boolean;
-  };
+    enabled: boolean
+  }
 }
 
 export interface RequestComponentsMessage {
-  type: 'REQUEST_COMPONENTS';
+  type: 'REQUEST_COMPONENTS'
   payload: {
-    rootSelectorPath?: string;
-  };
+    rootSelectorPath?: string
+  }
 }
 
 export interface ApplyVariantMessage {
-  type: 'APPLY_VARIANT';
+  type: 'APPLY_VARIANT'
   payload: {
-    selectorPath: string;
-    type: 'class' | 'pseudo';
-    addClassName?: string;
-    removeClassNames?: string[];
-    pseudoStyles?: Record<string, string>;
-    revertPseudo?: boolean;
-  };
+    selectorPath: string
+    type: 'class' | 'pseudo'
+    addClassName?: string
+    removeClassNames?: string[]
+    pseudoStyles?: Record<string, string>
+    revertPseudo?: boolean
+  }
 }
 
 export interface RevertVariantMessage {
-  type: 'REVERT_VARIANT';
+  type: 'REVERT_VARIANT'
   payload: {
-    selectorPath: string;
-    removeClassName?: string;
-    restoreClassName?: string;
-    revertPseudo?: boolean;
-    pseudoProperties?: string[];
-  };
+    selectorPath: string
+    removeClassName?: string
+    restoreClassName?: string
+    revertPseudo?: boolean
+    pseudoProperties?: string[]
+  }
 }
 
 export interface SetTextContentMessage {
-  type: 'SET_TEXT_CONTENT';
+  type: 'SET_TEXT_CONTENT'
   payload: {
-    selectorPath: string;
-    text: string;
-  };
+    selectorPath: string
+    text: string
+  }
 }
 
 export interface RevertTextContentMessage {
-  type: 'REVERT_TEXT_CONTENT';
+  type: 'REVERT_TEXT_CONTENT'
   payload: {
-    selectorPath: string;
-    originalText: string;
-  };
+    selectorPath: string
+    originalText: string
+  }
 }
 
 export interface RevertDeleteMessage {
-  type: 'REVERT_DELETE';
+  type: 'REVERT_DELETE'
   payload: {
-    selectorPath: string;
-    originalDisplay: string;
-  };
+    selectorPath: string
+    originalDisplay: string
+  }
 }
 
 export interface InsertElementMessage {
-  type: 'INSERT_ELEMENT';
+  type: 'INSERT_ELEMENT'
   payload: {
-    tagName: string;
-    parentSelectorPath: string;
-    placeholderText?: string;
-    defaultStyles?: Record<string, string>;
-  };
+    tagName: string
+    parentSelectorPath: string
+    placeholderText?: string
+    defaultStyles?: Record<string, string>
+  }
 }
 
 export interface RemoveInsertedElementMessage {
-  type: 'REMOVE_INSERTED_ELEMENT';
+  type: 'REMOVE_INSERTED_ELEMENT'
   payload: {
-    selectorPath: string;
-  };
+    selectorPath: string
+  }
 }
 
 export interface DeleteElementMessage {
-  type: 'DELETE_ELEMENT';
+  type: 'DELETE_ELEMENT'
   payload: {
-    selectorPath: string;
-  };
+    selectorPath: string
+  }
 }
 
 export interface MoveElementMessage {
-  type: 'MOVE_ELEMENT';
+  type: 'MOVE_ELEMENT'
   payload: {
-    selectorPath: string;
-    newParentSelectorPath: string;
-    newIndex: number;
-  };
+    selectorPath: string
+    newParentSelectorPath: string
+    newIndex: number
+  }
 }
 
 export interface RevertMoveElementMessage {
-  type: 'REVERT_MOVE_ELEMENT';
+  type: 'REVERT_MOVE_ELEMENT'
   payload: {
-    selectorPath: string;
-    oldParentSelectorPath: string;
-    oldIndex: number;
-  };
+    selectorPath: string
+    oldParentSelectorPath: string
+    oldIndex: number
+  }
 }
 
 export interface HideSelectionOverlayMessage {
-  type: 'HIDE_SELECTION_OVERLAY';
+  type: 'HIDE_SELECTION_OVERLAY'
 }
 
 export interface ShowSelectionOverlayMessage {
-  type: 'SHOW_SELECTION_OVERLAY';
+  type: 'SHOW_SELECTION_OVERLAY'
 }
 
 export interface HideHoverMessage {
-  type: 'HIDE_HOVER';
+  type: 'HIDE_HOVER'
 }
 
 export interface NavigateToMessage {
-  type: 'NAVIGATE_TO';
+  type: 'NAVIGATE_TO'
   payload: {
-    path: string;
-  };
+    path: string
+  }
 }
 
 export interface RecursiveEmbedDetectedMessage {
-  type: 'RECURSIVE_EMBED_DETECTED';
+  type: 'RECURSIVE_EMBED_DETECTED'
 }
 
 export interface ElementInsertedMessage {
-  type: 'ELEMENT_INSERTED';
+  type: 'ELEMENT_INSERTED'
   payload: {
-    selectorPath: string;
-    parentSelectorPath: string;
-    tagName: string;
-    insertionIndex: number;
-    placeholderText: string;
-    defaultStyles?: Record<string, string>;
-  };
+    selectorPath: string
+    parentSelectorPath: string
+    tagName: string
+    insertionIndex: number
+    placeholderText: string
+    defaultStyles?: Record<string, string>
+  }
 }
 
 export interface ElementMovedMessage {
-  type: 'ELEMENT_MOVED';
+  type: 'ELEMENT_MOVED'
   payload: {
-    selectorPath: string;
-    newSelectorPath: string;
-    oldParentSelectorPath: string;
-    newParentSelectorPath: string;
-    oldIndex: number;
-    newIndex: number;
-  };
+    selectorPath: string
+    newSelectorPath: string
+    oldParentSelectorPath: string
+    newParentSelectorPath: string
+    oldIndex: number
+    newIndex: number
+  }
 }
 
 // Union types
@@ -358,7 +358,7 @@ export type InspectorToEditorMessage =
   | ConsoleMessageMessage
   | RecursiveEmbedDetectedMessage
   | ElementInsertedMessage
-  | ElementMovedMessage;
+  | ElementMovedMessage
 
 export type EditorToInspectorMessage =
   | SelectElementMessage
@@ -385,8 +385,8 @@ export type EditorToInspectorMessage =
   | InsertElementMessage
   | RemoveInsertedElementMessage
   | MoveElementMessage
-  | RevertMoveElementMessage;
+  | RevertMoveElementMessage
 
 export type PostMessageType =
   | InspectorToEditorMessage['type']
-  | EditorToInspectorMessage['type'];
+  | EditorToInspectorMessage['type']
