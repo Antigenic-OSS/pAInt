@@ -5,6 +5,7 @@
 [![Issues](https://img.shields.io/github/issues/Antigenic-OSS/pAInt)](https://github.com/Antigenic-OSS/pAInt/issues)
 [![npm version](https://img.shields.io/npm/v/@antigenic-oss/paint)](https://www.npmjs.com/package/@antigenic-oss/paint)
 [![npm downloads](https://img.shields.io/npm/dm/@antigenic-oss/paint)](https://www.npmjs.com/package/@antigenic-oss/paint)
+[![Bun](https://img.shields.io/badge/local%20dev-Bun-000000)](https://bun.sh)
 [![Node.js](https://img.shields.io/badge/runtime-Node.js-5FA04E)](https://nodejs.org)
 [![Next.js](https://img.shields.io/badge/framework-Next.js-000000)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/language-TypeScript-3178C6)](https://www.typescriptlang.org)
@@ -81,14 +82,15 @@ Terminal WS (when started): `ws://localhost:4001/ws`
 
 ## Prerequisites
 
+- Local repository development: Bun `>=1.3`
 - Global CLI runtime: Node.js `>=20.9.0`
 - A localhost app running in development mode (Next.js, Vite, Astro, CRA, etc.)
 
 ## Quick Start
 
 ```bash
-npm install
-npm run dev
+bun install
+bun dev
 ```
 
 Open `http://localhost:4000`, then:
@@ -139,19 +141,19 @@ Bridge default: `http://localhost:4002`
 ## Commands
 
 ```bash
-npm install                # or: pnpm install / bun install
-npm run dev                # Start UI (localhost:4000)
-npm run bridge             # Start bridge server (localhost:4002)
-npm run dev:terminal       # Start terminal server
-npm run dev:all            # Start terminal + bridge + Next.js dev server
-npm run build              # Production build
-npm run start              # Production server (port 4000)
-npm run lint               # Biome check
+bun install                # Install dependencies for local repo development
+bun dev                    # Start UI (localhost:4000)
+bun run bridge             # Start bridge server (localhost:4002)
+bun run dev:terminal       # Start terminal server
+bun run dev:all            # Start terminal + bridge + Next.js dev server
+bun run build              # Production build
+bun run start              # Production server (port 4000)
+bun run lint               # Biome check
 ```
 
 ## Architecture Summary
 
-- Next.js App Router frontend running on Node.js
+- Next.js App Router frontend (develop locally with Bun, run globally via Node.js CLI)
 - Proxy API route at `/api/proxy/*` for target-page loading and injection
 - Inspector script communicates with editor via `window.postMessage`
 - State managed with Zustand slices
@@ -185,7 +187,7 @@ See `CONTRIBUTING.md` for setup, workflow, and pull request expectations.
 - To queue a release, add a changeset:
 
 ```bash
-npm run changeset
+bun run changeset
 ```
 
 ## License
