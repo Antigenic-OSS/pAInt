@@ -1,8 +1,47 @@
 {
-  "name": "paint",
+  "name": "@antigenic-oss/paint",
   "version": "0.1.0",
+  "description": "Visual editor for localhost web projects with a global paint CLI",
   "license": "Apache-2.0",
-  "private": true,
+  "homepage": "https://github.com/Antigenic-OSS/pAInt",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Antigenic-OSS/pAInt.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Antigenic-OSS/pAInt/issues"
+  },
+  "keywords": [
+    "paint",
+    "visual-editor",
+    "nextjs",
+    "css",
+    "localhost"
+  ],
+  "bin": {
+    "paint": "./bin/paint.js"
+  },
+  "files": [
+    "bin",
+    "public",
+    "src",
+    "next-env.d.ts",
+    "next.config.ts",
+    "postcss.config.mjs",
+    "tsconfig.json",
+    "tsconfig.server.json",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "packageManager": "bun@1.3.9",
   "scripts": {
     "dev": "next dev --port 4000 --turbopack",
     "dev:terminal": "bun run src/server/terminal-server.ts",
@@ -12,26 +51,31 @@
     "start": "next start --port 4000",
     "lint": "biome lint .",
     "lint:fix": "biome lint --write .",
-    "format": "biome format --write ."
+    "format": "biome format --write .",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "changeset publish"
   },
   "dependencies": {
+    "@tailwindcss/postcss": "4.2.1",
+    "@types/node": "25.3.3",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/xterm": "^6.0.0",
     "next": "16.1.6",
     "node-pty": "^1.1.0",
+    "postcss": "^8.5.6",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
+    "tailwindcss": "4.2.1",
+    "typescript": "^5.9.3",
     "zustand": "^5.0.11"
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.5",
-    "@tailwindcss/postcss": "4.2.1",
+    "@changesets/cli": "^2.29.7",
     "@types/bun": "^1.3.9",
-    "@types/node": "25.3.3",
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
-    "postcss": "^8.5.6",
-    "tailwindcss": "4.2.1",
-    "typescript": "^5.9.3"
+    "bun-types": "^1.3.2"
   }
 }

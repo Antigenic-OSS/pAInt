@@ -12,6 +12,7 @@ pAInt is a visual editor for localhost web projects. It helps you inspect elemen
 ## Table of Contents
 
 - [Project Status](#project-status)
+- [Global CLI](#global-cli)
 - [What You Can Do](#what-you-can-do)
 - [Prerequisites](#prerequisites)
 - [Quick Start](#quick-start)
@@ -23,6 +24,7 @@ pAInt is a visual editor for localhost web projects. It helps you inspect elemen
 - [Security Notes](#security-notes)
 - [Documentation](#documentation)
 - [Contributing](#contributing)
+- [Release Automation](#release-automation)
 - [License](#license)
 
 ## Project Status
@@ -30,6 +32,28 @@ pAInt is a visual editor for localhost web projects. It helps you inspect elemen
 - Stage: Active development
 - Stability: Suitable for local development workflows
 - Scope: Visual editing and changelog-driven code updates for localhost apps
+
+## Global CLI
+
+Install globally with your package manager of choice:
+
+```bash
+npm install -g @antigenic-oss/paint
+pnpm add -g @antigenic-oss/paint
+bun add -g @antigenic-oss/paint
+```
+
+Then use:
+
+```bash
+paint start             # Builds on first run, then starts server
+paint status            # Show pid, URL, and log path
+paint stop              # Stop background server
+paint restart --rebuild # Force a rebuild before start
+paint logs              # Print server logs
+```
+
+Default URL: `http://127.0.0.1:4000`
 
 ## What You Can Do
 
@@ -138,6 +162,18 @@ bun run lint         # Biome check
 ## Contributing
 
 See `CONTRIBUTING.md` for setup, workflow, and pull request expectations.
+
+## Release Automation
+
+- Versioning and release PRs are managed with Changesets.
+- CI workflow: `.github/workflows/ci.yml`
+- Release workflow: `.github/workflows/release.yml`
+- Publishing requires `NPM_TOKEN` in GitHub repository secrets.
+- To queue a release, add a changeset:
+
+```bash
+bun run changeset
+```
 
 ## License
 
