@@ -19,7 +19,7 @@
     "localhost"
   ],
   "bin": {
-    "paint": "./bin/paint.js"
+    "paint": "bin/paint.js"
   },
   "files": [
     "bin",
