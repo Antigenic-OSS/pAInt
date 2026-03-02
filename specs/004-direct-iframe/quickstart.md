@@ -22,7 +22,7 @@ Place it before `</body>` or at the end of `<head>`. The script auto-detects it'
 
 ### 2. Connect from pAInt
 
-1. Open the pAInt at `http://localhost:4000`
+1. Open pAInt at `http://localhost:4000`
 2. Enter your target URL (e.g., `http://localhost:3001`) in the URL bar
 3. Click Connect
 4. The connection dot turns green when the inspector establishes communication

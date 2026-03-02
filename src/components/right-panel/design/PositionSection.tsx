@@ -404,7 +404,7 @@ function OffsetInput({
   );
 }
 
-// ─── Spatial Offset Widget (Webflow-style) ─────────────────────────
+// ─── Spatial Offset Widget (visual-editor-style) ─────────────────────────
 
 function SpatialOffsetWidget({
   top,

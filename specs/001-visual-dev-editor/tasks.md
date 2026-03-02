@@ -107,7 +107,7 @@ description: "Task list for Visual pAInt feature implementation"
 - [x] T040 [P] [US2] Create SelectionHighlighter in `src/inspector/SelectionHighlighter.ts` (persistent outline on selected element, clear on deselect)
 - [x] T041 [P] [US2] Create StyleExtractor in `src/inspector/StyleExtractor.ts` (getComputedStyle reader, extract relevant CSS properties for the Design tab)
 - [x] T042 [US2] Wire inspector modules in `src/inspector/inspector.ts` (initialize DOMTraverser, HoverHighlighter, ElementSelector, SelectionHighlighter, StyleExtractor; handle incoming SELECT_ELEMENT and REQUEST_DOM_TREE messages)
-- [x] T043 [US2] Create LayersPanel component (recursive DOM tree view, Webflow Navigator style) in `src/components/left-panel/LayersPanel.tsx`
+- [x] T043 [US2] Create LayersPanel component (recursive DOM tree view, reference editor Navigator style) in `src/components/left-panel/LayersPanel.tsx`
 - [x] T044 [US2] Create LayerNode component (expandable/collapsible tree node, element icon, click to select, highlight on active) in `src/components/left-panel/LayerNode.tsx`
 - [x] T045 [US2] Create LayerSearch component (search/filter bar at top of left panel, filter tree nodes by tag/class/id) in `src/components/left-panel/LayerSearch.tsx`
 - [x] T046 [US2] Implement useDOMTree hook (receive DOM_TREE and DOM_UPDATED messages, update treeSlice, handle MutationObserver updates) in `src/hooks/useDOMTree.ts`

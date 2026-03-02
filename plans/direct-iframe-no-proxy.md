@@ -4,7 +4,7 @@
 
 ## Context
 
-The pAInt currently loads target pages through a reverse proxy (`/api/proxy/...`), which fetches HTML from the target server, strips scripts, rewrites all asset URLs, injects navigation blockers, and inlines the inspector IIFE. This causes complexity: HMR conflicts, reload loops, script stripping means no React fiber data for component detection, and ~600 lines of URL rewriting logic.
+pAInt currently loads target pages through a reverse proxy (`/api/proxy/...`), which fetches HTML from the target server, strips scripts, rewrites all asset URLs, injects navigation blockers, and inlines the inspector IIFE. This causes complexity: HMR conflicts, reload loops, script stripping means no React fiber data for component detection, and ~600 lines of URL rewriting logic.
 
 **Goal**: Load the target page directly in the iframe (`http://localhost:3001`) with no proxy. The inspector becomes a standalone script the user adds to their project via a `<script>` tag. This eliminates the proxy layer entirely while keeping all existing features working via cross-origin `postMessage`.
 

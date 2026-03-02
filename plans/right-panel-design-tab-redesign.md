@@ -2,7 +2,7 @@
 
 ## Context
 
-The current right panel Design tab uses a traditional vertical-stacked layout with full-width `PropertyInput` components (64px label + input + separate unit dropdown). The user wants to redesign it to match a professional Figma/Webflow-style properties panel with compact inline inputs, icon toggle groups, linked padding/margin controls, gradient editors, and token-aware color pickers.
+The current right panel Design tab uses a traditional vertical-stacked layout with full-width `PropertyInput` components (64px label + input + separate unit dropdown). The user wants to redesign it to match a professional Figma-style properties panel with compact inline inputs, icon toggle groups, linked padding/margin controls, gradient editors, and token-aware color pickers.
 
 This is a UI-only redesign — the underlying store, change tracking, postMessage bridge, and persistence remain unchanged.
 

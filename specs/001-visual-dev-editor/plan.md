@@ -5,7 +5,7 @@
 
 ## Summary
 
-Build a Webflow-style visual design editor that connects to any localhost dev server via a reverse proxy, lets developers inspect, select, and edit element styles in real time through a three-column dark UI, tracks all changes in a structured changelog, and optionally sends that changelog to Claude Code CLI for automated code generation. The application is a Next.js 15 App Router web app running on Bun with Zustand state management and Tailwind CSS styling.
+Build a pro-style visual design editor that connects to any localhost dev server via a reverse proxy, lets developers inspect, select, and edit element styles in real time through a three-column dark UI, tracks all changes in a structured changelog, and optionally sends that changelog to Claude Code CLI for automated code generation. The application is a Next.js 15 App Router web app running on Bun with Zustand state management and Tailwind CSS styling.
 
 ## Technical Context
 

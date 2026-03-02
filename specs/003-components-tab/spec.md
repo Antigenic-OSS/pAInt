@@ -9,7 +9,7 @@
 
 ### User Story 1 - Browse Detected Components (Priority: P1)
 
-A designer or developer loads a localhost page in the pAInt and clicks the "Components" tab in the left panel. The tab scans the visible page and lists recognizable UI components (buttons, cards, inputs, navigation elements, etc.). Each component entry shows its name and type. The user can search/filter the list by name, tag, or class. Clicking a component in the list selects it in the iframe and updates the right panel with its styles.
+A designer or developer loads a localhost page in pAInt and clicks the "Components" tab in the left panel. The tab scans the visible page and lists recognizable UI components (buttons, cards, inputs, navigation elements, etc.). Each component entry shows its name and type. The user can search/filter the list by name, tag, or class. Clicking a component in the list selects it in the iframe and updates the right panel with its styles.
 
 **Why this priority**: This is the core value of the feature — without component detection and listing, no other functionality works. It provides immediate awareness of the component structure of any page.
 
@@ -113,7 +113,7 @@ When the user navigates to a different page or the DOM updates (e.g., a route ch
 
 ## Assumptions
 
-- The pAInt already has a working left panel with Layers and Pages tabs, element selection via postMessage, and a right panel that auto-updates when `computedStyles` change in the store.
+- pAInt already has a working left panel with Layers and Pages tabs, element selection via postMessage, and a right panel that auto-updates when `computedStyles` change in the store.
 - The inspector script (injected via proxy) can scan the DOM and access stylesheets for variant detection. Cross-origin stylesheets that block `cssRules` access are gracefully skipped.
 - Component detection is heuristic-based — it will not achieve 100% accuracy for all design systems, but should cover common patterns (Bootstrap, Tailwind UI, Material, semantic HTML).
 - The existing changelog/change-tracking system can be extended to support a new entry type for component extractions.

@@ -5,7 +5,7 @@
 
 ## Summary
 
-Rebuild the `TextSection` component in the Design panel to match Webflow's comprehensive typography panel. The current implementation has 9 properties across flat inputs. The rebuilt version covers 17+ CSS properties organized into a core section (font, weight, size, height, color, alignment, decoration) and a collapsible "More type options" section (letter spacing, text indent, columns, italicize, capitalize, direction, word/line breaking, wrap, truncate, stroke) plus a text shadows multi-entry section. All changes flow through the existing `useChangeTracker.applyChange()` pipeline — no new state management or API routes needed.
+Rebuild the `TextSection` component in the Design panel to match reference editor's comprehensive typography panel. The current implementation has 9 properties across flat inputs. The rebuilt version covers 17+ CSS properties organized into a core section (font, weight, size, height, color, alignment, decoration) and a collapsible "More type options" section (letter spacing, text indent, columns, italicize, capitalize, direction, word/line breaking, wrap, truncate, stroke) plus a text shadows multi-entry section. All changes flow through the existing `useChangeTracker.applyChange()` pipeline — no new state management or API routes needed.
 
 ## Technical Context
 

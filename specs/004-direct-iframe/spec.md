@@ -9,7 +9,7 @@
 
 ### User Story 1 - Connect to Target Page via Direct Iframe (Priority: P1)
 
-A developer opens the pAInt, enters their localhost URL (e.g., `http://localhost:3001`), and clicks Connect. The target page loads directly in the iframe without any proxy intermediary. The inspector script (already added to the target project) establishes communication with the editor. The developer sees the connection status turn green, the DOM tree populates in the left panel, and they can select elements, edit styles, and track changes — all working identically to the previous proxy-based approach.
+A developer opens pAInt, enters their localhost URL (e.g., `http://localhost:3001`), and clicks Connect. The target page loads directly in the iframe without any proxy intermediary. The inspector script (already added to the target project) establishes communication with the editor. The developer sees the connection status turn green, the DOM tree populates in the left panel, and they can select elements, edit styles, and track changes — all working identically to the previous proxy-based approach.
 
 **Why this priority**: This is the core functionality. Without direct iframe loading working end-to-end, no other stories deliver value.
 
@@ -25,15 +25,15 @@ A developer opens the pAInt, enters their localhost URL (e.g., `http://localhost
 
 ### User Story 2 - Standalone Inspector Script Installation (Priority: P1)
 
-A developer wants to use the pAInt with their project. They add a single `<script>` tag to their project's HTML layout pointing to the editor's hosted inspector file. The script automatically detects it's running inside an iframe, establishes cross-origin communication with the editor, and enables all inspection features. If the page is not loaded in an iframe, the script does nothing (no performance impact in production).
+A developer wants to use pAInt with their project. They add a single `<script>` tag to their project's HTML layout pointing to the editor's hosted inspector file. The script automatically detects it's running inside an iframe, establishes cross-origin communication with the editor, and enables all inspection features. If the page is not loaded in an iframe, the script does nothing (no performance impact in production).
 
 **Why this priority**: The inspector script is the prerequisite for direct iframe communication — without it, the editor cannot interact with the target page.
 
-**Independent Test**: Can be tested by adding the script tag to any localhost project, loading it in the pAInt iframe, and verifying inspector messages are sent.
+**Independent Test**: Can be tested by adding the script tag to any localhost project, loading it in pAInt iframe, and verifying inspector messages are sent.
 
 **Acceptance Scenarios**:
 
-1. **Given** a target project with `<script src="http://localhost:4000/dev-editor-inspector.js"></script>` in its HTML, **When** the page is loaded inside the pAInt iframe, **Then** the inspector initializes, sends `INSPECTOR_READY` to the editor, and responds to all editor messages (element selection, style changes, DOM traversal).
+1. **Given** a target project with `<script src="http://localhost:4000/dev-editor-inspector.js"></script>` in its HTML, **When** the page is loaded inside pAInt iframe, **Then** the inspector initializes, sends `INSPECTOR_READY` to the editor, and responds to all editor messages (element selection, style changes, DOM traversal).
 2. **Given** a target project with the inspector script installed, **When** the page is loaded directly in a browser (not in an iframe), **Then** the script does nothing — no event listeners registered, no console output, no performance impact.
 3. **Given** the editor is running on port 4000, **When** a developer visits `http://localhost:4000/dev-editor-inspector.js` in their browser, **Then** the file is served correctly with appropriate JavaScript content type.
 

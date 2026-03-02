@@ -3,13 +3,13 @@
 **Feature Branch**: `002-design-tab-redesign`
 **Created**: 2026-02-14
 **Status**: Draft
-**Input**: Redesign the right panel Design tab to match a Figma/Webflow-style properties panel with compact inline inputs, icon toggle groups, linked padding/margin controls, gradient editors, and token-aware color pickers. Implement section-by-section to keep changes lightweight and testable at each step.
+**Input**: Redesign the right panel Design tab to match a Figma-style properties panel with compact inline inputs, icon toggle groups, linked padding/margin controls, gradient editors, and token-aware color pickers. Implement section-by-section to keep changes lightweight and testable at each step.
 
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Compact Property Editing with Inline Inputs (Priority: P1)
 
-A developer selects an element in the visual editor and sees a compact, professional properties panel in the right panel Design tab. Instead of wide label+input+dropdown rows, each property row uses a 24px-height inline input with a prefix character label (e.g., "W", "H", "X") and a clickable unit suffix inside the input border. The panel feels dense and efficient, matching the layout density of Figma or Webflow.
+A developer selects an element in the visual editor and sees a compact, professional properties panel in the right panel Design tab. Instead of wide label+input+dropdown rows, each property row uses a 24px-height inline input with a prefix character label (e.g., "W", "H", "X") and a clickable unit suffix inside the input border. The panel feels dense and efficient, matching the layout density of Figma or reference editor.
 
 **Why this priority**: The compact input component is the foundation primitive that every other section depends on. Without it, no section can be redesigned. This also delivers the most immediate visual improvement.
 

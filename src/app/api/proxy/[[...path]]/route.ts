@@ -293,7 +293,7 @@ function getInspectorCode(): string {
       selectionOverlay.style.cssText = 'position:fixed;pointer-events:none;z-index:999997;border:2px solid #4a9eff;display:none;';
       document.body.appendChild(selectionOverlay);
 
-      // Hover highlight — dotted green border + element name label (Webflow-style)
+      // Hover highlight — dotted green border + element name label (visual-editor-style)
       var hoverOverlay = document.createElement('div');
       hoverOverlay.style.cssText = 'position:fixed;pointer-events:none;z-index:999996;border:1px dashed #4ade80;display:none;transition:top 0.04s,left 0.04s,width 0.04s,height 0.04s;';
       document.body.appendChild(hoverOverlay);

@@ -38,11 +38,11 @@
 |----------|----------|------------|
 | Text Shadow | `text-shadow` | Add/remove entries, each with X, Y, blur, color |
 
-**Rationale**: Matches the Webflow typography panel screenshot 1:1. Grouped by frequency of use (core = always, advanced = on demand, shadows = specialized).
+**Rationale**: Matches the reference editor typography panel screenshot 1:1. Grouped by frequency of use (core = always, advanced = on demand, shadows = specialized).
 
 **Alternatives considered**:
 - Flat list of all properties (rejected: too tall, clutters the panel)
-- Separate section for each group (rejected: over-fragmented, Webflow uses single section)
+- Separate section for each group (rejected: over-fragmented, reference editor uses single section)
 
 ## R2: Text Shadow Parsing Strategy
 
@@ -65,7 +65,7 @@
 
 ## R3: Decoration Icon Design
 
-**Decision**: Use icon-based toggle for decorations, matching the Webflow pattern.
+**Decision**: Use icon-based toggle for decorations, matching the reference editor pattern.
 
 **Icons needed** (new additions to `icons.tsx`):
 | Icon | Represents | Visual |
@@ -82,13 +82,13 @@
 
 **Alternatives considered**:
 - Text labels instead of icons (rejected: takes too much horizontal space)
-- Dropdown for decoration (rejected: Webflow uses icon row)
+- Dropdown for decoration (rejected: reference editor uses icon row)
 
 ## R4: Compound text-decoration Handling
 
 **Decision**: Treat `text-decoration` as a single-value toggle (clicking one decoration replaces the current one, not additive).
 
-**Rationale**: The Webflow panel shows decoration as a mutually exclusive toggle row (you pick one). While CSS allows `text-decoration: underline line-through`, it's a rare use case. The toggle pattern is simpler and matches the reference UI.
+**Rationale**: The reference editor panel shows decoration as a mutually exclusive toggle row (you pick one). While CSS allows `text-decoration: underline line-through`, it's a rare use case. The toggle pattern is simpler and matches the reference UI.
 
 **Edge case**: If the computed style returns a compound value like `underline line-through`, the first token is used to determine the active icon. Users can override by clicking a specific icon.
 
@@ -101,7 +101,7 @@
 **Alternatives considered**:
 - Single shorthand property (rejected: `getComputedStyle()` returns longhand values, not shorthand)
 
-## R6: Layout Structure (Webflow Fidelity)
+## R6: Layout Structure (reference editor Fidelity)
 
 **Decision**: The rebuilt TextSection follows this visual layout:
 
@@ -136,4 +136,4 @@
 └──────────────────────────────────────┘
 ```
 
-**Rationale**: Directly mirrors the Webflow screenshot. Core properties visible immediately, advanced properties collapsed, shadows at the bottom with add/remove.
+**Rationale**: Directly mirrors the reference editor screenshot. Core properties visible immediately, advanced properties collapsed, shadows at the bottom with add/remove.

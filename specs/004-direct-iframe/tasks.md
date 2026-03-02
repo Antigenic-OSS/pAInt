@@ -38,7 +38,7 @@
 
 ## Phase 3: User Story 2 — Standalone Inspector Script (Priority: P1) 🎯 MVP
 
-**Goal**: Create the standalone inspector JavaScript file that developers add to their target project. When loaded inside the pAInt iframe, it initializes inspection capabilities and communicates with the editor. When loaded directly in a browser, it does nothing.
+**Goal**: Create the standalone inspector JavaScript file that developers add to their target project. When loaded inside pAInt iframe, it initializes inspection capabilities and communicates with the editor. When loaded directly in a browser, it does nothing.
 
 **Independent Test**: Add script tag to any localhost project, load in pAInt iframe, verify `INSPECTOR_READY` is sent and element selection works.
 

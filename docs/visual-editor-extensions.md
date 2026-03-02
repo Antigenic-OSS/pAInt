@@ -30,7 +30,7 @@
 | Tool | Description | Open Source | URL |
 |------|-------------|-------------|-----|
 | **GrapesJS** | Full-featured drag-and-drop HTML builder framework, embeddable, React wrapper available | Yes (BSD) | [grapesjs.com](https://grapesjs.com) |
-| **Webstudio** | Open-source Webflow alternative, full CSS control, self-hostable | Yes (AGPL) | [webstudio.is](https://webstudio.is) |
+| **Webstudio** | Open-source design tool alternative, full CSS control, self-hostable | Yes (AGPL) | [webstudio.is](https://webstudio.is) |
 
 ## 4. Component Development & Testing
 
@@ -66,7 +66,7 @@
 - **Embeddable HTML builder** → GrapesJS
 - **Component development** → Storybook
 - **Figma-to-code pipeline** → Figma MCP Server + FigmaToCode
-- **Open-source Webflow alternative** → Webstudio
+- **Open-source design tool alternative** → Webstudio
 - **VS Code visual editing** → SculptUI (React) or Fusion (AI-powered)
 - **Write once, multi-framework** → Mitosis
 
@@ -74,12 +74,12 @@
 
 pAInt takes a unique approach compared to the tools above:
 
-| Aspect | pAInt | Webflow | Onlook | GrapesJS |
+| Aspect | pAInt | design tool | Onlook | GrapesJS |
 |--------|-----------|---------|--------|----------|
 | **Layout** | Three-column: Left (Layers) + Center (Preview) + Right (Style) | Three-column (same pattern) | Single canvas + side panel | Single canvas + panels |
 | **Architecture** | Next.js web app with iframe proxy, Bun runtime | Cloud SaaS | Electron desktop app | Embeddable JS library |
 | **Theme** | Dark mode only | Dark mode | Dark mode | Light/dark |
-| **Target** | Any localhost dev server | Webflow sites only | React + Tailwind only | Static HTML |
+| **Target** | Any localhost dev server | design tool sites only | React + Tailwind only | Static HTML |
 | **DOM Access** | Reverse proxy + injected inspector | Direct (own renderer) | Custom browser engine | Direct DOM |
 | **Claude Integration** | Built-in via API routes | None | None | None |
 | **Output** | Changelog + automated code diffs | Hosted site / code export | Direct source file edits | HTML/CSS export |

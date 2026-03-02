@@ -3,13 +3,13 @@
 **Feature Branch**: `005-rebuild-text-section`
 **Created**: 2026-02-15
 **Status**: Draft
-**Input**: User description: "Rebuild the Text Section in the Design panel to match Webflow's comprehensive typography panel with font, weight, size, height, color, alignment, decoration, and advanced type options"
+**Input**: User description: "Rebuild the Text Section in the Design panel to match reference editor's comprehensive typography panel with font, weight, size, height, color, alignment, decoration, and advanced type options"
 
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Edit Core Typography Properties (Priority: P1)
 
-A designer selects a text element on the canvas and needs to adjust its fundamental typography: font family, weight, size, line height, and color. The Text section in the right panel displays these properties in a compact, Webflow-style layout. The designer changes the font to "DM Sans", sets weight to "400 - Normal" via a dropdown, adjusts the size to "1 REM", height to "1.5", and picks a color. Each change previews instantly in the iframe.
+A designer selects a text element on the canvas and needs to adjust its fundamental typography: font family, weight, size, line height, and color. The Text section in the right panel displays these properties in a compact, pro-style layout. The designer changes the font to "DM Sans", sets weight to "400 - Normal" via a dropdown, adjusts the size to "1 REM", height to "1.5", and picks a color. Each change previews instantly in the iframe.
 
 **Why this priority**: Core typography controls are the most-used text editing features. Without them, no other text editing is useful.
 
@@ -45,7 +45,7 @@ A designer needs to center-align a heading, add an underline decoration, and set
 
 A designer clicks "More type options" to expand an advanced section revealing: letter spacing, text indent, columns, italicize toggle, capitalize options (AA, Aa, aa), text direction (LTR/RTL), word breaking, line breaking, text wrap, text truncation (clip/ellipsis), text stroke (width + color), and text shadows. These are collapsed by default to keep the panel clean.
 
-**Why this priority**: Advanced options serve power users who need fine-grained control. Keeping them collapsed avoids cluttering the primary view while still providing full Webflow-level capability.
+**Why this priority**: Advanced options serve power users who need fine-grained control. Keeping them collapsed avoids cluttering the primary view while still providing full reference editor-level capability.
 
 **Independent Test**: Expand the "More type options" section, adjust letter spacing, text indent, font style (italic), text direction, word-break, overflow-wrap, white-space, text-overflow, and text stroke — verify each applies to the preview.
 
@@ -122,7 +122,7 @@ A designer wants to add a text shadow to a heading. At the bottom of the Text se
 - **SC-002**: All 17 typography-related CSS properties covered by this section are editable and preview changes in under 200ms of user input.
 - **SC-003**: The "More type options" section remains collapsed by default, keeping the visible Text section height comparable to the current implementation until the user expands it.
 - **SC-004**: 100% of typography property changes are tracked in the changelog with correct original and new values.
-- **SC-005**: The rebuilt Text section visually matches the Webflow typography panel layout: font field spanning full width, weight + size on one row, height beside size, color with swatch, alignment as icon row, decoration as icon row, and advanced options collapsed below.
+- **SC-005**: The rebuilt Text section visually matches the reference editor typography panel layout: font field spanning full width, weight + size on one row, height beside size, color with swatch, alignment as icon row, decoration as icon row, and advanced options collapsed below.
 
 ## Assumptions
 

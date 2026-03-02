@@ -4,8 +4,8 @@
 
 **Actor:** Developer with a running localhost project
 
-1. Developer runs `bun dev` to start the pAInt app (e.g., on `http://localhost:4000`)
-2. Developer opens the pAInt in their browser
+1. Developer runs `bun dev` to start pAInt app (e.g., on `http://localhost:4000`)
+2. Developer opens pAInt in their browser
 3. The editor loads in **dark mode** with a three-column layout: left panel (empty), center (empty placeholder: "Enter a localhost URL to get started"), right panel (empty)
 4. The **target URL input** in the top bar is focused and ready for input
 5. Developer types their project URL: `http://localhost:3000`
@@ -15,7 +15,7 @@
 9. The proxy injects the inspector script into the page
 10. The inspector sends `INSPECTOR_READY` via postMessage to the editor
 11. The connection status dot turns **green** (connected)
-12. The **left panel** populates with the full DOM tree (Webflow Navigator style)
+12. The **left panel** populates with the full DOM tree (design tool Navigator style)
 13. The **right panel** shows the Design tab in an empty state: "Select an element to inspect"
 14. The URL is saved to **recent URLs** in `localStorage`
 

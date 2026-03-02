@@ -54,7 +54,7 @@ export default function DocsPage() {
         <Section id="how-it-works" title="How It Works">
           <p style={bodyText}>
             pAInt is a visual design tool that sits alongside your localhost
-            dev server. It gives you a Webflow-style interface for inspecting
+            dev server. It gives you a visual-editor-style interface for inspecting
             elements, editing CSS, and repositioning components — all without
             touching your source files directly.
           </p>
@@ -457,7 +457,7 @@ export default defineNuxtConfig({
 
             <TroubleshootItem title="CORS or Cross-Origin errors">
               <p>
-                The pAInt proxy runs on a different port than your project.
+                pAInt proxy runs on a different port than your project.
                 If your project sets strict CORS headers, the proxy may be
                 blocked. The automatic method handles this by serving everything
                 from the same origin. For the manual method, ensure your dev
@@ -508,7 +508,7 @@ export default defineNuxtConfig({
                 (tag name, styles, bounding box) back to pAInt via{' '}
                 <code style={inlineCodeStyle}>postMessage</code>. It does not
                 modify your source code, send data to external servers, or
-                execute arbitrary code. It only communicates with the pAInt
+                execute arbitrary code. It only communicates with pAInt
                 origin.
               </p>
             </FaqSection>
@@ -539,7 +539,7 @@ export default defineNuxtConfig({
               <p>
                 Yes. The inspector script is intended for local development only.
                 Remove it (or wrap it in an environment check) before deploying.
-                If you forget, the script will try to connect to the pAInt
+                If you forget, the script will try to connect to pAInt
                 origin and silently fail — it won&apos;t affect your users — but
                 it&apos;s best practice to keep it out of production builds.
               </p>

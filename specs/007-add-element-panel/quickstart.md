@@ -31,7 +31,7 @@ A new "Add Element" tab in the left panel provides a palette of HTML element typ
 ## How to Test
 
 ### Prerequisites
-1. Start the pAInt: `bun dev`
+1. Start pAInt: `bun dev`
 2. Start a target project dev server (e.g., `http://localhost:3000`)
 3. Connect the editor to the target
 

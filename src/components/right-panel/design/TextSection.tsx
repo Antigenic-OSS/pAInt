@@ -208,7 +208,7 @@ export function TextSection() {
 
   return (
     <SectionHeader title="Typography" defaultOpen={true} hasChanges={hasChanges} onReset={handleResetAll}>
-      {/* ===== Core Typography — Webflow row layout ===== */}
+      {/* ===== Core Typography — design tool row layout ===== */}
 
       {/* Font */}
       <div className="flex items-center gap-2">

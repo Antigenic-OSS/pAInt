@@ -40,7 +40,7 @@ You have multiple Next.js + Tailwind CSS projects in `/Users/jehcyadorna/My Reac
         +----------------+
 ```
 
-## UX Layout (Webflow-Style Three-Column)
+## UX Layout (design tool-Style Three-Column)
 
 ```
 +-------------------------------------------------------------------------------------------+
@@ -121,7 +121,7 @@ dev-editor/
 │   │   ├── PreviewFrame.tsx            # Iframe container with responsive sizing
 │   │   ├── left-panel/
 │   │   │   ├── LeftPanel.tsx           # Collapsible left panel container
-│   │   │   ├── LayersPanel.tsx         # DOM tree view (Webflow Navigator style)
+│   │   │   ├── LayersPanel.tsx         # DOM tree view (design tool Navigator style)
 │   │   │   ├── LayerNode.tsx           # Recursive tree node with element icons
 │   │   │   └── LayerSearch.tsx         # Search/filter bar for the tree
 │   │   ├── right-panel/
@@ -212,7 +212,7 @@ dev-editor/
 
 1. **Bun runtime & package manager** - All commands use Bun: `bun install`, `bun dev`, `bun run build`. Faster installs, faster dev server startup, native TypeScript support.
 2. **Target URL input as the entry point** - A prominent address bar in the top bar where the user types any localhost URL. This is the first thing the user interacts with — the editor is inert until connected. Recent URLs are persisted in `localStorage` for quick switching. Connection status shown via colored dot (green/orange/red).
-3. **Three-column Webflow-style layout** - Left panel (Navigator/Layers), center (iframe preview), right panel (Design/Changes). Both side panels are independently resizable and collapsible.
+3. **Three-column visual-editor-style layout** - Left panel (Navigator/Layers), center (iframe preview), right panel (Design/Changes). Both side panels are independently resizable and collapsible.
 4. **Dark mode by default** - Tailwind `class` dark mode strategy with CSS custom properties for the dark color palette. No light mode toggle needed — dark is the only theme.
 5. **Iframe + Reverse Proxy** - The target localhost page is loaded in an iframe. A Next.js API route (`/api/proxy/[...path]`) reverse-proxies requests to the target dev server, making the iframe same-origin. The proxy target is dynamically set based on the URL the user entered.
 6. **Inspector script injection** - The proxy injects a `<script>` tag into the HTML response that loads the inspector code.
@@ -322,7 +322,7 @@ where appropriate.
 - HoverHighlighter - overlay following cursor inside iframe
 - ElementSelector - capture-phase click handler
 - SelectionHighlighter - persistent outline on selected element
-- LayersPanel + recursive LayerNode components (Webflow Navigator style with element icons)
+- LayersPanel + recursive LayerNode components (design tool Navigator style with element icons)
 - LayerSearch - search/filter bar at top of left panel
 - Bidirectional selection sync (click preview -> highlights tree, click tree -> highlights preview)
 - MutationObserver for live tree updates

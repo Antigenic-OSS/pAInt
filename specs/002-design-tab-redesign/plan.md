@@ -5,7 +5,7 @@
 
 ## Summary
 
-Redesign the right panel Design tab from a traditional vertical-stacked layout with full-width `PropertyInput` components to a compact Figma/Webflow-style properties panel. The redesign introduces compact inline inputs, icon toggle groups, linked padding/margin controls, a gradient editor, shadow editor, and a Design/CSS tab toggle. All changes are UI-only — the existing Zustand store, `useChangeTracker` hook, postMessage bridge, and localStorage persistence remain unchanged. Implementation is section-by-section with testing after each step.
+Redesign the right panel Design tab from a traditional vertical-stacked layout with full-width `PropertyInput` components to a compact Figma-style properties panel. The redesign introduces compact inline inputs, icon toggle groups, linked padding/margin controls, a gradient editor, shadow editor, and a Design/CSS tab toggle. All changes are UI-only — the existing Zustand store, `useChangeTracker` hook, postMessage bridge, and localStorage persistence remain unchanged. Implementation is section-by-section with testing after each step.
 
 ## Technical Context
 

@@ -1,5 +1,5 @@
 /**
- * Webflow-style hover highlight — dotted green border + element name label.
+ * visual-editor-style hover highlight — dotted green border + element name label.
  * Source reference — runtime code is inlined in the proxy route.
  */
 

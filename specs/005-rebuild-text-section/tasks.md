@@ -32,14 +32,14 @@
 
 ## Phase 2: User Story 1 — Edit Core Typography Properties (Priority: P1) MVP
 
-**Goal**: Font family, weight, size, height, and color fields in a Webflow-style layout. This is the minimum viable Text section.
+**Goal**: Font family, weight, size, height, and color fields in a pro-style layout. This is the minimum viable Text section.
 
 **Independent Test**: Select any text element in the canvas. Verify font family input, weight dropdown (labeled "400 - Normal" format), size + height side-by-side with unit selectors, and color picker all display computed values and apply changes live.
 
 ### Implementation for User Story 1
 
 - [X] T003 [US1] Scaffold the new `TextSection` component in `src/components/right-panel/design/TextSection.tsx` — replace the entire existing component. Import `useEditorStore`, `useChangeTracker`, `SectionHeader`, `CompactInput`, `ColorInput`, `IconToggleGroup`. Extract all typography computed styles with defaults: `fontFamily` ("inherit"), `fontWeight` ("400"), `fontSize` ("16px"), `lineHeight` ("normal"), `color` ("#000000"), `textAlign` ("left"), `textDecoration` ("none"), `letterSpacing` ("normal"), `textIndent` ("0px"), `fontStyle` ("normal"), `textTransform` ("none"), `direction` ("ltr"), `wordBreak` ("normal"), `lineBreak` ("normal"), `whiteSpace` ("normal"), `textOverflow` ("clip"), `webkitTextStrokeWidth` ("0px"), `webkitTextStrokeColor` ("currentcolor"), `textShadow` ("none"), `columnCount` ("auto"). Create the `handleChange` wrapper around `applyChange`.
-- [X] T004 [US1] Build the Font Family row in `src/components/right-panel/design/TextSection.tsx` — full-width text input for `fontFamily`, styled with `bg-tertiary`, `border`, `text-primary` matching existing inputs. Label "Font" on the left side using the same label style as Webflow (small muted text).
+- [X] T004 [US1] Build the Font Family row in `src/components/right-panel/design/TextSection.tsx` — full-width text input for `fontFamily`, styled with `bg-tertiary`, `border`, `text-primary` matching existing inputs. Label "Font" on the left side using the same label style as reference editor (small muted text).
 - [X] T005 [US1] Build the Weight dropdown in `src/components/right-panel/design/TextSection.tsx` — full-width `<select>` with labeled options: "100 - Thin", "200 - Extra Light", "300 - Light", "400 - Normal", "500 - Medium", "600 - Semi Bold", "700 - Bold", "800 - Extra Bold", "900 - Black". Selected value matches `fontWeight` from computed styles.
 - [X] T006 [US1] Build the Size + Height row in `src/components/right-panel/design/TextSection.tsx` — two-column grid (`grid grid-cols-2 gap-1.5`). Left: `CompactInput` with label "Size", property `fontSize`, units `['px', 'em', 'rem', '%']`, min 0. Right: `CompactInput` with label "Height", property `lineHeight`, units `['px', 'em', 'rem', '']` (unitless for ratio values like "1.5").
 - [X] T007 [US1] Build the Color row in `src/components/right-panel/design/TextSection.tsx` — `ColorInput` with label "Color", property `color`, value from `computedStyles.color`, `varExpression` from `cssVariableUsages['color']`. This automatically handles CSS variable display and detach/reattach.
@@ -59,7 +59,7 @@
 - [X] T008 [US2] Build the Alignment icon toggle row in `src/components/right-panel/design/TextSection.tsx` — use existing `IconToggleGroup` with `AlignLeftIcon`, `AlignCenterIcon`, `AlignRightIcon`, `AlignJustifyIcon` from `icons.tsx`. Values: "left", "center", "right", "justify". Property: `textAlign`.
 - [X] T009 [US2] Build the Decoration icon toggle row in `src/components/right-panel/design/TextSection.tsx` — use `IconToggleGroup` with the new icons from T002: `DecoNoneIcon` (value "none"), `StrikethroughIcon` (value "line-through"), `OverlineIcon` (value "overline"), `UnderlineIcon` (value "underline"). Property: `textDecoration`. Handle compound computed values (e.g., "underline solid rgb(0,0,0)") by extracting the keyword before matching the active icon.
 
-**Checkpoint**: Full primary Text section complete. Font, weight, size, height, color, alignment, and decoration all working. This matches the top portion of the Webflow typography panel.
+**Checkpoint**: Full primary Text section complete. Font, weight, size, height, color, alignment, and decoration all working. This matches the top portion of the reference editor typography panel.
 
 ---
 
@@ -94,7 +94,7 @@
 - [X] T017 [US4] Build the Text Shadows sub-section in `src/components/right-panel/design/TextSection.tsx` — use `SectionHeader` with title "Text shadows", `defaultOpen={false}`, and a `PlusIcon` button in the `actions` slot. Import `parseTextShadow` and `serializeTextShadow` from `src/lib/textShadowUtils.ts`. Parse `computedStyles.textShadow` into the shadow array. Create `addShadow()` (appends default `{ x: 0, y: 0, blur: 0, color: 'rgba(0,0,0,0.25)' }`), `removeShadow(index)`, and `updateShadow(index, updates)` handlers. Each calls `applyChange('textShadow', serializeTextShadow(newShadows))`.
 - [X] T018 [US4] Build the per-shadow entry UI in `src/components/right-panel/design/TextSection.tsx` — for each shadow, render: a header row ("Shadow N" + delete button with `TrashIcon`), a 2x2 grid of `CompactInput`s for X (label "X", units ['px']), Y (label "Y", units ['px']), Blur (label "B", units ['px'], min 0), and a `ColorPicker` for the shadow color. Empty state: "No text shadows" muted text.
 
-**Checkpoint**: Complete Text section matching Webflow typography panel. All user stories functional.
+**Checkpoint**: Complete Text section matching reference editor typography panel. All user stories functional.
 
 ---
 

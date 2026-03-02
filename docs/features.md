@@ -3,7 +3,7 @@
 ## UI Theme
 
 - **Dark mode by default** - Dark background (`#1e1e1e`), muted borders (`#2d2d2d`), light text (`#e0e0e0`)
-- Webflow-inspired design language with subtle panel separators
+- design-editor-inspired design language with subtle panel separators
 - High-contrast selection highlights and hover states for accessibility on dark backgrounds
 
 ## Core Features
@@ -25,7 +25,7 @@
 - **DOM Tree Serialization** - Full DOM serialized into a navigable tree structure via injected inspector script
 
 ### 3. Left Panel — Navigator (Layers)
-- Webflow-style collapsible/expandable DOM tree in the **left panel** (~240px wide, resizable)
+- visual-editor-style collapsible/expandable DOM tree in the **left panel** (~240px wide, resizable)
 - Recursive tree nodes showing the full page structure with element type icons
 - **Bidirectional selection sync** - Click an element in the preview and it highlights in the tree; click a node in the tree and it highlights in the preview
 - **Live tree updates** via MutationObserver (reflects DOM changes in real time)
@@ -34,7 +34,7 @@
 - Collapsible panel — toggle via icon button or keyboard shortcut
 
 ### 4. Right Panel — Style Editor (Design + Changes)
-- Webflow-style **right panel** (~300px wide, resizable) with two tabs: **Design** and **Changes**
+- visual-editor-style **right panel** (~300px wide, resizable) with two tabs: **Design** and **Changes**
 - **Design Tab** - Visual properties editor for the selected element:
   - **Size Section** - Width, height, overflow with unit selectors
   - **Spacing Section** - Visual box model diagram with editable margin and padding values
@@ -111,7 +111,7 @@
 
 ### Next.js Web Application
 - **Three-column layout** - Left panel (Navigator/Layers) | Center (Iframe Preview) | Right panel (Design/Changes)
-- **Dark mode UI** - Dark theme by default with Webflow-inspired styling
+- **Dark mode UI** - Dark theme by default with design-editor-inspired styling
 - **Inspector Script** - Injected into the iframe via the proxy; handles DOM inspection, hover/selection highlighting, drag & drop
 - **Reverse Proxy** - Next.js API route proxies the target localhost dev server, enabling same-origin iframe access
 - **API Routes** - Server-side endpoints for Claude CLI integration and proxy
