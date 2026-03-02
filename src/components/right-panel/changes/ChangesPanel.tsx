@@ -21,21 +21,21 @@ import type { FileMap, ClaudeScanResponse } from '@/types/claude'
 
 type BreakpointGroupKey = 'all' | 'desktop-only' | 'tablet-only' | 'mobile-only'
 
-const GROUP_ORDER: BreakpointGroupKey[] = [
+const _GROUP_ORDER: BreakpointGroupKey[] = [
   'all',
   'desktop-only',
   'tablet-only',
   'mobile-only',
 ]
 
-const GROUP_META: Record<BreakpointGroupKey, { label: string }> = {
+const _GROUP_META: Record<BreakpointGroupKey, { label: string }> = {
   all: { label: 'All' },
   'desktop-only': { label: 'Desktop Only' },
   'tablet-only': { label: 'Tablet Only' },
   'mobile-only': { label: 'Mobile Only' },
 }
 
-function getGroupKey(change: StyleChange): BreakpointGroupKey {
+function _getGroupKey(change: StyleChange): BreakpointGroupKey {
   const scope = change.changeScope ?? 'all'
   if (scope === 'all') return 'all'
   return `${change.breakpoint}-only` as BreakpointGroupKey
@@ -141,8 +141,8 @@ function CheckIcon({ size = 14 }: { size?: number }) {
 function buildSingleElementLog(
   snapshot: ElementSnapshot,
   changes: StyleChange[],
-  fileMap?: FileMap | null,
-  projectRoot?: string | null,
+  _fileMap?: FileMap | null,
+  _projectRoot?: string | null,
   framework?: string | null,
   cssStrategy?: string[] | null,
 ): string {
@@ -152,7 +152,7 @@ function buildSingleElementLog(
   const attrParts: string[] = []
   if (snapshot.elementId) attrParts.push(`id="${snapshot.elementId}"`)
   if (snapshot.className) attrParts.push(`class="${snapshot.className}"`)
-  const tag = `<${snapshot.tagName}${attrParts.length ? ' ' + attrParts.join(' ') : ''}>`
+  const tag = `<${snapshot.tagName}${attrParts.length ? ` ${attrParts.join(' ')}` : ''}>`
 
   const changeBp = (changes[0]?.breakpoint || 'mobile') as Breakpoint
   const { deviceName, range } = getBreakpointDeviceInfo(changeBp)
@@ -230,10 +230,10 @@ function buildSingleElementLog(
 function buildElementSection(
   snapshot: ElementSnapshot,
   changes: StyleChange[],
-  fileMap?: FileMap | null,
-  projectRoot?: string | null,
+  _fileMap?: FileMap | null,
+  _projectRoot?: string | null,
   framework?: string | null,
-  cssStrategy?: string[] | null,
+  _cssStrategy?: string[] | null,
 ): string {
   const lines: string[] = []
   const isMobileApp = framework === 'flutter' || framework === 'react-native'
@@ -241,7 +241,7 @@ function buildElementSection(
   const attrParts: string[] = []
   if (snapshot.elementId) attrParts.push(`id="${snapshot.elementId}"`)
   if (snapshot.className) attrParts.push(`class="${snapshot.className}"`)
-  const tag = `<${snapshot.tagName}${attrParts.length ? ' ' + attrParts.join(' ') : ''}>`
+  const tag = `<${snapshot.tagName}${attrParts.length ? ` ${attrParts.join(' ')}` : ''}>`
 
   const changeBp = (changes[0]?.breakpoint || 'mobile') as Breakpoint
   const { deviceName: elDevice, range: elRange } =
@@ -655,7 +655,7 @@ interface BreakpointGroupData {
   allChanges: StyleChange[]
 }
 
-function BreakpointGroupAccordion({
+function _BreakpointGroupAccordion({
   group,
   targetUrl,
   pagePath,
@@ -1220,7 +1220,7 @@ export function ChangesPanel() {
         onStderr: (line: string) => {
           const w = useEditorStore.getState().writeToTerminal
           const formatted = formatStderrLine(line)
-          if (formatted) w?.(formatted + '\r\n')
+          if (formatted) w?.(`${formatted}\r\n`)
         },
         onResult: (data: ClaudeScanResponse) => {
           setAiScanResult(data)

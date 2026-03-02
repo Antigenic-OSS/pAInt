@@ -1,6 +1,6 @@
 {
   "name": "@antigenic-oss/paint",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Visual editor for localhost web projects with a global paint CLI",
   "license": "Apache-2.0",
   "homepage": "https://github.com/Antigenic-OSS/pAInt",
@@ -29,7 +29,6 @@
     "next.config.ts",
     "postcss.config.mjs",
     "tsconfig.json",
-    "tsconfig.server.json",
     "README.md",
     "LICENSE",
     "NOTICE"

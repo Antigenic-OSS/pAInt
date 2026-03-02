@@ -76,7 +76,7 @@ function rgbToHsv({ r, g, b }: RGB): HSV {
 }
 
 function rgbToHex({ r, g, b }: RGB): string {
-  return '#' + [r, g, b].map((c) => c.toString(16).padStart(2, '0')).join('')
+  return `#${[r, g, b].map((c) => c.toString(16).padStart(2, '0')).join('')}`
 }
 
 function hexToRgb(hex: string): RGB | null {
@@ -93,7 +93,7 @@ function hexToRgb(hex: string): RGB | null {
   } else {
     return null
   }
-  if (isNaN(r) || isNaN(g) || isNaN(b)) return null
+  if (Number.isNaN(r) || Number.isNaN(g) || Number.isNaN(b)) return null
   return { r, g, b }
 }
 
@@ -254,7 +254,7 @@ function ScrubInput({
   const commit = useCallback(
     (raw: string) => {
       const n = parseInt(raw, 10)
-      if (!isNaN(n)) onChange(Math.max(min, Math.min(max, n)))
+      if (!Number.isNaN(n)) onChange(Math.max(min, Math.min(max, n)))
       setEditing(false)
     },
     [onChange, min, max],
@@ -264,7 +264,6 @@ function ScrubInput({
     <div className="flex flex-col items-center gap-0.5">
       {editing ? (
         <input
-          autoFocus
           type="text"
           inputMode="numeric"
           value={editVal}
@@ -429,7 +428,7 @@ export function ColorPicker({
       // Commit pending hex input on close
       if (prevOpenRef.current) {
         const currentHex = rgbToHex(hsvToRgb(hsv))
-        const pendingHex = '#' + hexInput
+        const pendingHex = `#${hexInput}`
         if (pendingHex !== currentHex) {
           const rgb = hexToRgb(pendingHex)
           if (rgb) {
@@ -503,7 +502,7 @@ export function ColorPicker({
 
   // Hex commit
   const commitHex = useCallback(() => {
-    const rgb = hexToRgb('#' + hexInput)
+    const rgb = hexToRgb(`#${hexInput}`)
     if (rgb) {
       const next = rgbToHsv(rgb)
       setHsv(next)
@@ -617,7 +616,7 @@ export function ColorPicker({
             // Emit immediately when a valid 6-char hex is entered
             const clean = v.replace(/[^0-9a-fA-F]/g, '')
             if (clean.length === 6) {
-              const rgb = hexToRgb('#' + clean)
+              const rgb = hexToRgb(`#${clean}`)
               if (rgb) {
                 const next = rgbToHsv(rgb)
                 setHsv(next)
@@ -626,7 +625,7 @@ export function ColorPicker({
             }
           }}
           onBlur={() => {
-            const rgb = hexToRgb('#' + hexInput)
+            const rgb = hexToRgb(`#${hexInput}`)
             if (rgb) {
               const next = rgbToHsv(rgb)
               setHsv(next)
@@ -863,7 +862,6 @@ export function ColorPicker({
                         color: 'var(--text-primary)',
                         outline: 'none',
                       }}
-                      autoFocus
                     />
 
                     {/* Scrollable list */}

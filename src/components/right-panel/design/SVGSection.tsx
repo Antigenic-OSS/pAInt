@@ -69,7 +69,6 @@ function SaveAsVariableRow({
     return (
       <div className="flex items-center gap-1 pl-1">
         <input
-          autoFocus
           value={varName}
           onChange={(e) => setVarName(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -329,7 +328,7 @@ export function SVGSection() {
             value={fillDisplay}
             property="fill"
             onChange={handleColorChange}
-            varExpression={cssVariableUsages['fill']}
+            varExpression={cssVariableUsages.fill}
           />
           <SaveAsVariableRow
             property="fill"
@@ -346,7 +345,7 @@ export function SVGSection() {
             value={strokeDisplay}
             property="stroke"
             onChange={handleColorChange}
-            varExpression={cssVariableUsages['stroke']}
+            varExpression={cssVariableUsages.stroke}
           />
           <SaveAsVariableRow
             property="stroke"

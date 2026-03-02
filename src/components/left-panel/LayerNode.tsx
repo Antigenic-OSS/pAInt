@@ -405,7 +405,7 @@ const DRAG_DATA_TYPE = 'application/x-dev-editor-layer-move'
 type DropPosition = 'before' | 'inside' | 'after'
 
 function isDescendant(parentId: string, childId: string): boolean {
-  return childId.startsWith(parentId + ' > ')
+  return childId.startsWith(`${parentId} > `)
 }
 
 function getDropPosition(

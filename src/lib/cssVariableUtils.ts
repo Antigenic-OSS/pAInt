@@ -37,7 +37,7 @@ export function groupVariablesIntoFamilies(
     if (!prefixMap.has(prefix)) {
       prefixMap.set(prefix, [])
     }
-    prefixMap.get(prefix)!.push({
+    prefixMap.get(prefix)?.push({
       name,
       suffix,
       value: def.value,

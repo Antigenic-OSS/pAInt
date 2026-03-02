@@ -16,7 +16,7 @@
  * If detection fails, it discovers the editor via handshake.
  * It does nothing when the page is not loaded inside an iframe.
  */
-;(function () {
+;(() => {
   // Iframe guard — script does nothing if not loaded inside an iframe
   if (window.parent === window) return
 
@@ -30,7 +30,7 @@
   try {
     // Same-origin: can access parent's location directly
     parentOrigin = window.parent.location.origin
-  } catch (e) {
+  } catch (_e) {
     // Cross-origin: can't access parent's origin.
     // Use '*' — safe for localhost dev tool use case.
     parentOrigin = '*'
@@ -42,7 +42,7 @@
   function send(message) {
     try {
       window.parent.postMessage(message, parentOrigin)
-    } catch (e) {}
+    } catch (_e) {}
   }
 
   // --- Console Interception (no DOM dependency, runs immediately) ---
@@ -61,7 +61,7 @@
     if (arg instanceof Error) return arg.stack || arg.message || String(arg)
     try {
       return JSON.stringify(arg)
-    } catch (e) {
+    } catch (_e) {
       return String(arg)
     }
   }
@@ -85,7 +85,7 @@
   interceptConsole('warn')
   interceptConsole('error')
 
-  window.onerror = function (message, source, line, column) {
+  window.onerror = (message, source, line, column) => {
     send({
       type: 'CONSOLE_MESSAGE',
       payload: {
@@ -99,7 +99,7 @@
     })
   }
 
-  window.addEventListener('unhandledrejection', function (e) {
+  window.addEventListener('unhandledrejection', (e) => {
     var reason = e.reason
     var msg =
       reason instanceof Error
@@ -109,7 +109,7 @@
       type: 'CONSOLE_MESSAGE',
       payload: {
         level: 'error',
-        args: ['Unhandled Promise Rejection: ' + msg],
+        args: [`Unhandled Promise Rejection: ${msg}`],
         timestamp: Date.now(),
       },
     })
@@ -118,15 +118,11 @@
   // --- Inspector initialization (requires document.body) ---
   function initInspector() {
     function kebabToCamel(str) {
-      return str.replace(/-([a-z])/g, function (m, c) {
-        return c.toUpperCase()
-      })
+      return str.replace(/-([a-z])/g, (_m, c) => c.toUpperCase())
     }
 
     function camelToKebab(str) {
-      return str.replace(/[A-Z]/g, function (c) {
-        return '-' + c.toLowerCase()
-      })
+      return str.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)
     }
 
     function generateSelectorPath(element) {
@@ -135,7 +131,7 @@
       while (current && current !== document.documentElement) {
         var selector = current.tagName.toLowerCase()
         if (current.id) {
-          selector += '#' + CSS.escape(current.id)
+          selector += `#${CSS.escape(current.id)}`
           parts.unshift(selector)
           break
         }
@@ -145,20 +141,16 @@
             selector +=
               '.' +
               classes
-                .map(function (c) {
-                  return CSS.escape(c)
-                })
+                .map((c) => CSS.escape(c))
                 .join('.')
           }
         }
         var parent = current.parentElement
         if (parent) {
-          var siblings = Array.from(parent.children).filter(function (c) {
-            return c.tagName === current.tagName
-          })
+          var siblings = Array.from(parent.children).filter((c) => c.tagName === current.tagName)
           if (siblings.length > 1) {
             var index = siblings.indexOf(current) + 1
-            selector += ':nth-of-type(' + index + ')'
+            selector += `:nth-of-type(${index})`
           }
         }
         parts.unshift(selector)
@@ -300,9 +292,7 @@
       for (var si = 0; si < document.styleSheets.length; si++) {
         var sheet = document.styleSheets[si]
         if (
-          sheet.ownerNode &&
-          sheet.ownerNode.hasAttribute &&
-          sheet.ownerNode.hasAttribute('data-design-tokens')
+          sheet.ownerNode?.hasAttribute?.('data-design-tokens')
         ) {
           taggedSheets.push(sheet)
         }
@@ -314,7 +304,7 @@
           var taggedRules
           try {
             taggedRules = taggedSheets[ti].cssRules || taggedSheets[ti].rules
-          } catch (e) {
+          } catch (_e) {
             continue
           }
           if (taggedRules) extractFromRules(taggedRules)
@@ -328,7 +318,7 @@
         var fallbackRules
         try {
           fallbackRules = fallbackSheet.cssRules || fallbackSheet.rules
-        } catch (e) {
+        } catch (_e) {
           continue
         }
         if (fallbackRules) extractFromRules(fallbackRules)
@@ -394,7 +384,7 @@
         var rules
         try {
           rules = sheet.cssRules || sheet.rules
-        } catch (e) {
+        } catch (_e) {
           continue
         }
         if (!rules) continue
@@ -404,7 +394,7 @@
           var matches = false
           try {
             matches = el.matches(rule.selectorText)
-          } catch (e) {
+          } catch (_e) {
             continue
           }
           if (!matches) continue
@@ -443,20 +433,20 @@
 
     function getElementLabel(el) {
       var tag = el.tagName.toLowerCase()
-      if (el.id) return tag + '#' + el.id
+      if (el.id) return `${tag}#${el.id}`
       var cls = el.className
       if (cls && typeof cls === 'string') {
         var classes = cls.trim().split(/\s+/)
         // Prefer c- prefixed class for the label
         for (var i = 0; i < classes.length; i++) {
-          if (classes[i].indexOf('c-') === 0) return tag + '.' + classes[i]
+          if (classes[i].indexOf('c-') === 0) return `${tag}.${classes[i]}`
         }
-        if (classes[0]) return tag + '.' + classes[0]
+        if (classes[0]) return `${tag}.${classes[0]}`
       }
       return tag
     }
 
-    document.addEventListener('mousemove', function (e) {
+    document.addEventListener('mousemove', (e) => {
       if (!selectionModeEnabled) {
         hoverOverlay.style.display = 'none'
         return
@@ -478,10 +468,10 @@
       hoveredElement = el
       var rect = el.getBoundingClientRect()
       hoverOverlay.style.display = 'block'
-      hoverOverlay.style.top = rect.top + 'px'
-      hoverOverlay.style.left = rect.left + 'px'
-      hoverOverlay.style.width = rect.width + 'px'
-      hoverOverlay.style.height = rect.height + 'px'
+      hoverOverlay.style.top = `${rect.top}px`
+      hoverOverlay.style.left = `${rect.left}px`
+      hoverOverlay.style.width = `${rect.width}px`
+      hoverOverlay.style.height = `${rect.height}px`
       hoverLabel.textContent = getElementLabel(el)
       if (rect.top < 20) {
         hoverLabel.style.top = 'auto'
@@ -501,7 +491,7 @@
     // When off, let clicks through so links and buttons work normally.
     document.addEventListener(
       'click',
-      function (e) {
+      (e) => {
         if (!selectionModeEnabled) return
 
         // If text editing is active, clicking outside commits the edit
@@ -537,10 +527,10 @@
       selectedElement = el
       var rect = el.getBoundingClientRect()
       selectionOverlay.style.display = 'block'
-      selectionOverlay.style.top = rect.top + 'px'
-      selectionOverlay.style.left = rect.left + 'px'
-      selectionOverlay.style.width = rect.width + 'px'
-      selectionOverlay.style.height = rect.height + 'px'
+      selectionOverlay.style.top = `${rect.top}px`
+      selectionOverlay.style.left = `${rect.left}px`
+      selectionOverlay.style.width = `${rect.width}px`
+      selectionOverlay.style.height = `${rect.height}px`
 
       var attrs = {}
       for (var ai = 0; ai < el.attributes.length; ai++) {
@@ -587,10 +577,10 @@
     function updateSelectionOverlay() {
       if (!selectedElement || selectionOverlay.style.display === 'none') return
       var rect = selectedElement.getBoundingClientRect()
-      selectionOverlay.style.top = rect.top + 'px'
-      selectionOverlay.style.left = rect.left + 'px'
-      selectionOverlay.style.width = rect.width + 'px'
-      selectionOverlay.style.height = rect.height + 'px'
+      selectionOverlay.style.top = `${rect.top}px`
+      selectionOverlay.style.left = `${rect.left}px`
+      selectionOverlay.style.width = `${rect.width}px`
+      selectionOverlay.style.height = `${rect.height}px`
     }
     window.addEventListener('scroll', updateSelectionOverlay, true)
     window.addEventListener('resize', updateSelectionOverlay, true)
@@ -677,7 +667,7 @@
       if (!el || SKIP_TEXT_EDIT_TAGS[el.tagName]) return null
       // Leaf node with text — ideal target
       if (el.children.length === 0) {
-        return el.textContent && el.textContent.trim() ? el : null
+        return el.textContent?.trim() ? el : null
       }
       // Single child — recurse into it (common: <button><span>text</span></button>)
       if (el.children.length === 1) {
@@ -693,7 +683,7 @@
       for (var i = 0; i < el.children.length; i++) {
         var ch = el.children[i]
         if (SKIP_TEXT_EDIT_TAGS[ch.tagName]) continue
-        if (ch.textContent && ch.textContent.trim()) {
+        if (ch.textContent?.trim()) {
           if (textChild) {
             textChild = null
             break
@@ -720,7 +710,7 @@
 
     document.addEventListener(
       'dblclick',
-      function (e) {
+      (e) => {
         if (!selectionModeEnabled) return
         e.preventDefault()
         e.stopPropagation()
@@ -772,7 +762,7 @@
 
     document.addEventListener(
       'keydown',
-      function (e) {
+      (e) => {
         if (textEditingActive) {
           e.stopPropagation()
           if (e.key === 'Enter' && !e.shiftKey) {
@@ -882,9 +872,7 @@
           // Convert kebab-case to Title Case (e.g. "nav-bar" → "Nav Bar")
           var name = raw
             .split('-')
-            .map(function (part) {
-              return part.charAt(0).toUpperCase() + part.slice(1)
-            })
+            .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
             .join(' ')
           return { name: name, method: 'c-prefix' }
         }
@@ -950,7 +938,7 @@
         }
       }
       for (var base in prefixes) {
-        if (!prefixes.hasOwnProperty(base)) continue
+        if (!Object.hasOwn(prefixes, base)) continue
         var sizeOpts = [],
           colorOpts = [],
           stateOpts = []
@@ -960,20 +948,20 @@
           var rules
           try {
             rules = sheet.cssRules || sheet.rules
-          } catch (e) {
+          } catch (_e) {
             continue
           }
           if (!rules) continue
           for (var ri = 0; ri < rules.length; ri++) {
             var rule = rules[ri]
             if (!rule.selectorText) continue
-            var escapedBase = base.replace(/[-\/\\^*+?.()|[\]]/g, '\\$&')
+            var escapedBase = base.replace(/[-/\\^*+?.()|[\]]/g, '\\$&')
             var match = rule.selectorText.match(
-              new RegExp('\\.' + escapedBase + '-([\\w-]+)'),
+              new RegExp(`\\.${escapedBase}-([\\w-]+)`),
             )
             if (!match) continue
             var foundSuffix = match[1]
-            var foundClass = base + '-' + foundSuffix
+            var foundClass = `${base}-${foundSuffix}`
             if (foundClass === currentClass) continue
             var opt = {
               label: foundSuffix,
@@ -1002,7 +990,7 @@
         if (sizeOpts.length > 0) {
           sizeOpts.unshift(currentOpt)
           var seen = {}
-          sizeOpts = sizeOpts.filter(function (o) {
+          sizeOpts = sizeOpts.filter((o) => {
             if (seen[o.className]) return false
             seen[o.className] = true
             return true
@@ -1023,7 +1011,7 @@
         if (colorOpts.length > 0) {
           colorOpts.unshift(currentOpt)
           var seenC = {}
-          colorOpts = colorOpts.filter(function (o) {
+          colorOpts = colorOpts.filter((o) => {
             if (seenC[o.className]) return false
             seenC[o.className] = true
             return true
@@ -1044,7 +1032,7 @@
         if (stateOpts.length > 0) {
           stateOpts.unshift(currentOpt)
           var seenS = {}
-          stateOpts = stateOpts.filter(function (o) {
+          stateOpts = stateOpts.filter((o) => {
             if (seenS[o.className]) return false
             seenS[o.className] = true
             return true
@@ -1091,7 +1079,7 @@
         ]
         for (var pi = 0; pi < pseudos.length; pi++) {
           var pseudo = pseudos[pi]
-          var pseudoStyles = window.getComputedStyle(el, ':' + pseudo)
+          var pseudoStyles = window.getComputedStyle(el, `:${pseudo}`)
           var diffs = {}
           var hasDiff = false
           for (var vi = 0; vi < visualProps.length; vi++) {
@@ -1123,7 +1111,7 @@
             },
           ]
         }
-      } catch (e) {}
+      } catch (_e) {}
       return []
     }
 
@@ -1134,12 +1122,12 @@
       var index = 0
       var scheduleNext =
         typeof requestIdleCallback === 'function'
-          ? function (cb) {
+          ? ((cb) => {
               requestIdleCallback(cb)
-            }
-          : function (cb) {
+            })
+          : ((cb) => {
               setTimeout(cb, 0)
-            }
+            })
 
       function processBatch() {
         var end = Math.min(index + batchSize, allElements.length)
@@ -1198,10 +1186,10 @@
     // MutationObserver for DOM changes
     var mutationPending = false
     var previousTreeJSON = ''
-    var observer = new MutationObserver(function () {
+    var observer = new MutationObserver(() => {
       if (mutationPending) return
       mutationPending = true
-      requestAnimationFrame(function () {
+      requestAnimationFrame(() => {
         mutationPending = false
         var tree = serializeTree(document.body)
         if (!tree) return
@@ -1250,7 +1238,7 @@
 
     document.addEventListener(
       'dragover',
-      function (e) {
+      (e) => {
         if (!e.dataTransfer || !e.dataTransfer.types.indexOf) return
         if (
           e.dataTransfer.types.indexOf('application/x-dev-editor-element') ===
@@ -1263,10 +1251,10 @@
         if (!dropTarget || dropTarget === dropIndicator) return
         if (dropTarget.id && dropTarget.id.indexOf('dev-editor') === 0) return
         var rect = dropTarget.getBoundingClientRect()
-        dropIndicator.style.top = rect.top + 'px'
-        dropIndicator.style.left = rect.left + 'px'
-        dropIndicator.style.width = rect.width + 'px'
-        dropIndicator.style.height = rect.height + 'px'
+        dropIndicator.style.top = `${rect.top}px`
+        dropIndicator.style.left = `${rect.left}px`
+        dropIndicator.style.width = `${rect.width}px`
+        dropIndicator.style.height = `${rect.height}px`
         dropIndicator.style.display = 'block'
       },
       true,
@@ -1274,7 +1262,7 @@
 
     document.addEventListener(
       'dragleave',
-      function (e) {
+      (e) => {
         if (
           e.relatedTarget === null ||
           e.relatedTarget === document.documentElement
@@ -1287,7 +1275,7 @@
 
     document.addEventListener(
       'drop',
-      function (e) {
+      (e) => {
         dropIndicator.style.display = 'none'
         if (!e.dataTransfer) return
         var raw = e.dataTransfer.getData('application/x-dev-editor-element')
@@ -1311,7 +1299,7 @@
           if (data.defaultStyles) {
             var dndDS = data.defaultStyles
             for (var dndDSKey in dndDS) {
-              if (dndDS.hasOwnProperty(dndDSKey))
+              if (Object.hasOwn(dndDS, dndDSKey))
                 newEl.style.setProperty(dndDSKey, dndDS[dndDSKey])
             }
           }
@@ -1333,13 +1321,13 @@
               defaultStyles: data.defaultStyles || undefined,
             },
           })
-        } catch (err) {}
+        } catch (_err) {}
       },
       true,
     )
 
     // --- Handle messages from editor ---
-    window.addEventListener('message', function (e) {
+    window.addEventListener('message', (e) => {
       // Accept messages from detected parentOrigin, or any origin if using wildcard
       if (parentOrigin !== '*' && e.origin !== parentOrigin) return
 
@@ -1364,7 +1352,7 @@
               selectElement(el)
               el.scrollIntoView({ block: 'center', behavior: 'instant' })
             }
-          } catch (err) {}
+          } catch (_err) {}
           break
         }
         case 'PREVIEW_CHANGE': {
@@ -1372,7 +1360,7 @@
             var target = document.querySelector(msg.payload.selectorPath)
             if (target) {
               var cssProp = camelToKebab(msg.payload.property)
-              requestAnimationFrame(function () {
+              requestAnimationFrame(() => {
                 target.style.setProperty(
                   cssProp,
                   msg.payload.value,
@@ -1380,7 +1368,7 @@
                 )
               })
             }
-          } catch (err) {}
+          } catch (_err) {}
           break
         }
         case 'REVERT_CHANGE': {
@@ -1388,12 +1376,12 @@
             var target2 = document.querySelector(msg.payload.selectorPath)
             if (target2)
               target2.style.removeProperty(camelToKebab(msg.payload.property))
-          } catch (err) {}
+          } catch (_err) {}
           break
         }
         case 'REVERT_ALL': {
           var allElements = document.querySelectorAll('[style]')
-          allElements.forEach(function (el) {
+          allElements.forEach((el) => {
             el.removeAttribute('style')
           })
           break
@@ -1420,10 +1408,10 @@
         case 'SHOW_SELECTION_OVERLAY': {
           if (selectionModeEnabled && selectedElement) {
             var sr = selectedElement.getBoundingClientRect()
-            selectionOverlay.style.top = sr.top + 'px'
-            selectionOverlay.style.left = sr.left + 'px'
-            selectionOverlay.style.width = sr.width + 'px'
-            selectionOverlay.style.height = sr.height + 'px'
+            selectionOverlay.style.top = `${sr.top}px`
+            selectionOverlay.style.left = `${sr.left}px`
+            selectionOverlay.style.width = `${sr.width}px`
+            selectionOverlay.style.height = `${sr.height}px`
             selectionOverlay.style.display = 'block'
           }
           break
@@ -1446,7 +1434,7 @@
             var resolved
             try {
               resolved = new URL(rawHref, window.location.origin)
-            } catch (e) {
+            } catch (_e) {
               continue
             }
             if (resolved.origin !== window.location.origin) continue
@@ -1474,12 +1462,12 @@
         case 'REQUEST_COMPONENTS': {
           try {
             var compRoot = document.body
-            if (msg.payload && msg.payload.rootSelectorPath) {
+            if (msg.payload?.rootSelectorPath) {
               var rootEl = document.querySelector(msg.payload.rootSelectorPath)
               if (rootEl) compRoot = rootEl
             }
             scanForComponents(compRoot)
-          } catch (err) {}
+          } catch (_err) {}
           break
         }
         case 'APPLY_VARIANT': {
@@ -1535,7 +1523,7 @@
                 },
               })
             }
-          } catch (err) {}
+          } catch (_err) {}
           break
         }
         case 'REVERT_VARIANT': {
@@ -1558,21 +1546,21 @@
                 }
               }
             }
-          } catch (err) {}
+          } catch (_err) {}
           break
         }
         case 'SET_TEXT_CONTENT': {
           try {
             var stEl = document.querySelector(msg.payload.selectorPath)
             if (stEl) stEl.textContent = msg.payload.text
-          } catch (err) {}
+          } catch (_err) {}
           break
         }
         case 'REVERT_TEXT_CONTENT': {
           try {
             var rtEl = document.querySelector(msg.payload.selectorPath)
             if (rtEl) rtEl.textContent = msg.payload.originalText
-          } catch (err) {}
+          } catch (_err) {}
           break
         }
         case 'DELETE_ELEMENT': {
@@ -1609,7 +1597,7 @@
                 },
               })
             }
-          } catch (err) {}
+          } catch (_err) {}
           break
         }
         case 'REVERT_DELETE': {
@@ -1618,7 +1606,7 @@
             if (rdEl) {
               rdEl.style.removeProperty('display')
             }
-          } catch (err) {}
+          } catch (_err) {}
           break
         }
         case 'INSERT_ELEMENT': {
@@ -1656,7 +1644,7 @@
               if (msg.payload.defaultStyles) {
                 var ieDS = msg.payload.defaultStyles
                 for (var ieDSKey in ieDS) {
-                  if (ieDS.hasOwnProperty(ieDSKey))
+                  if (Object.hasOwn(ieDS, ieDSKey))
                     ieNew.style.setProperty(ieDSKey, ieDS[ieDSKey])
                 }
               }
@@ -1679,16 +1667,16 @@
                 },
               })
             }
-          } catch (err) {}
+          } catch (_err) {}
           break
         }
         case 'REMOVE_INSERTED_ELEMENT': {
           try {
             var rieEl = document.querySelector(msg.payload.selectorPath)
-            if (rieEl && rieEl.parentElement) {
+            if (rieEl?.parentElement) {
               rieEl.parentElement.removeChild(rieEl)
             }
-          } catch (err) {}
+          } catch (_err) {}
           break
         }
         case 'MOVE_ELEMENT': {
@@ -1743,7 +1731,7 @@
                 updateSelectionOverlay()
               }
             }
-          } catch (err) {}
+          } catch (_err) {}
           break
         }
         case 'REVERT_MOVE_ELEMENT': {
@@ -1766,7 +1754,7 @@
                 updateSelectionOverlay()
               }
             }
-          } catch (err) {}
+          } catch (_err) {}
           break
         }
         case 'HEARTBEAT': {
@@ -1838,7 +1826,7 @@
     // If they don't fire (proxy context), this catches the stuck elements.
     // Re-run a few times to catch dynamically rendered content.
     var revealAttempts = 0
-    var revealTimer = setInterval(function () {
+    var revealTimer = setInterval(() => {
       revealAnimationHidden()
       revealAttempts++
       if (revealAttempts >= 5) clearInterval(revealTimer)
@@ -1849,7 +1837,7 @@
     // This handles race conditions where the editor isn't listening yet.
     send({ type: 'INSPECTOR_READY' })
     var readyRetryCount = 0
-    var readyInterval = setInterval(function () {
+    var readyInterval = setInterval(() => {
       if (connected) {
         clearInterval(readyInterval)
         return

@@ -770,7 +770,7 @@ async function handleClaudeApply(
       )
     }
 
-    const combinedOutput = result.stdout + '\n' + result.stderr
+    const combinedOutput = `${result.stdout}\n${result.stderr}`
     const filesModified = extractModifiedFiles(combinedOutput)
     const fileCount = filesModified.length
     const summary =

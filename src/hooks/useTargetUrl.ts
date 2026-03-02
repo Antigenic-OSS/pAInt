@@ -60,7 +60,7 @@ export function useTargetUrl() {
     )
       return
 
-    const delay = RECONNECT_BASE_DELAY_MS * Math.pow(2, retryCountRef.current)
+    const delay = RECONNECT_BASE_DELAY_MS * 2 ** retryCountRef.current
     retryTimeoutRef.current = setTimeout(() => {
       retryCountRef.current++
       setConnectionStatus('connecting')

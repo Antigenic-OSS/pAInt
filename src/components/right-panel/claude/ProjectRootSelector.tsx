@@ -138,13 +138,13 @@ export function ProjectRootSelector({
       setValidating(false)
     }
   }, [
-    inputValue,
-    targetUrl,
-    setProjectRoot,
-    onSaved,
-    triggerScan,
-    triggerClientScan,
-    directoryHandle,
+    inputValue, 
+    targetUrl, 
+    setProjectRoot, 
+    onSaved, 
+    triggerScan, 
+    triggerClientScan, 
+    directoryHandle, scanFeedbackCallbacks
   ])
 
   const handleKeyDown = useCallback(

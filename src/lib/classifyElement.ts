@@ -8,7 +8,6 @@
 
 import type {
   FileMap,
-  ComponentEntry,
   RouteEntry,
   SourceInfo,
 } from '@/types/claude'
@@ -328,7 +327,7 @@ export function inferSourcePath(opts: {
     const abs = opts.sourceInfo.fileName
     if (opts.projectRoot) {
       const root = opts.projectRoot.replace(/\/$/, '')
-      if (abs.startsWith(root + '/')) {
+      if (abs.startsWith(`${root}/`)) {
         return abs.substring(root.length + 1)
       }
     }

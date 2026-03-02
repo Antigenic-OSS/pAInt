@@ -484,7 +484,7 @@ function scanAppRoutes(projectRoot: string): RouteEntry[] {
           .filter(Boolean)
           .filter((seg) => !seg.startsWith('('))
 
-        const urlPattern = '/' + urlSegments.join('/')
+        const urlPattern = `/${urlSegments.join('/')}`
         const filePath = path.relative(projectRoot, fullPath)
 
         routes.push({

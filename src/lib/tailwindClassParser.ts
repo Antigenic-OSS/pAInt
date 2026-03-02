@@ -164,7 +164,7 @@ export function parseTailwindColorClasses(
 
     // Try to match each known prefix
     for (const [prefix, cssProperty] of Object.entries(PREFIX_TO_PROPERTY)) {
-      const prefixWithDash = prefix + '-'
+      const prefixWithDash = `${prefix}-`
       if (!stripped.startsWith(prefixWithDash)) continue
 
       const suffix = stripped.slice(prefixWithDash.length)

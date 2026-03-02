@@ -58,7 +58,7 @@ export function ConsolePanel() {
     if (!userScrolledUp.current && listRef.current) {
       listRef.current.scrollTop = listRef.current.scrollHeight
     }
-  }, [filtered.length])
+  }, [])
 
   const handleScroll = useCallback(() => {
     const el = listRef.current
@@ -74,7 +74,7 @@ export function ConsolePanel() {
       .map((e) => {
         const ts = new Date(e.timestamp).toISOString()
         const loc = e.source
-          ? ` (${e.source}${e.line != null ? ':' + e.line : ''}${e.column != null ? ':' + e.column : ''})`
+          ? ` (${e.source}${e.line != null ? `:${e.line}` : ''}${e.column != null ? `:${e.column}` : ''})`
           : ''
         return `[${ts}] ERROR${loc}: ${e.args.join(' ')}`
       })
@@ -194,8 +194,8 @@ export function ConsolePanel() {
                   {entry.source && (
                     <span style={{ color: 'var(--text-muted)', fontSize: 9 }}>
                       {entry.source.split('/').pop()}
-                      {entry.line != null ? ':' + entry.line : ''}
-                      {entry.column != null ? ':' + entry.column : ''}
+                      {entry.line != null ? `:${entry.line}` : ''}
+                      {entry.column != null ? `:${entry.column}` : ''}
                     </span>
                   )}
                 </span>

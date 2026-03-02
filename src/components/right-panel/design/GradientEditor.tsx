@@ -42,7 +42,7 @@ function parseStopColor(color: string): { hex: string; opacity: number } {
       b = +rgbaMatch[3]
     const a = rgbaMatch[4] !== undefined ? parseFloat(rgbaMatch[4]) : 1
     const hex =
-      '#' + [r, g, b].map((c) => c.toString(16).padStart(2, '0')).join('')
+      `#${[r, g, b].map((c) => c.toString(16).padStart(2, '0')).join('')}`
     return { hex, opacity: Math.round(a * 100) }
   }
   if (color.startsWith('#')) {
@@ -453,7 +453,7 @@ export function GradientEditor({
       const newStops = [...value.stops, newStop].sort(
         (a, b) => a.position - b.position,
       )
-      const newIndex = newStops.findIndex((s) => s === newStop)
+      const newIndex = newStops.indexOf(newStop)
       setSelectedStop(newIndex)
       onChange({ ...value, stops: newStops })
     },
@@ -483,7 +483,7 @@ export function GradientEditor({
     (newHex: string) => {
       const clean = newHex.replace(/[^0-9a-fA-F]/g, '').slice(0, 6)
       if (clean.length === 6 || clean.length === 3) {
-        const hex = '#' + clean
+        const hex = `#${clean}`
         const newColor = buildStopColor(hex, stopOpacity)
         updateStop(selectedStop, { color: newColor })
       }
@@ -511,14 +511,14 @@ export function GradientEditor({
 
   const commitAngle = useCallback(() => {
     const n = parseInt(angleInput, 10)
-    if (!isNaN(n)) updateAngle(((n % 360) + 360) % 360)
+    if (!Number.isNaN(n)) updateAngle(((n % 360) + 360) % 360)
     else setAngleInput(String(value.angle))
   }, [angleInput, value.angle, updateAngle])
 
   const [hexInput, setHexInput] = useState(stopHex.replace('#', ''))
   useEffect(() => setHexInput(stopHex.replace('#', '')), [stopHex])
 
-  const commitHex = useCallback(() => {
+  const _commitHex = useCallback(() => {
     updateStopHex(hexInput)
   }, [hexInput, updateStopHex])
 
@@ -527,7 +527,7 @@ export function GradientEditor({
 
   const commitOpacity = useCallback(() => {
     const n = parseInt(opacityInput, 10)
-    if (!isNaN(n)) updateStopOpacity(n)
+    if (!Number.isNaN(n)) updateStopOpacity(n)
     else setOpacityInput(String(stopOpacity))
   }, [opacityInput, stopOpacity, updateStopOpacity])
 

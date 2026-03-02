@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { PROXY_HEADER } from '@/lib/constants'
 
 const INSPECTOR_SCRIPT = `
@@ -311,7 +311,7 @@ function getInspectorCode(): string {
         // Show first meaningful class
         var cls = el.className;
         if (cls && typeof cls === 'string') {
-          var first = cls.trim().split(/\s+/)[0];
+          var first = cls.trim().split(/s+/)[0];
           if (first) return tag + '.' + first;
         }
         return tag;
@@ -1787,7 +1787,7 @@ async function handleProxy(request: NextRequest, params: { path?: string[] }) {
       //      need to make requests through the proxy
       //   5. Suppresses HMR-related errors as a safety net
       //   6. Detects infinite reload loops as a safety net
-      const targetPagePath = '/' + (path || '')
+      const targetPagePath = `/${path || ''}`
       const safePagePath = JSON.stringify(targetPagePath)
       const safeTargetUrl = JSON.stringify(targetUrl)
       const safeEncodedTarget = JSON.stringify(encodedTarget)
@@ -2243,7 +2243,7 @@ async function handleProxy(request: NextRequest, params: { path?: string[] }) {
 
       // Inject inspector script before </body> (case-insensitive)
       if (/<\/body>/i.test(html)) {
-        html = html.replace(/<\/body>/i, () => INSPECTOR_SCRIPT + '</body>')
+        html = html.replace(/<\/body>/i, () => `${INSPECTOR_SCRIPT}</body>`)
       } else {
         html += INSPECTOR_SCRIPT
       }

@@ -8,8 +8,8 @@ import {
  * Handles vendor prefixes: webkitTextStroke → -webkit-text-stroke
  */
 export function camelToKebab(s: string): string {
-  const k = s.replace(/[A-Z]/g, (c) => '-' + c.toLowerCase())
-  if (/^(webkit|moz|ms)-/.test(k)) return '-' + k
+  const k = s.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)
+  if (/^(webkit|moz|ms)-/.test(k)) return `-${k}`
   return k
 }
 
@@ -32,14 +32,14 @@ export function generateSelectorPath(element: Element): string {
     if (current.className && typeof current.className === 'string') {
       const classes = current.className.trim().split(/\s+/).filter(Boolean)
       if (classes.length > 0) {
-        selector += '.' + classes.join('.')
+        selector += `.${classes.join('.')}`
       }
     }
 
     const parent = current.parentElement
     if (parent) {
       const siblings = Array.from(parent.children).filter(
-        (child) => child.tagName === current!.tagName,
+        (child) => child.tagName === current?.tagName,
       )
       if (siblings.length > 1) {
         const index = siblings.indexOf(current) + 1

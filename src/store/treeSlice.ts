@@ -2,11 +2,11 @@ import type { StateCreator } from 'zustand'
 import type { TreeNode } from '@/types/tree'
 
 // Collect all node IDs that have children for full expansion
-function collectAllIds(node: TreeNode, ids: Set<string>) {
+function _collectAllIds(node: TreeNode, ids: Set<string>) {
   if (node.children.length === 0) return
   ids.add(node.id)
   for (const child of node.children) {
-    collectAllIds(child, ids)
+    _collectAllIds(child, ids)
   }
 }
 

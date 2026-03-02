@@ -527,7 +527,6 @@ export function VariableColorPicker({
                     />
                   </svg>
                   <input
-                    autoFocus
                     type="text"
                     placeholder="Search tokens..."
                     value={search}

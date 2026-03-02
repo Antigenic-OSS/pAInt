@@ -1,5 +1,5 @@
 import { existsSync, readdirSync } from 'node:fs'
-import { spawn, execFileSync } from 'node:child_process'
+import { spawn, } from 'node:child_process'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 

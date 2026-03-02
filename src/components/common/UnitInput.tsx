@@ -32,7 +32,7 @@ export function UnitInput({
         onChange('auto')
       } else {
         const n = parseFloat(num)
-        if (!isNaN(n)) onChange(formatCSSValue(n, u))
+        if (!Number.isNaN(n)) onChange(formatCSSValue(n, u))
       }
     },
     [onChange],

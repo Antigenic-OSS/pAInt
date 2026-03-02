@@ -82,7 +82,7 @@ function buildSummary(output: string, filesModified: string[]): string {
       return 'Changes applied. No specific file modifications detected in output.'
     }
     // Return the first 200 chars of the output as summary
-    return trimmed.length > 200 ? trimmed.slice(0, 200) + '...' : trimmed
+    return trimmed.length > 200 ? `${trimmed.slice(0, 200)}...` : trimmed
   }
 
   return (
@@ -158,7 +158,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     }
 
     // Combine stdout and stderr to look for file modification signals
-    const combinedOutput = result.stdout + '\n' + result.stderr
+    const combinedOutput = `${result.stdout}\n${result.stderr}`
     const filesModified = extractModifiedFiles(combinedOutput)
     const summary = buildSummary(result.stdout, filesModified)
 

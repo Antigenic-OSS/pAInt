@@ -132,7 +132,7 @@ function toGridTemplate(count: number): string {
   return `repeat(${count}, 1fr)`
 }
 
-function parseGapValues(gap: string): { row: string; col: string } {
+function _parseGapValues(gap: string): { row: string; col: string } {
   if (!gap || gap === 'normal') return { row: '0px', col: '0px' }
   const parts = gap.trim().split(/\s+/)
   if (parts.length >= 2) return { row: parts[0], col: parts[1] }
@@ -1137,7 +1137,7 @@ function NumberStepper({
         value={value}
         onChange={(e) => {
           const n = parseInt(e.target.value, 10)
-          if (!isNaN(n) && n >= min && n <= max) onChange(n)
+          if (!Number.isNaN(n) && n >= min && n <= max) onChange(n)
         }}
         className="w-8 h-full text-center text-[11px] bg-transparent border-none outline-none"
         style={{ color: 'var(--text-primary)' }}
@@ -1199,7 +1199,7 @@ function GapInput({
   const commit = useCallback(
     (num: string, u: string) => {
       const n = parseFloat(num)
-      if (!isNaN(n)) onChange(property, formatCSSValue(Math.max(0, n), u))
+      if (!Number.isNaN(n)) onChange(property, formatCSSValue(Math.max(0, n), u))
     },
     [onChange, property],
   )
@@ -1246,7 +1246,7 @@ function GapInput({
     const next = units[(idx + 1) % units.length]
     setUnit(next)
     const n = parseFloat(localVal || '0')
-    if (!isNaN(n)) onChange(property, formatCSSValue(Math.max(0, n), next))
+    if (!Number.isNaN(n)) onChange(property, formatCSSValue(Math.max(0, n), next))
   }, [units, unit, localVal, onChange, property])
 
   return (

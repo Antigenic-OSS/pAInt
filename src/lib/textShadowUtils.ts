@@ -34,7 +34,7 @@ function parseSingleTextShadow(str: string): TextShadowData | null {
   const trimmed = str.trim()
   if (!trimmed || trimmed === 'none') return null
 
-  let working = trimmed
+  const working = trimmed
   let color = 'rgba(0,0,0,0.25)'
   let numericPart = working
 

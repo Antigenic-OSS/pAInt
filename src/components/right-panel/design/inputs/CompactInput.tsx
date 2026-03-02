@@ -154,7 +154,7 @@ export function CompactInput({
         onChange(property, 'auto')
       } else {
         const n = parseFloat(num)
-        if (!isNaN(n)) {
+        if (!Number.isNaN(n)) {
           const clamped = clampValue(n)
           onChange(property, formatCSSValue(clamped, u))
         }
@@ -173,7 +173,7 @@ export function CompactInput({
         onChange(property, 'auto')
       } else {
         const num = parseFloat(localValue || '0')
-        if (!isNaN(num)) {
+        if (!Number.isNaN(num)) {
           const clamped = clampValue(num)
           setLocalValue(String(clamped))
           onChange(property, formatCSSValue(clamped, nextUnit))

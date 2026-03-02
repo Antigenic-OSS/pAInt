@@ -100,7 +100,7 @@ const selectStyle = {
   color: 'var(--text-primary)',
 } as const
 
-const labelStyle = {
+const _labelStyle = {
   color: 'var(--text-muted)',
 } as const
 
@@ -391,7 +391,7 @@ export function TextSection() {
             value={color}
             property="color"
             onChange={handleChange}
-            varExpression={cssVariableUsages['color']}
+            varExpression={cssVariableUsages.color}
           />
         </div>
       </div>
@@ -668,7 +668,7 @@ export function TextSection() {
                 property={`textShadow-${i}-x`}
                 onChange={(_p, v) => {
                   const num = parseFloat(v)
-                  if (!isNaN(num)) updateShadow(i, { x: num })
+                  if (!Number.isNaN(num)) updateShadow(i, { x: num })
                 }}
                 units={['px']}
               />
@@ -678,7 +678,7 @@ export function TextSection() {
                 property={`textShadow-${i}-y`}
                 onChange={(_p, v) => {
                   const num = parseFloat(v)
-                  if (!isNaN(num)) updateShadow(i, { y: num })
+                  if (!Number.isNaN(num)) updateShadow(i, { y: num })
                 }}
                 units={['px']}
               />
@@ -688,7 +688,7 @@ export function TextSection() {
                 property={`textShadow-${i}-blur`}
                 onChange={(_p, v) => {
                   const num = parseFloat(v)
-                  if (!isNaN(num)) updateShadow(i, { blur: Math.max(0, num) })
+                  if (!Number.isNaN(num)) updateShadow(i, { blur: Math.max(0, num) })
                 }}
                 units={['px']}
                 min={0}

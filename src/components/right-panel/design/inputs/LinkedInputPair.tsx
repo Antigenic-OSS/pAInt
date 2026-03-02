@@ -14,7 +14,7 @@ interface LinkedInputPairProps {
   units?: string[]
 }
 
-function areAllEqual(values: {
+function _areAllEqual(values: {
   top: string
   right: string
   bottom: string
@@ -68,12 +68,12 @@ export function LinkedInputPair({
     }
   }, [values])
 
-  const handleLinkedHChange = (property: string, value: string) => {
+  const handleLinkedHChange = (_property: string, value: string) => {
     onChange(properties.left, value)
     onChange(properties.right, value)
   }
 
-  const handleLinkedVChange = (property: string, value: string) => {
+  const handleLinkedVChange = (_property: string, value: string) => {
     onChange(properties.top, value)
     onChange(properties.bottom, value)
   }

@@ -137,13 +137,13 @@ function injectIntoHtml(html: string, inspectorScript: string | null): string {
 
   // Inject navigation blocker in <head>, inspector before </body>
   if (result.includes('</head>')) {
-    result = result.replace('</head>', navBlocker + '</head>')
+    result = result.replace('</head>', `${navBlocker}</head>`)
   } else {
     result = navBlocker + result
   }
 
   if (result.includes('</body>')) {
-    result = result.replace('</body>', inspectorTag + '</body>')
+    result = result.replace('</body>', `${inspectorTag}</body>`)
   } else {
     result = result + inspectorTag
   }
@@ -208,7 +208,7 @@ export async function handleProxy(
 
   // Build the target fetch URL
   const targetOrigin = new URL(targetUrl).origin
-  const fetchUrl = `${targetOrigin}${pathname}${url.search ? url.search.replace(new RegExp(`[?&]${PROXY_HEADER}=[^&]*`), '') : ''}`
+  const _fetchUrl = `${targetOrigin}${pathname}${url.search ? url.search.replace(new RegExp(`[?&]${PROXY_HEADER}=[^&]*`), '') : ''}`
 
   // Strip the proxy header from the search params
   const cleanSearch = url.search
@@ -305,7 +305,7 @@ export async function handleProxy(
     // Image response — always revalidate so updated assets on the target
     // are reflected immediately instead of being served from browser cache.
     if (
-      (contentType && contentType.includes('image/')) ||
+      (contentType?.includes('image/')) ||
       pathname.match(/\.(png|jpe?g|gif|svg|ico|webp|avif)(\?|$)/i)
     ) {
       responseHeaders.set(

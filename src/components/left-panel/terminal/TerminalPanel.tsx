@@ -30,7 +30,7 @@ export function TerminalPanel() {
         fitAddon.fit()
         const dims = fitAddon.proposeDimensions()
         if (dims) {
-          ws.send('\x01' + JSON.stringify({ cols: dims.cols, rows: dims.rows }))
+          ws.send(`\x01${JSON.stringify({ cols: dims.cols, rows: dims.rows })}`)
         }
       }
 
@@ -54,7 +54,7 @@ export function TerminalPanel() {
 
       term.onResize((size: { cols: number; rows: number }) => {
         if (ws.readyState === WebSocket.OPEN) {
-          ws.send('\x01' + JSON.stringify({ cols: size.cols, rows: size.rows }))
+          ws.send(`\x01${JSON.stringify({ cols: size.cols, rows: size.rows })}`)
         }
       })
     },

@@ -78,7 +78,7 @@ export function ShadowBlurSection() {
 
   const handleFilterBlurChange = (_property: string, value: string) => {
     const num = parseFloat(value)
-    if (!isNaN(num) && num > 0) {
+    if (!Number.isNaN(num) && num > 0) {
       applyChange('filter', `blur(${num}px)`)
     } else {
       applyChange('filter', 'none')
@@ -150,7 +150,7 @@ export function ShadowBlurSection() {
               property={`shadow-${i}-x`}
               onChange={(_p, v) => {
                 const num = parseFloat(v)
-                if (!isNaN(num)) updateShadow(i, { x: num })
+                if (!Number.isNaN(num)) updateShadow(i, { x: num })
               }}
               units={['px']}
             />
@@ -160,7 +160,7 @@ export function ShadowBlurSection() {
               property={`shadow-${i}-y`}
               onChange={(_p, v) => {
                 const num = parseFloat(v)
-                if (!isNaN(num)) updateShadow(i, { y: num })
+                if (!Number.isNaN(num)) updateShadow(i, { y: num })
               }}
               units={['px']}
             />
@@ -170,7 +170,7 @@ export function ShadowBlurSection() {
               property={`shadow-${i}-blur`}
               onChange={(_p, v) => {
                 const num = parseFloat(v)
-                if (!isNaN(num)) updateShadow(i, { blur: Math.max(0, num) })
+                if (!Number.isNaN(num)) updateShadow(i, { blur: Math.max(0, num) })
               }}
               units={['px']}
               min={0}
@@ -181,7 +181,7 @@ export function ShadowBlurSection() {
               property={`shadow-${i}-spread`}
               onChange={(_p, v) => {
                 const num = parseFloat(v)
-                if (!isNaN(num)) updateShadow(i, { spread: num })
+                if (!Number.isNaN(num)) updateShadow(i, { spread: num })
               }}
               units={['px']}
             />

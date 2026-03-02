@@ -12,10 +12,10 @@ export function createSelectionHighlighter() {
   return {
     show(rect: DOMRect) {
       overlay.style.display = 'block'
-      overlay.style.top = rect.top + 'px'
-      overlay.style.left = rect.left + 'px'
-      overlay.style.width = rect.width + 'px'
-      overlay.style.height = rect.height + 'px'
+      overlay.style.top = `${rect.top}px`
+      overlay.style.left = `${rect.left}px`
+      overlay.style.width = `${rect.width}px`
+      overlay.style.height = `${rect.height}px`
     },
     hide() {
       overlay.style.display = 'none'

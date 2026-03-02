@@ -4,9 +4,7 @@ import { useMemo, useState, useCallback, useRef } from 'react'
 import { useEditorStore } from '@/store'
 import {
   buildInstructionsFooter,
-  BREAKPOINTS,
   getBreakpointDeviceInfo,
-  getBreakpointRange,
 } from '@/lib/constants'
 import { EditablePre } from '@/components/common/EditablePre'
 import type { Breakpoint } from '@/types/changelog'
@@ -67,7 +65,7 @@ function buildElementLogText(opts: {
   const attrParts: string[] = []
   if (opts.elementId) attrParts.push(`id="${opts.elementId}"`)
   if (opts.className) attrParts.push(`class="${opts.className}"`)
-  const tag = `<${opts.tagName}${attrParts.length ? ' ' + attrParts.join(' ') : ''}>`
+  const tag = `<${opts.tagName}${attrParts.length ? ` ${attrParts.join(' ')}` : ''}>`
 
   const isMobileApp =
     opts.framework === 'flutter' || opts.framework === 'react-native'

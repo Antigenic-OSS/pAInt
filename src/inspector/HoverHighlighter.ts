@@ -16,11 +16,11 @@ export function createHoverHighlighter() {
 
   function getElementLabel(el: Element): string {
     const tag = el.tagName.toLowerCase()
-    if (el.id) return tag + '#' + el.id
+    if (el.id) return `${tag}#${el.id}`
     const cls = el.className
     if (cls && typeof cls === 'string') {
       const first = cls.trim().split(/\s+/)[0]
-      if (first) return tag + '.' + first
+      if (first) return `${tag}.${first}`
     }
     return tag
   }
@@ -28,10 +28,10 @@ export function createHoverHighlighter() {
   return {
     show(el: Element, rect: DOMRect) {
       overlay.style.display = 'block'
-      overlay.style.top = rect.top + 'px'
-      overlay.style.left = rect.left + 'px'
-      overlay.style.width = rect.width + 'px'
-      overlay.style.height = rect.height + 'px'
+      overlay.style.top = `${rect.top}px`
+      overlay.style.left = `${rect.left}px`
+      overlay.style.width = `${rect.width}px`
+      overlay.style.height = `${rect.height}px`
       label.textContent = getElementLabel(el)
       // Flip label below if near top
       if (rect.top < 20) {

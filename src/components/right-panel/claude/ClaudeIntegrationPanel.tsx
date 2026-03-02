@@ -60,7 +60,7 @@ export function ClaudeIntegrationPanel() {
   // Reset setupComplete when targetUrl changes so setup re-shows if needed
   useEffect(() => {
     setSetupComplete(false)
-  }, [targetUrl])
+  }, [])
 
   // Check if setup is needed
   const needsSetup =
@@ -99,7 +99,7 @@ export function ClaudeIntegrationPanel() {
           onStderr: (line) => {
             const w = useEditorStore.getState().writeToTerminal
             const formatted = formatStderrLine(line)
-            if (formatted) w?.(formatted + '\r\n')
+            if (formatted) w?.(`${formatted}\r\n`)
           },
           onResult: (data) => {
             setSessionId(data.sessionId)

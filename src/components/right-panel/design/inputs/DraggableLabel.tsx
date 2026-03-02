@@ -54,6 +54,7 @@ export function DraggableLabel({
         value === 'auto' ||
         value === 'none' ||
         value === 'normal' ||
+        Number.
         isNaN(parsed.number)
       )
         return
@@ -98,7 +99,7 @@ export function DraggableLabel({
     value !== 'auto' &&
     value !== 'none' &&
     value !== 'normal' &&
-    !isNaN(parsed.number)
+    !Number.isNaN(parsed.number)
 
   return (
     <span

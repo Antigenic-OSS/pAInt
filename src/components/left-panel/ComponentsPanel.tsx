@@ -33,8 +33,8 @@ function buildComponentTree(
 
     for (const [path, candidate] of nodeMap) {
       if (
-        component.selectorPath.startsWith(path + ' ') ||
-        component.selectorPath.startsWith(path + ' > ')
+        component.selectorPath.startsWith(`${path} `) ||
+        component.selectorPath.startsWith(`${path} > `)
       ) {
         if (
           !parentNode ||
@@ -172,7 +172,7 @@ export default function ComponentsPanel() {
       (c) =>
         c.name.toLowerCase().includes(query) ||
         c.tagName.toLowerCase().includes(query) ||
-        (c.className && c.className.toLowerCase().includes(query)),
+        (c.className?.toLowerCase().includes(query)),
     )
   }, [detectedComponents, componentSearchQuery])
 

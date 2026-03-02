@@ -118,7 +118,7 @@ function ScrubValue({
   const commitEdit = useCallback(() => {
     setIsEditing(false)
     const n = parseFloat(editValue)
-    if (!isNaN(n)) {
+    if (!Number.isNaN(n)) {
       onChange(property, formatCSSValue(Math.max(0, n), unit))
     }
   }, [editValue, onChange, property, unit])
@@ -209,7 +209,7 @@ export function BoxModelPreview({
 
   // Dim-display helper for the content dimension text
   const dimText =
-    (contentW ? `${contentW}` : '–') + ' × ' + (contentH ? `${contentH}` : '–')
+    `${contentW ? `${contentW}` : '–'} × ${contentH ? `${contentH}` : '–'}`
 
   return (
     <div className="pt-1.5" style={{ borderTop: '1px solid var(--border)' }}>

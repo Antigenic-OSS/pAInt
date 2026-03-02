@@ -18,7 +18,7 @@ export default function Home() {
       setIsRecursiveEmbed(true)
       try {
         window.parent.postMessage({ type: 'RECURSIVE_EMBED_DETECTED' }, '*')
-      } catch (e) {
+      } catch (_e) {
         /* cross-origin */
       }
       return

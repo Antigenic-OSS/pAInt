@@ -250,7 +250,7 @@ function ClipDropdown({
 export function BackgroundSection() {
   const computedStyles = useEditorStore((state) => state.computedStyles)
   const cssVariableUsages = useEditorStore((state) => state.cssVariableUsages)
-  const selectorPath = useEditorStore((state) => state.selectorPath)
+  const _selectorPath = useEditorStore((state) => state.selectorPath)
   const { applyChange, resetProperty } = useChangeTracker()
 
   const hasChanges = useEditorStore((s) => {
@@ -310,7 +310,7 @@ export function BackgroundSection() {
     if (parsedGradient) {
       setGradientData(parsedGradient)
     }
-  }, [selectorPath, bgImage, parsedGradient])
+  }, [bgImage, parsedGradient])
 
   // --- Layer preview swatch ---
   const layerSwatchBg = useMemo(() => {

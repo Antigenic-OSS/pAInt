@@ -259,7 +259,7 @@ function OffsetInput({
         onChange(property, 'auto')
       } else {
         const n = parseFloat(num)
-        if (!isNaN(n)) onChange(property, formatCSSValue(n, 'px'))
+        if (!Number.isNaN(n)) onChange(property, formatCSSValue(n, 'px'))
       }
     },
     [onChange, property],
@@ -565,7 +565,7 @@ function ZIndexInput({
         setIsAutoMode(true)
       } else {
         const n = parseInt(v, 10)
-        if (!isNaN(n)) {
+        if (!Number.isNaN(n)) {
           onChange('zIndex', String(n))
           setIsAutoMode(false)
         }

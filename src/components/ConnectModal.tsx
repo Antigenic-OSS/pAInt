@@ -141,7 +141,7 @@ export function ConnectModal() {
       setFolderPath(saved)
       setFolderError(null)
     }
-  }, [selectedPort, urlMode, currentUrl, portRoots, connectionStatus])
+  }, [currentUrl, portRoots, connectionStatus])
 
   const handleBrowse = async () => {
     setIsBrowsing(true)
@@ -368,7 +368,6 @@ export function ConnectModal() {
                       color: 'var(--text-primary)',
                       border: '1px solid var(--border)',
                     }}
-                    autoFocus
                   />
                 ) : (
                   <select

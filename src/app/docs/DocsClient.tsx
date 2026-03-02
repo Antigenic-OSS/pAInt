@@ -33,7 +33,7 @@ export function Sidebar() {
       document.getElementById(item.id),
     ).filter(Boolean) as HTMLElement[]
 
-    sections.forEach((el) => observerRef.current!.observe(el))
+    sections.forEach((el) => observerRef.current?.observe(el))
 
     return () => observerRef.current?.disconnect()
   }, [])

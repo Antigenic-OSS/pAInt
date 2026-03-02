@@ -8,7 +8,7 @@ export function DiffViewer() {
   const parsedDiffs = useEditorStore((s) => s.parsedDiffs)
 
   const summary = useMemo(() => {
-    let totalFiles = parsedDiffs.length
+    const totalFiles = parsedDiffs.length
     let totalAdded = 0
     let totalRemoved = 0
     for (const diff of parsedDiffs) {

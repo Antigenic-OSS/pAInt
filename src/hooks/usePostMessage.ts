@@ -1,6 +1,7 @@
 'use client'
 
-import React, { useEffect, useCallback } from 'react'
+import type React from 'react'
+import { useEffect, useCallback } from 'react'
 import { useEditorStore } from '@/store'
 import type {
   InspectorToEditorMessage,
@@ -114,7 +115,7 @@ function handleMessage(event: MessageEvent) {
       sendViaIframe({ type: 'REQUEST_DOM_TREE' })
       sendViaIframe({ type: 'REQUEST_PAGE_LINKS' })
       sendViaIframe({ type: 'REQUEST_CSS_VARIABLES' })
-      setTimeout(function () {
+      setTimeout(() => {
         sendViaIframe({ type: 'REQUEST_COMPONENTS', payload: {} })
       }, 500)
 
@@ -265,7 +266,7 @@ function handleMessage(event: MessageEvent) {
       // Debounced component rescan on DOM changes (2s to avoid
       // excessive scanning during rapid DOM mutations)
       if (componentRescanTimer) clearTimeout(componentRescanTimer)
-      componentRescanTimer = setTimeout(function () {
+      componentRescanTimer = setTimeout(() => {
         componentRescanTimer = null
         sendViaIframe({ type: 'REQUEST_COMPONENTS', payload: {} })
       }, 2000)

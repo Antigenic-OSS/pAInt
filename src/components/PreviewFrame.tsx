@@ -72,7 +72,7 @@ export function PreviewFrame() {
   const setPreviewWidth = useEditorStore((s) => s.setPreviewWidth)
   const currentPagePath = useEditorStore((s) => s.currentPagePath)
   const setConnectionStatus = useEditorStore((s) => s.setConnectionStatus)
-  const viewMode = useEditorStore((s) => s.viewMode)
+  const _viewMode = useEditorStore((s) => s.viewMode)
   const { iframeRef, sendToInspector } = usePostMessage()
   const containerRef = useRef<HTMLDivElement>(null)
   const lastSrcRef = useRef<string | null>(null)
@@ -139,7 +139,7 @@ export function PreviewFrame() {
     // Selection mode is managed by TopBar via sendToInspector.
     // When exiting preview, TopBar re-enables selection and the proxy
     // iframe is still loaded — no reload needed.
-  }, [viewMode, targetUrl, connectionStatus, currentPagePath, iframeRef])
+  }, [targetUrl, connectionStatus])
 
   // Drag resize logic — symmetric from center
   const dragStateRef = useRef<{

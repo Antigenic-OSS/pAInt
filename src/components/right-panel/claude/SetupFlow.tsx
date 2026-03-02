@@ -16,7 +16,7 @@ export function SetupFlow({ targetUrl, onComplete }: SetupFlowProps) {
   const cliAvailable = useEditorStore((s) => s.cliAvailable)
   const setCliAvailable = useEditorStore((s) => s.setCliAvailable)
   const portRoots = useEditorStore((s) => s.portRoots)
-  const projectRoot = portRoots[targetUrl] ?? null
+  const _projectRoot = portRoots[targetUrl] ?? null
 
   const bridgeStatus = useEditorStore((s) => s.bridgeStatus)
   const isLocal = typeof window !== 'undefined' && isEditorOnLocalhost()

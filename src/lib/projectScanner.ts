@@ -89,7 +89,7 @@ function filePathToUrlPattern(relativePath: string): string {
   const parts = relativePath.split(path.sep)
   const routeParts = parts.slice(1, -1)
   const filtered = routeParts.filter((p) => !p.startsWith('('))
-  return '/' + filtered.join('/')
+  return `/${filtered.join('/')}`
 }
 
 interface WalkCollectors {
@@ -155,12 +155,12 @@ function walkDir(
       (COMPONENT_EXTENSIONS.has(ext) || MAYBE_COMPONENT_EXTENSIONS.has(ext))
     ) {
       if (
-        relativePath.startsWith('app' + path.sep) ||
-        relativePath.startsWith('src' + path.sep + 'app' + path.sep)
+        relativePath.startsWith(`app${path.sep}`) ||
+        relativePath.startsWith(`src${path.sep}app${path.sep}`)
       ) {
         collectors.routes.push({
           urlPattern: filePathToUrlPattern(
-            relativePath.startsWith('src' + path.sep)
+            relativePath.startsWith(`src${path.sep}`)
               ? relativePath.slice(4)
               : relativePath,
           ),
@@ -199,14 +199,14 @@ export function detectFramework(
   devDeps: Record<string, string>,
 ): string | null {
   const all = { ...deps, ...devDeps }
-  if (all['next']) return 'Next.js'
-  if (all['@remix-run/react'] || all['remix']) return 'Remix'
-  if (all['gatsby']) return 'Gatsby'
-  if (all['astro']) return 'Astro'
+  if (all.next) return 'Next.js'
+  if (all['@remix-run/react'] || all.remix) return 'Remix'
+  if (all.gatsby) return 'Gatsby'
+  if (all.astro) return 'Astro'
   if (all['@angular/core']) return 'Angular'
-  if (all['vue']) return 'Vue'
-  if (all['svelte']) return 'Svelte'
-  if (all['react']) return 'React'
+  if (all.vue) return 'Vue'
+  if (all.svelte) return 'Svelte'
+  if (all.react) return 'React'
   return null
 }
 
@@ -219,13 +219,13 @@ export function detectCssStrategy(
   const all = { ...deps, ...devDeps }
   const strategies: string[] = []
 
-  if (all['tailwindcss']) strategies.push('Tailwind')
+  if (all.tailwindcss) strategies.push('Tailwind')
   if (hasCssModules) strategies.push('CSS Modules')
   if (all['styled-components']) strategies.push('styled-components')
   if (all['@emotion/react'] || all['@emotion/styled'])
     strategies.push('Emotion')
-  if (all['sass'] || all['node-sass']) strategies.push('Sass')
-  if (all['less']) strategies.push('Less')
+  if (all.sass || all['node-sass']) strategies.push('Sass')
+  if (all.less) strategies.push('Less')
   if (all['@vanilla-extract/css']) strategies.push('Vanilla Extract')
 
   if (strategies.length === 0 && cssFiles.length > 0) {
@@ -264,7 +264,7 @@ function detectAssetDirs(resolved: string, assetDirs: Set<string>) {
           entry.isDirectory() &&
           ASSET_DIR_NAMES.has(entry.name.toLowerCase())
         ) {
-          assetDirs.add('public/' + entry.name)
+          assetDirs.add(`public/${entry.name}`)
         }
       }
       if (entries.some((e) => e.isFile())) {

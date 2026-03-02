@@ -57,7 +57,10 @@ export async function pickFolder(): Promise<FolderPickResult> {
 
 async function pickFolderClient(): Promise<FolderPickResult> {
   try {
-    const handle = await window.showDirectoryPicker!({ mode: 'read' })
+    if (!window.showDirectoryPicker) {
+      return { type: 'error', message: 'Folder picker is not supported' }
+    }
+    const handle = await window.showDirectoryPicker({ mode: 'read' })
     return { type: 'handle', handle, name: handle.name }
   } catch (err) {
     if (err instanceof DOMException && err.name === 'AbortError') {

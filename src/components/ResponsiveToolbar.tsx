@@ -9,7 +9,6 @@ import {
   PREVIEW_WIDTH_MAX,
   BREAKPOINT_CATEGORY_MAP,
 } from '@/lib/constants'
-import type { DevicePreset } from '@/lib/constants'
 
 export function ResponsiveToolbar() {
   const previewWidth = useEditorStore((s) => s.previewWidth)
@@ -57,7 +56,7 @@ export function ResponsiveToolbar() {
 
   const handleInputCommit = useCallback(() => {
     const parsed = parseInt(inputValue, 10)
-    if (!isNaN(parsed)) {
+    if (!Number.isNaN(parsed)) {
       applyWidth(parsed)
     } else {
       setInputValue(String(previewWidth))
