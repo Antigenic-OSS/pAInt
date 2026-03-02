@@ -1,7 +1,7 @@
 # Dev Editor — Development Guidelines
 
 Visual design editor for localhost web projects. Inspect elements,
-edit styles, drag-and-drop reposition, and generate changelogs for
+edit styles, manage CSS variables, and generate changelogs for
 Claude Code — all from a Webflow-style three-column dark UI.
 
 ## How to Use
@@ -16,7 +16,7 @@ Claude Code — all from a Webflow-style three-column dark UI.
 
 ### Connecting to Your Project
 
-There are **two ways** to connect the Dev Editor to your project:
+There are **three ways** to connect the Dev Editor to your project:
 
 #### Method 1: Automatic (Reverse Proxy) — Recommended
 When you click **Connect**, the Dev Editor loads your target page through a built-in reverse proxy. The proxy automatically injects the inspector script into the HTML — no setup needed. This is the default behavior and works out of the box.
@@ -28,23 +28,10 @@ If the automatic connection takes longer than 5 seconds (the inspector script ha
 > Add this script tag to your project's HTML layout:
 > `<script src="https://dev-editor-flow.vercel.app/dev-editor-inspector.js"></script>`
 
-Click **Copy**, paste the script tag into your project's root HTML layout (e.g., `layout.tsx`, `index.html`), and the editor will connect once the page reloads. This method is useful when the proxy can't inject the script (e.g., non-standard HTML responses, or running the editor and target on separate machines).
+Click **Copy**, paste the script tag into your project's root HTML layout (e.g., `layout.tsx`, `index.html`), and the editor will connect once the page reloads.
 
-### Use Cases
-
-1. **Visual Style Tweaking** — Select any element on your page, then adjust colors, spacing, typography, borders, and layout from the right panel. Changes preview instantly in the iframe.
-
-2. **Responsive Design Testing** — Switch between Mobile (375px), Tablet (768px), and Desktop (1280px) breakpoints in the top bar. Make per-breakpoint style adjustments and export them all at once.
-
-3. **Layout Debugging** — Use the left panel DOM tree (Layers) to navigate the page structure. Click any node to highlight it in the preview. Inspect flexbox/grid properties and adjust layout in the right panel.
-
-4. **Drag-and-Drop Repositioning** — Toggle **Free Position** mode to drag elements to new positions, or **Reorder** mode to rearrange siblings within flex/grid containers.
-
-5. **Change Tracking & Export** — Every style edit is tracked with original → new values. Review all changes in the Changes tab, undo individual edits, or export a structured changelog.
-
-6. **Claude Code Integration** — Click **Copy Changelog** to get a formatted log you can paste into Claude Code, which reads it and applies the CSS changes to your actual source files. Or use **Send to Claude Code** for direct CLI integration (analyze diffs, then apply).
-
-7. **Multi-Page Editing** — Navigate between pages using the PageSelector dropdown without leaving the editor. Changes are persisted per-page and included in a combined changelog export.
+#### Method 3: Vercel Deployment (Bridge Mode)
+When the Dev Editor is deployed to Vercel, run the local bridge server (`bun run bridge`) on port 4002. The bridge handles proxy requests, project scanning, and Claude CLI execution on the user's machine.
 
 ### Typical Workflow
 
@@ -66,8 +53,9 @@ Export changelog → Paste into Claude Code → Changes applied to source files
 
 - **Runtime / Package Manager**: Bun (`bun dev`, `bun run build`, `bun install`)
 - **Framework**: Next.js 15 App Router (TypeScript)
-- **Styling**: Tailwind CSS — `class` dark mode strategy, CSS custom properties
-- **State**: Zustand with slices (`elementSlice`, `changeSlice`, `uiSlice`, `treeSlice`, `claudeSlice`)
+- **Styling**: Tailwind CSS 4 — `class` dark mode strategy, CSS custom properties
+- **State**: Zustand 5 with slices (`elementSlice`, `changeSlice`, `uiSlice`, `treeSlice`, `claudeSlice`, `cssVariableSlice`, `componentSlice`, `consoleSlice`, `terminalSlice`)
+- **Terminal**: xterm.js + node-pty
 - **Communication**: `window.postMessage` between editor (parent) and inspector (iframe)
 - **Persistence**: `localStorage` (changes keyed by target URL, recent URLs, settings)
 
@@ -76,49 +64,181 @@ Export changelog → Paste into Claude Code → Changes applied to source files
 ```
 src/
 ├── app/
-│   ├── layout.tsx              # Root layout, dark mode, providers
-│   ├── page.tsx                # Main editor (three-column layout)
-│   ├── globals.css             # Tailwind entry + dark mode variables
+│   ├── layout.tsx                     # Root layout, dark mode, providers
+│   ├── page.tsx                       # Main editor (three-column layout)
+│   ├── globals.css                    # Tailwind entry + dark mode variables
+│   ├── docs/                          # Setup guide page (/docs)
+│   │   ├── page.tsx
+│   │   ├── DocsClient.tsx
+│   │   └── layout.tsx
 │   └── api/
-│       ├── proxy/[[...path]]/route.ts  # Reverse proxy to target localhost (strips scripts)
-│       └── claude/
-│           ├── analyze/route.ts       # Claude CLI read-only analysis
-│           ├── apply/route.ts         # Claude CLI write mode
-│           └── status/route.ts        # CLI availability check
+│       ├── proxy/[[...path]]/route.ts # Reverse proxy to target localhost
+│       ├── claude/
+│       │   ├── analyze/route.ts       # Claude CLI read-only analysis
+│       │   ├── apply/route.ts         # Claude CLI write mode
+│       │   ├── scan/route.ts          # AI-powered project scan
+│       │   ├── pick-folder/route.ts   # Folder picker
+│       │   └── status/route.ts        # CLI availability check
+│       ├── project-scan/
+│       │   ├── route.ts               # Project structure scanning
+│       │   ├── css-variables/route.ts # CSS variable extraction
+│       │   └── tailwind-config/route.ts # Tailwind config detection
+│       └── project/scan/route.ts      # Project directory scanning
 ├── components/
-│   ├── Editor.tsx              # Three-column shell
-│   ├── TopBar.tsx              # URL input, breakpoints, drag toggle, apply
-│   ├── TargetSelector.tsx      # Localhost URL bar + connect + status dot
-│   ├── BreakpointTabs.tsx      # Mobile | Tablet | Desktop
-│   ├── PageSelector.tsx        # Page navigation dropdown
-│   ├── DragModeToggle.tsx      # Off / Free Position / Reorder
-│   ├── PreviewFrame.tsx        # Iframe container
-│   ├── left-panel/             # Navigator/Layers tree
-│   ├── right-panel/            # Design tab + Changes tab + Claude panel
-│   └── common/                 # Shared UI (ResizablePanel, ColorPicker, etc.)
-├── hooks/                      # useTargetUrl, usePostMessage, useChangeTracker, etc.
-├── store/                      # Zustand store + slices
-├── types/                      # TypeScript type definitions
-├── lib/                        # Utilities (constants, CSS parsing, prompt builder, diff parser)
-└── inspector/                  # Injected into iframe via proxy
-    ├── inspector.ts            # Entry point
-    ├── DOMTraverser.ts
-    ├── ElementSelector.ts
-    ├── HoverHighlighter.ts
-    ├── SelectionHighlighter.ts
-    ├── StyleExtractor.ts
-    ├── ViewportController.ts
-    ├── messaging.ts
-    └── drag/                   # DragHandler + strategies
+│   ├── Editor.tsx                     # Three-column shell
+│   ├── TopBar.tsx                     # URL input, breakpoints, actions
+│   ├── TargetSelector.tsx             # Localhost URL bar + connect + status dot
+│   ├── BreakpointTabs.tsx             # Mobile | Tablet | Desktop
+│   ├── ResponsiveToolbar.tsx          # Responsive controls toolbar
+│   ├── PageSelector.tsx               # Page navigation dropdown
+│   ├── PreviewFrame.tsx               # Iframe container
+│   ├── ConnectModal.tsx               # Connection setup modal
+│   ├── ChangeSummaryModal.tsx         # Change summary overlay
+│   ├── ProjectFolderBanner.tsx        # Project folder selection banner
+│   ├── left-panel/
+│   │   ├── LeftPanel.tsx              # Left panel container
+│   │   ├── IconSidebar.tsx            # Icon sidebar (Layers/Pages/Components/Add/Terminal)
+│   │   ├── LayersPanel.tsx            # DOM tree navigator
+│   │   ├── LayerNode.tsx              # Individual tree node
+│   │   ├── LayerSearch.tsx            # Tree search
+│   │   ├── PagesPanel.tsx             # Page navigation
+│   │   ├── ComponentsPanel.tsx        # React component browser
+│   │   ├── AddElementPanel.tsx        # HTML element inserter
+│   │   ├── icons.tsx                  # Panel icons
+│   │   └── terminal/
+│   │       ├── TerminalPanel.tsx      # Embedded xterm.js terminal
+│   │       └── ScanOverlay.tsx        # Scan progress overlay
+│   ├── right-panel/
+│   │   ├── RightPanel.tsx             # Right panel container
+│   │   ├── PanelTabs.tsx              # Tab switcher (Design/Variables/Changes/Claude/Console)
+│   │   ├── ElementLogBox.tsx          # Element info display
+│   │   ├── design/                    # Style editing sections
+│   │   │   ├── DesignPanel.tsx        # Design tab container
+│   │   │   ├── TextSection.tsx        # Typography editing
+│   │   │   ├── BackgroundSection.tsx  # Background + gradients
+│   │   │   ├── BorderSection.tsx      # Border editing
+│   │   │   ├── ShadowBlurSection.tsx  # Shadow + blur effects
+│   │   │   ├── LayoutSection.tsx      # Flexbox/grid layout
+│   │   │   ├── SizeSection.tsx        # Width/height
+│   │   │   ├── PositionSection.tsx    # Position + z-index
+│   │   │   ├── AppearanceSection.tsx  # Opacity, overflow, cursor
+│   │   │   ├── SVGSection.tsx         # SVG fill/stroke editing
+│   │   │   ├── PropertiesSection.tsx  # Raw CSS properties
+│   │   │   ├── GradientEditor.tsx     # Visual gradient editor
+│   │   │   ├── CSSRawView.tsx         # Raw CSS viewer
+│   │   │   ├── DesignCSSTabToggle.tsx # Design/CSS view toggle
+│   │   │   ├── ElementBreadcrumb.tsx  # Element path breadcrumb
+│   │   │   ├── icons.tsx
+│   │   │   └── inputs/               # Shared design input components
+│   │   ├── variables/
+│   │   │   └── VariablesPanel.tsx     # CSS variable management
+│   │   ├── changes/
+│   │   │   ├── ChangesPanel.tsx       # Change tracking + export
+│   │   │   ├── ChangeEntry.tsx        # Individual change row
+│   │   │   ├── ChangelogActions.tsx   # Copy/send changelog actions
+│   │   │   └── AiScanResultPanel.tsx  # AI scan results
+│   │   ├── claude/
+│   │   │   ├── ClaudeIntegrationPanel.tsx  # Claude CLI panel
+│   │   │   ├── SetupFlow.tsx          # First-time setup
+│   │   │   ├── ProjectRootSelector.tsx # Project root config
+│   │   │   ├── DiffViewer.tsx         # Diff display
+│   │   │   ├── DiffCard.tsx           # Single diff card
+│   │   │   ├── ApplyConfirmModal.tsx  # Apply confirmation
+│   │   │   ├── ClaudeProgressIndicator.tsx # Progress bar
+│   │   │   ├── ClaudeErrorState.tsx   # Error display
+│   │   │   └── ResultsSummary.tsx     # Results overview
+│   │   └── console/
+│   │       └── ConsolePanel.tsx       # Console log output
+│   └── common/                        # Shared UI components
+│       ├── ResizablePanel.tsx
+│       ├── ColorPicker.tsx
+│       ├── VariableColorPicker.tsx
+│       ├── UnitInput.tsx
+│       ├── CollapsibleSection.tsx
+│       ├── EditablePre.tsx
+│       ├── ScanAnimation.tsx
+│       ├── ToastContainer.tsx
+│       └── ErrorBoundary.tsx
+├── hooks/
+│   ├── useTargetUrl.ts
+│   ├── usePostMessage.ts
+│   ├── useChangeTracker.ts
+│   ├── useSelectedElement.ts
+│   ├── useDOMTree.ts
+│   ├── useClaudeAPI.ts
+│   ├── useProjectScan.ts
+│   ├── useBridge.ts
+│   ├── useKeyboardShortcuts.ts
+│   └── useResizable.ts
+├── store/
+│   ├── index.ts                       # Combined store (9 slices)
+│   ├── elementSlice.ts
+│   ├── changeSlice.ts
+│   ├── uiSlice.ts
+│   ├── treeSlice.ts
+│   ├── claudeSlice.ts
+│   ├── cssVariableSlice.ts
+│   ├── componentSlice.ts
+│   ├── consoleSlice.ts
+│   └── terminalSlice.ts
+├── types/
+│   ├── element.ts
+│   ├── messages.ts
+│   ├── changelog.ts
+│   ├── claude.ts
+│   ├── tree.ts
+│   ├── component.ts
+│   ├── cssVariables.ts
+│   ├── gradient.ts
+│   ├── shadow.ts
+│   └── file-system-access.d.ts
+├── lib/
+│   ├── constants.ts
+│   ├── utils.ts
+│   ├── apiBase.ts
+│   ├── promptBuilder.ts
+│   ├── diffParser.ts
+│   ├── classifyElement.ts
+│   ├── componentMatcher.ts
+│   ├── projectScanner.ts
+│   ├── clientProjectScanner.ts
+│   ├── cssVariableUtils.ts
+│   ├── gradientParser.ts
+│   ├── shadowParser.ts
+│   ├── textShadowUtils.ts
+│   ├── tailwindClassParser.ts
+│   ├── claude-bin.ts
+│   ├── claude-stream.ts
+│   ├── folderPicker.ts
+│   └── validatePath.ts
+├── inspector/                         # Injected into iframe via proxy
+│   ├── inspector.ts                   # Entry point
+│   ├── DOMTraverser.ts
+│   ├── ElementSelector.ts
+│   ├── HoverHighlighter.ts
+│   ├── SelectionHighlighter.ts
+│   ├── StyleExtractor.ts
+│   └── messaging.ts
+├── bridge/                            # Bridge server for Vercel deployment
+│   ├── server.ts                      # HTTP server (port 4002)
+│   ├── proxy-handler.ts               # Proxy request handler
+│   └── api-handlers.ts               # API request handler
+├── server/
+│   └── terminal-server.ts            # Terminal WebSocket server (node-pty)
+└── middleware.ts                       # Asset-only request proxying
 ```
 
 ## Commands
 
 ```bash
 bun install          # Install dependencies
-bun dev              # Start dev server
+bun dev              # Start dev server (port 4000)
+bun run bridge       # Start bridge server for Vercel deployment (port 4002)
+bun run dev:terminal # Start terminal server
+bun run dev:all      # Start all services (terminal + bridge + next)
 bun run build        # Production build
-bun run lint         # Lint (when configured)
+bun run start        # Start production server (port 4000)
+bun run lint         # Lint
 ```
 
 ## Dark Mode Color Palette
@@ -140,28 +260,12 @@ Top bar background:   #171717
 3. **postMessage only** — editor and iframe inspector communicate exclusively via `window.postMessage`. No direct iframe DOM access.
 4. **Localhost only** — URL validation rejects non-local addresses. Proxy MUST NOT forward to external hosts.
 5. **Zustand single store** — all shared state in one store with slices. No React Context for state management.
-6. **Strategy pattern for drag** — `DragHandler` delegates to `FreePositionStrategy` or `SiblingReorderStrategy`. New modes follow the same pattern.
-7. **Changelog is truth** — every visual change MUST be recorded with original→new values and CSS selector paths.
-8. **Bun everywhere** — all commands use Bun. No npm/yarn/pnpm.
-9. **No shell exec** — Claude CLI spawned via `Bun.spawn` or `execFile` only. Never `exec` with shell strings.
-10. **Singleton message listener** — `usePostMessage` hook registers ONE global `window.addEventListener('message', ...)` via a module-level singleton. Multiple components may call the hook but only one listener exists. This prevents duplicate message processing.
-11. **Middleware matches assets only** — Next.js middleware matches `/_next/` paths and common asset directories (`/fonts/`, `/webfonts/`, `/assets/`, `/images/`, `/icons/`, `/media/`, `/static/`, `/public/`). Inside the function, requests are filtered by file extension (`ASSET_EXT_RE`) and referer/fetch-dest to only proxy iframe-originated asset requests. Never match page-level paths — doing so pollutes the editor's HMR route tree and causes reload loops.
-12. **HMR isolation** — Proxy short-circuits `.hot-update.*`, `webpack-hmr`, and `turbopack-hmr` requests with empty 200/204 responses. `page.tsx` suppresses unhandled HMR rejection errors as a safety net.
-
-## Implementation Phases
-
-| Phase | Focus | Dependencies |
-|-------|-------|-------------|
-| 1 | Foundation (scaffolding, proxy, dark mode, three-column layout, URL input) | None |
-| 2 | Left Panel — DOM Inspection + Layers | Phase 1 |
-| 3 | Right Panel — Properties Editor (all sections + live preview) | Phase 2 |
-| 4 | Change Tracking + Changelog Export | Phase 3 |
-| 5 | Top Bar — Responsive Breakpoints + Page Navigation | Phase 4 |
-| 6 | Polish (keyboard shortcuts, search, error handling) | Phase 5 |
-| 7 | Drag & Drop Repositioning (free position + sibling reorder) | Phase 6 |
-| 8 | Claude Code API Integration (log analysis + diff viewer) | Phase 7 |
-
-Phases MUST be completed in order. Do not implement later-phase features before dependencies are done.
+6. **Changelog is truth** — every visual change MUST be recorded with original→new values and CSS selector paths.
+7. **Bun everywhere** — all commands use Bun. No npm/yarn/pnpm.
+8. **No shell exec** — Claude CLI spawned via `Bun.spawn` or `execFile` only. Never `exec` with shell strings.
+9. **Singleton message listener** — `usePostMessage` hook registers ONE global `window.addEventListener('message', ...)` via a module-level singleton. Multiple components may call the hook but only one listener exists. This prevents duplicate message processing.
+10. **Middleware matches assets only** — Next.js middleware matches `/_next/` paths and common asset directories (`/fonts/`, `/webfonts/`, `/assets/`, `/images/`, `/icons/`, `/media/`, `/static/`, `/public/`). Inside the function, requests are filtered by file extension (`ASSET_EXT_RE`) and referer/fetch-dest to only proxy iframe-originated asset requests. Never match page-level paths — doing so pollutes the editor's HMR route tree and causes reload loops.
+11. **HMR isolation** — Proxy short-circuits `.hot-update.*`, `webpack-hmr`, and `turbopack-hmr` requests with empty 200/204 responses. `page.tsx` suppresses unhandled HMR rejection errors as a safety net.
 
 ## Code Style
 
@@ -184,9 +288,6 @@ Phases MUST be completed in order. Do not implement later-phase features before 
 | `REVERT_CHANGE` | editor → iframe | Undo a style change |
 | `DOM_UPDATED` | iframe → editor | DOM mutation detected |
 | `SET_BREAKPOINT` | editor → iframe | Change viewport width |
-| `DRAG_MODE_CHANGED` | editor → iframe | Toggle drag mode |
-| `POSITION_CHANGED` | iframe → editor | Free-position drag complete |
-| `ELEMENT_REORDERED` | iframe → editor | Sibling reorder complete |
 
 ## Security
 
@@ -203,17 +304,7 @@ Phases MUST be completed in order. Do not implement later-phase features before 
 - `docs/implementation-plan.md` — Architecture, file structure, phase details
 - `docs/user-flows.md` — 11 detailed user flow scenarios
 - `docs/visual-editor-extensions.md` — Competitive landscape and comparison
-- `.specify/memory/constitution.md` — Project constitution (governance)
-
-## Active Technologies
-- TypeScript 5.x (strict mode), JavaScript (ES5 for inspector script)
-- Next.js 15 (App Router), React 19, Zustand 5, Tailwind CSS 4
-- localStorage (browser-only, keyed by target URL)
-- TypeScript 5.x (strict mode) + Next.js 15 (App Router), React 19, Zustand 5, Tailwind CSS 4 (005-rebuild-text-section)
-- N/A (changes tracked in Zustand store + localStorage) (005-rebuild-text-section)
-- N/A (state in Zustand store, no persistence changes) (006-improve-navigator-layers)
-- TypeScript 5.x (strict mode), JavaScript ES5 (inspector script) + Next.js 15 (App Router), React 19, Zustand 5, Tailwind CSS 4 (007-add-element-panel)
-- localStorage (changes keyed by target URL) (007-add-element-panel)
+- `/docs` route — Built-in setup guide with framework-specific instructions
 
 ## Known Issues & Root Causes
 
@@ -233,8 +324,3 @@ The SSR-rendered HTML + CSS is complete for visual editing. The inspector script
 - Middleware matched page-level paths, polluting HMR route tree (reduced matcher scope)
 - Target app HMR requests (hot-update, webpack-hmr) returned 404s (short-circuit in proxy)
 - React Strict Mode double-mounted PreviewFrame, setting `iframe.src` twice (`lastSrcRef` guard)
-
-## Recent Changes
-- 007-add-element-panel: Added TypeScript 5.x (strict mode), JavaScript ES5 (inspector script) + Next.js 15 (App Router), React 19, Zustand 5, Tailwind CSS 4
-- 006-improve-navigator-layers: Added TypeScript 5.x (strict mode) + Next.js 15 (App Router), React 19, Zustand 5, Tailwind CSS 4
-- 005-rebuild-text-section: Added TypeScript 5.x (strict mode) + Next.js 15 (App Router), React 19, Zustand 5, Tailwind CSS 4
