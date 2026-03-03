@@ -46,6 +46,7 @@
     "dev:terminal": "node ./bin/terminal-server.js",
     "dev:all": "node ./bin/terminal-server.js & node ./bin/bridge-server.js & next dev --port 4000 --turbopack",
     "bridge": "node ./bin/bridge-server.js",
+    "postinstall": "node ./bin/postinstall.js",
     "build": "next build",
     "start": "next start --port 4000",
     "lint": "biome lint .",

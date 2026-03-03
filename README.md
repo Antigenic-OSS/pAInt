@@ -48,6 +48,27 @@ bun add -g @antigenic-oss/paint
 
 Requires Node.js `>=20.9.0`.
 
+If `paint` is not found after install, add your global bin directory to `PATH`
+once:
+
+```bash
+# Bun
+echo 'export PATH="$HOME/.bun/bin:$PATH"' >> ~/.zshrc && source ~/.zshrc
+
+# npm (uses npm global prefix)
+echo 'export PATH="$(npm config get prefix)/bin:$PATH"' >> ~/.zshrc && source ~/.zshrc
+
+# pnpm
+pnpm setup
+```
+
+After install, run:
+
+```bash
+paint help
+paint start
+```
+
 Then use:
 
 ```bash
