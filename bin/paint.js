@@ -22,6 +22,7 @@ const APP_VERSION = (() => {
 const RUNNING_FROM_NODE_MODULES = APP_ROOT.includes(
   `${path.sep}node_modules${path.sep}`,
 )
+const RUNTIME_SCHEMA_VERSION = 2
 const RUNTIME_ROOT = RUNNING_FROM_NODE_MODULES
   ? path.join(STATE_DIR, 'runtime', APP_VERSION)
   : APP_ROOT
@@ -71,7 +72,25 @@ function ensureRuntimeRoot() {
   if (!RUNNING_FROM_NODE_MODULES) return APP_ROOT
 
   const stampFile = path.join(RUNTIME_ROOT, '.paint-runtime-stamp.json')
+  let needsRefresh = true
+
   if (fs.existsSync(stampFile)) {
+    try {
+      const stamp = JSON.parse(fs.readFileSync(stampFile, 'utf8'))
+      const hasConfigMjs = fs.existsSync(path.join(RUNTIME_ROOT, 'next.config.mjs'))
+      const hasLegacyConfigTs = fs.existsSync(
+        path.join(RUNTIME_ROOT, 'next.config.ts'),
+      )
+      needsRefresh =
+        stamp?.schemaVersion !== RUNTIME_SCHEMA_VERSION ||
+        !hasConfigMjs ||
+        hasLegacyConfigTs
+    } catch {
+      needsRefresh = true
+    }
+  }
+
+  if (!needsRefresh) {
     return RUNTIME_ROOT
   }
 
@@ -87,7 +106,7 @@ function ensureRuntimeRoot() {
     'public',
     'src',
     'next-env.d.ts',
-    'next.config.ts',
+    'next.config.mjs',
     'postcss.config.mjs',
     'tsconfig.json',
     'package.json',
@@ -111,6 +130,7 @@ function ensureRuntimeRoot() {
     stampFile,
     JSON.stringify(
       {
+        schemaVersion: RUNTIME_SCHEMA_VERSION,
         version: APP_VERSION,
         sourceRoot: APP_ROOT,
         preparedAt: now(),
