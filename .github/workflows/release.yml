@@ -4,21 +4,17 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:
 
 jobs:
   release:
     runs-on: ubuntu-latest
     environment: release
     permissions:
-      contents: write
-      pull-requests: write
+      contents: read
       id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -100,12 +96,27 @@ jobs:
       - name: Packed global install smoke test
         run: npm run smoke:packed-global
 
-      - name: Create release PR or publish
-        uses: changesets/action@v1
-        with:
-          version: bun run version-packages
-          publish: bun run release
-          commit: 'chore(release): version packages'
-          title: 'chore(release): version packages'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Check if version changed
+        id: version_check
+        shell: bash
+        run: |
+          set -euo pipefail
+          PACKAGE_NAME=$(node -p "require('./package.json').name")
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          PUBLISHED_VERSION=$(npm view "$PACKAGE_NAME" version 2>/dev/null || true)
+
+          echo "package_name=$PACKAGE_NAME" >> "$GITHUB_OUTPUT"
+          echo "current_version=$CURRENT_VERSION" >> "$GITHUB_OUTPUT"
+          echo "published_version=$PUBLISHED_VERSION" >> "$GITHUB_OUTPUT"
+
+          if [ -z "$PUBLISHED_VERSION" ] || [ "$CURRENT_VERSION" != "$PUBLISHED_VERSION" ]; then
+            echo "should_publish=true" >> "$GITHUB_OUTPUT"
+            echo "Will publish $PACKAGE_NAME@$CURRENT_VERSION (published: ${PUBLISHED_VERSION:-none})."
+          else
+            echo "should_publish=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping publish: $PACKAGE_NAME@$CURRENT_VERSION is already on npm."
+          fi
+
+      - name: Publish to npm
+        if: steps.version_check.outputs.should_publish == 'true'
+        run: npm publish --provenance --access public

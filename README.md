@@ -201,15 +201,12 @@ See `CONTRIBUTING.md` for setup, workflow, and pull request expectations.
 
 ## Release Automation
 
-- Versioning and release PRs are managed with Changesets.
+- Versioning is manual (update `package.json` before merging to `main`).
 - CI workflow: `.github/workflows/ci.yml`
 - Release workflow: `.github/workflows/release.yml`
 - Publishing uses npm Trusted Publishing (OIDC) from the `release` GitHub Environment.
-- To queue a release, add a changeset:
-
-```bash
-bun run changeset
-```
+- On every push to `main`, the release workflow runs build/lint/smoke checks.
+- Publish happens automatically only when `package.json` version differs from the currently published npm version.
 
 ## License
 

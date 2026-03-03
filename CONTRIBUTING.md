@@ -34,3 +34,10 @@ bun run build
 - Keep changes focused and reversible.
 - Include validation evidence (lint/build output summary).
 - Avoid unrelated refactors in the same PR.
+
+## Release process
+
+- Bump `version` in `package.json` as part of the change you want to release.
+- Merge to `main`.
+- The release workflow runs automatically on push to `main` and executes build/lint/smoke checks.
+- npm publish runs automatically only when the bumped version is not already published.
