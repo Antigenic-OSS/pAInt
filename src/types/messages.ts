@@ -337,6 +337,12 @@ export interface ElementMovedMessage {
     newParentSelectorPath: string
     oldIndex: number
     newIndex: number
+    tagName: string
+    className: string | null
+    elementId: string | null
+    innerText: string | null
+    attributes: Record<string, string>
+    computedStyles: Record<string, string>
   }
 }
 
