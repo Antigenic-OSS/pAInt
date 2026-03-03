@@ -13,10 +13,16 @@
   },
   "keywords": [
     "paint",
+    "pAInt",
     "visual-editor",
     "nextjs",
     "css",
-    "localhost"
+    "localhost",
+    "bridge-server",
+    "terminal",
+    "claude-code",
+    "ai-coding",
+    "developer-tools"
   ],
   "bin": {
     "paint": "bin/paint.js"

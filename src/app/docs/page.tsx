@@ -10,9 +10,29 @@ import {
 } from './DocsClient'
 
 export const metadata: Metadata = {
-  title: 'pAInt — Setup Guide',
+  title: 'Setup Guide',
   description:
-    'Framework-specific setup instructions for connecting pAInt to your localhost project.',
+    'Framework-specific setup instructions for connecting pAInt to localhost projects, including proxy, bridge, and terminal-assisted workflows.',
+  keywords: [
+    'pAInt setup',
+    'localhost visual editor setup',
+    'bridge server setup',
+    'terminal server setup',
+    'Next.js inspector script',
+    'Claude Code changelog workflow',
+  ],
+  openGraph: {
+    title: 'pAInt Setup Guide',
+    description:
+      'Connect pAInt to your localhost app with framework-specific instructions and efficient AI handoff workflows.',
+    type: 'article',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'pAInt Setup Guide',
+    description:
+      'Configure pAInt quickly for localhost projects and ship cleaner AI-assisted edits.',
+  },
 }
 
 const SCRIPT_TAG =

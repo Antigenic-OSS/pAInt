@@ -1,28 +1,35 @@
 # pAInt
 
-[![License](https://img.shields.io/github/license/Antigenic-OSS/pAInt)](https://github.com/Antigenic-OSS/pAInt/blob/main/LICENSE)
-[![Stars](https://img.shields.io/github/stars/Antigenic-OSS/pAInt?style=social)](https://github.com/Antigenic-OSS/pAInt/stargazers)
-[![Issues](https://img.shields.io/github/issues/Antigenic-OSS/pAInt)](https://github.com/Antigenic-OSS/pAInt/issues)
-[![npm version](https://img.shields.io/npm/v/@antigenic-oss/paint)](https://www.npmjs.com/package/@antigenic-oss/paint)
-[![npm downloads](https://img.shields.io/npm/dm/@antigenic-oss/paint)](https://www.npmjs.com/package/@antigenic-oss/paint)
-[![Bun](https://img.shields.io/badge/local%20dev-Bun-000000)](https://bun.sh)
-[![Node.js](https://img.shields.io/badge/runtime-Node.js-5FA04E)](https://nodejs.org)
-[![Next.js](https://img.shields.io/badge/framework-Next.js-000000)](https://nextjs.org)
-[![TypeScript](https://img.shields.io/badge/language-TypeScript-3178C6)](https://www.typescriptlang.org)
+<p>
+  <a href="https://www.npmjs.com/package/@antigenic-oss/paint"><img alt="npm version" src="https://img.shields.io/npm/v/@antigenic-oss/paint" /></a>
+  <a href="https://www.npmjs.com/package/@antigenic-oss/paint"><img alt="npm downloads" src="https://img.shields.io/npm/dm/@antigenic-oss/paint" /></a>
+  <a href="https://github.com/Antigenic-OSS/pAInt/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/Antigenic-OSS/pAInt" /></a>
+  <a href="https://github.com/Antigenic-OSS/pAInt/issues"><img alt="Issues" src="https://img.shields.io/github/issues/Antigenic-OSS/pAInt" /></a>
+  <br />
+  <a href="https://github.com/Antigenic-OSS/pAInt/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/Antigenic-OSS/pAInt?style=social" /></a>
+  <a href="https://bun.sh"><img alt="Bun" src="https://img.shields.io/badge/local%20dev-Bun-000000" /></a>
+  <a href="https://nodejs.org"><img alt="Node.js" src="https://img.shields.io/badge/runtime-Node.js-5FA04E" /></a>
+  <a href="https://nextjs.org"><img alt="Next.js" src="https://img.shields.io/badge/framework-Next.js-000000" /></a>
+  <a href="https://www.typescriptlang.org"><img alt="TypeScript" src="https://img.shields.io/badge/language-TypeScript-3178C6" /></a>
+</p>
 
 pAInt is a visual editor for localhost web projects. It helps you inspect elements, edit styles, manage CSS variables, and export changelogs for [Claude Code](https://claude.ai/claude-code).
+
+Built by [Antigenic](https://antigenic.org).
 
 ## Table of Contents
 
 - [Project Status](#project-status)
 - [Global CLI](#global-cli)
 - [What You Can Do](#what-you-can-do)
+- [Why pAInt Saves AI Tokens](#why-paint-saves-ai-tokens)
 - [Prerequisites](#prerequisites)
 - [Quick Start](#quick-start)
 - [Connection Modes](#connection-modes)
 - [Core Workflow](#core-workflow)
 - [Interface Layout](#interface-layout)
 - [Commands](#commands)
+- [Bridge vs Server vs Terminal](#bridge-vs-server-vs-terminal)
 - [Architecture Summary](#architecture-summary)
 - [Security Notes](#security-notes)
 - [Documentation](#documentation)
@@ -101,6 +108,15 @@ Terminal WS (when started): `ws://localhost:4001/ws`
 - Track every change and export a structured changelog
 - Send changelogs to Claude Code for source-file application
 
+## Why pAInt Saves AI Tokens
+
+pAInt helps you use fewer AI tokens by turning broad prompts into precise, structured change data:
+
+- You edit visually first, so you do not need long back-and-forth prompt iterations
+- Exported changelogs include exact selectors, properties, and before/after values
+- Claude Code receives focused instructions, reducing token-heavy ambiguity
+- You review only real diffs instead of asking the model to rediscover page context each time
+
 ## Prerequisites
 
 - Local repository development: Bun `>=1.3`
@@ -171,6 +187,20 @@ bun run build              # Production build
 bun run start              # Production server (port 4000)
 bun run lint               # Biome check
 ```
+
+## Bridge vs Server vs Terminal
+
+These three pieces have different jobs:
+
+- `pAInt server` (`paint start`): runs the main pAInt web app UI (default `http://127.0.0.1:4000`)
+- `bridge server` (`paint bridge start`): local HTTP bridge used when pAInt UI is hosted remotely (for example Vercel) but still needs safe local machine access (`http://127.0.0.1:4002` by default)
+- `terminal server` (`paint terminal start`): local WebSocket PTY service for the in-app Terminal tab (`ws://localhost:4001/ws` by default)
+
+When to run each:
+
+- Local-only workflow: run `paint start` (and optionally `paint terminal start` if you want in-app terminal streaming)
+- Hosted UI + local project workflow: run `paint bridge start` so the hosted UI can reach local-only capabilities
+- Claude/CLI visibility workflow: run `paint terminal start` to see command output and progress inside pAInt
 
 ## Architecture Summary
 
