@@ -97,6 +97,9 @@ jobs:
           grep -q "bin/terminal-server.js" /tmp/npm-pack.txt
           grep -q "bin/bridge-server.js" /tmp/npm-pack.txt
 
+      - name: Packed global install smoke test
+        run: npm run smoke:packed-global
+
       - name: Create release PR or publish
         uses: changesets/action@v1
         with:

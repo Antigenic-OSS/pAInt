@@ -1,4 +1,14 @@
+import path from 'node:path'
+
 const nextConfig = {
+  webpack(config) {
+    config.resolve = config.resolve || {}
+    config.resolve.alias = config.resolve.alias || {}
+    // Force runtime alias resolution even if tsconfig path loading is skipped.
+    config.resolve.alias['@'] = path.resolve(process.cwd(), 'src')
+    return config
+  },
+
   async headers() {
     return [
       {

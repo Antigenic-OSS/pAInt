@@ -85,3 +85,6 @@ jobs:
           grep -q "bin/paint.js" /tmp/npm-pack.txt
           grep -q "bin/terminal-server.js" /tmp/npm-pack.txt
           grep -q "bin/bridge-server.js" /tmp/npm-pack.txt
+
+      - name: Packed global install smoke test
+        run: npm run smoke:packed-global
