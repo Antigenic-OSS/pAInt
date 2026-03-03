@@ -31,9 +31,17 @@ function main() {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'paint-packed-smoke-'))
   const packDir = path.join(tempRoot, 'pack')
   const extractDir = path.join(tempRoot, 'extract')
+  const globalRoot = path.join(tempRoot, 'global')
+  const globalNodeModules = path.join(globalRoot, 'node_modules')
+  const scopedPackageRoot = path.join(
+    globalNodeModules,
+    '@antigenic-oss',
+    'paint',
+  )
   const fakeHome = path.join(tempRoot, 'home')
   fs.mkdirSync(packDir, { recursive: true })
   fs.mkdirSync(extractDir, { recursive: true })
+  fs.mkdirSync(globalNodeModules, { recursive: true })
   fs.mkdirSync(fakeHome, { recursive: true })
 
   runOrFail('npm', ['pack', '--silent', '--pack-destination', packDir])
@@ -49,9 +57,26 @@ function main() {
   runOrFail('tar', ['-xzf', path.join(packDir, tarball), '-C', extractDir])
 
   const packedRoot = path.join(extractDir, 'package')
-  const packedNodeModules = path.join(packedRoot, 'node_modules')
-  if (!fs.existsSync(packedNodeModules)) {
-    fs.symlinkSync(path.join(APP_ROOT, 'node_modules'), packedNodeModules, 'dir')
+
+  // Emulate global install layout:
+  // <global>/node_modules/@antigenic-oss/paint (package)
+  // <global>/node_modules/<deps> (shared deps), no package-local node_modules.
+  fs.mkdirSync(path.dirname(scopedPackageRoot), { recursive: true })
+  fs.cpSync(packedRoot, scopedPackageRoot, { recursive: true, force: true })
+  fs.rmSync(path.join(scopedPackageRoot, 'node_modules'), {
+    recursive: true,
+    force: true,
+  })
+
+  const sourceNodeModules = path.join(APP_ROOT, 'node_modules')
+  const entries = fs.readdirSync(sourceNodeModules, { withFileTypes: true })
+  for (const entry of entries) {
+    if (entry.name === '.bin') continue
+    if (entry.name === '@antigenic-oss') continue
+    const src = path.join(sourceNodeModules, entry.name)
+    const dst = path.join(globalNodeModules, entry.name)
+    if (fs.existsSync(dst)) continue
+    fs.symlinkSync(src, dst, 'dir')
   }
 
   const env = {
@@ -63,15 +88,15 @@ function main() {
 
   let started = false
   try {
-    runOrFail('node', [path.join(packedRoot, 'bin', 'paint.js'), 'start', '--rebuild', '--port', PORT], {
-      cwd: packedRoot,
+    runOrFail('node', [path.join(scopedPackageRoot, 'bin', 'paint.js'), 'start', '--rebuild', '--port', PORT], {
+      cwd: scopedPackageRoot,
       env,
     })
     started = true
   } finally {
     if (started) {
-      run('node', [path.join(packedRoot, 'bin', 'paint.js'), 'stop'], {
-        cwd: packedRoot,
+      run('node', [path.join(scopedPackageRoot, 'bin', 'paint.js'), 'stop'], {
+        cwd: scopedPackageRoot,
         env,
       })
     }

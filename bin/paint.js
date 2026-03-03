@@ -22,7 +22,7 @@ const APP_VERSION = (() => {
 const RUNNING_FROM_NODE_MODULES = APP_ROOT.includes(
   `${path.sep}node_modules${path.sep}`,
 )
-const RUNTIME_SCHEMA_VERSION = 2
+const RUNTIME_SCHEMA_VERSION = 4
 const RUNTIME_ROOT = RUNNING_FROM_NODE_MODULES
   ? path.join(STATE_DIR, 'runtime', APP_VERSION)
   : APP_ROOT
@@ -68,11 +68,42 @@ function ensureStateDir() {
   fs.mkdirSync(STATE_DIR, { recursive: true })
 }
 
+function findNodeModulesRootFromResolvedPath(resolvedPath) {
+  const needle = `${path.sep}node_modules${path.sep}`
+  const idx = resolvedPath.lastIndexOf(needle)
+  if (idx === -1) return null
+  // Keep ".../node_modules" (without trailing slash)
+  return resolvedPath.slice(0, idx + needle.length - 1)
+}
+
+function resolveDependencyNodeModulesRoot() {
+  const probes = [
+    'zustand/package.json',
+    '@xterm/xterm/package.json',
+    'react/package.json',
+    'next/package.json',
+  ]
+
+  for (const probe of probes) {
+    try {
+      const resolved = require.resolve(probe, { paths: [APP_ROOT] })
+      const root = findNodeModulesRootFromResolvedPath(resolved)
+      if (root) return root
+    } catch {
+      // keep probing
+    }
+  }
+
+  // Last resort: local node_modules under package root.
+  return path.join(APP_ROOT, 'node_modules')
+}
+
 function ensureRuntimeRoot() {
   if (!RUNNING_FROM_NODE_MODULES) return APP_ROOT
 
   const stampFile = path.join(RUNTIME_ROOT, '.paint-runtime-stamp.json')
   let needsRefresh = true
+  const moduleRoot = resolveDependencyNodeModulesRoot()
 
   if (fs.existsSync(stampFile)) {
     try {
@@ -81,10 +112,18 @@ function ensureRuntimeRoot() {
       const hasLegacyConfigTs = fs.existsSync(
         path.join(RUNTIME_ROOT, 'next.config.ts'),
       )
+      const runtimeNodeModules = path.join(RUNTIME_ROOT, 'node_modules')
+      let linkedToExpectedRoot = false
+      try {
+        linkedToExpectedRoot = fs.realpathSync(runtimeNodeModules) === moduleRoot
+      } catch {
+        linkedToExpectedRoot = false
+      }
       needsRefresh =
         stamp?.schemaVersion !== RUNTIME_SCHEMA_VERSION ||
         !hasConfigMjs ||
-        hasLegacyConfigTs
+        hasLegacyConfigTs ||
+        !linkedToExpectedRoot
     } catch {
       needsRefresh = true
     }
@@ -124,7 +163,7 @@ function ensureRuntimeRoot() {
   }
 
   const runtimeNodeModules = path.join(RUNTIME_ROOT, 'node_modules')
-  fs.symlinkSync(path.join(APP_ROOT, 'node_modules'), runtimeNodeModules, 'dir')
+  fs.symlinkSync(moduleRoot, runtimeNodeModules, 'dir')
 
   fs.writeFileSync(
     stampFile,
@@ -133,6 +172,7 @@ function ensureRuntimeRoot() {
         schemaVersion: RUNTIME_SCHEMA_VERSION,
         version: APP_VERSION,
         sourceRoot: APP_ROOT,
+        moduleRoot,
         preparedAt: now(),
       },
       null,
