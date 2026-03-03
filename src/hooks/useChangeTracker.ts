@@ -261,6 +261,32 @@ export function performRevertAll() {
   }
 }
 
+// Module-level singletons for auto-persist and load — prevents duplicate
+// subscriptions and stale-data overwrites when multiple components call
+// useChangeTracker() and some of them remount (e.g. LayerNode after tree updates).
+let persistSubscribed = false
+let persistTimeout: ReturnType<typeof setTimeout> | null = null
+let prevChangesRef: unknown = null
+let lastLoadedUrl: string | null = null
+
+function ensurePersistSubscription() {
+  if (persistSubscribed) return
+  persistSubscribed = true
+  useEditorStore.subscribe((state) => {
+    const ref = state.styleChanges
+    if (ref === prevChangesRef) return
+    prevChangesRef = ref
+
+    const url = state.targetUrl
+    if (!url) return
+
+    if (persistTimeout) clearTimeout(persistTimeout)
+    persistTimeout = setTimeout(() => {
+      useEditorStore.getState().persistChanges(url)
+    }, 300)
+  })
+}
+
 /**
  * Hook that tracks style changes, sends PREVIEW_CHANGE to inspector,
  * and auto-persists changes to localStorage.
@@ -273,36 +299,18 @@ export function useChangeTracker() {
   const pushUndo = useEditorStore((s) => s.pushUndo)
   const { sendToInspector } = usePostMessage()
 
-  // Auto-persist changes when they update (count OR content)
-  const persistTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const prevChangesRef = useRef<unknown>(null)
-
+  // Set up singleton auto-persist subscription (once globally, not per component)
   useEffect(() => {
-    const unsubscribe = useEditorStore.subscribe((state) => {
-      // Trigger on any styleChanges or elementSnapshots reference change
-      const ref = state.styleChanges
-      if (ref === prevChangesRef.current) return
-      prevChangesRef.current = ref
-
-      const url = state.targetUrl
-      if (!url) return
-
-      // Debounce persistence
-      if (persistTimeoutRef.current) clearTimeout(persistTimeoutRef.current)
-      persistTimeoutRef.current = setTimeout(() => {
-        useEditorStore.getState().persistChanges(url)
-      }, 300)
-    })
-
-    return () => {
-      unsubscribe()
-      if (persistTimeoutRef.current) clearTimeout(persistTimeoutRef.current)
-    }
+    ensurePersistSubscription()
   }, [])
 
-  // Load persisted changes when target URL changes
+  // Load persisted changes only when target URL actually changes,
+  // not on every component mount. This prevents remounting components
+  // (e.g. LayerNode after tree updates) from overwriting in-memory
+  // changes with stale localStorage data.
   useEffect(() => {
-    if (targetUrl) {
+    if (targetUrl && targetUrl !== lastLoadedUrl) {
+      lastLoadedUrl = targetUrl
       useEditorStore.getState().loadPersistedChanges(targetUrl)
     }
   }, [targetUrl])

@@ -450,6 +450,12 @@ function handleMessage(event: MessageEvent) {
         newParentSelectorPath: mvNewParent,
         oldIndex: mvOldIndex,
         newIndex: mvNewIndex,
+        tagName: mvTag,
+        className: mvClass,
+        elementId: mvId,
+        innerText: mvText,
+        attributes: mvAttrs,
+        computedStyles: mvStyles,
       } = msg.payload
       const mvProperty = '__element_moved__'
 
@@ -462,6 +468,20 @@ function handleMessage(event: MessageEvent) {
         breakpoint: store.activeBreakpoint,
         wasNewChange: true,
         changeScope: store.changeScope,
+      })
+
+      // Save element snapshot so move appears in Changes panel
+      store.saveElementSnapshot({
+        selectorPath: mvNewSelector,
+        tagName: mvTag || 'unknown',
+        className: mvClass ?? null,
+        elementId: mvId ?? null,
+        attributes: mvAttrs || {},
+        innerText: mvText,
+        computedStyles: mvStyles ? { ...mvStyles } : {},
+        pagePath: store.currentPagePath,
+        changeScope: store.changeScope,
+        sourceInfo: null,
       })
 
       // Track the move

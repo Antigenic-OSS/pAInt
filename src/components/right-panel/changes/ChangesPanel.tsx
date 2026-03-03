@@ -1198,7 +1198,12 @@ export function ChangesPanel() {
   ])
 
   const handleAiScan = useCallback(() => {
-    if (!targetUrl || !projectRoot || breakpointChanges.length === 0) return
+    if (!targetUrl || breakpointChanges.length === 0) return
+    if (!projectRoot) {
+      showToast('error', 'Set a project folder first — click the folder icon in the Claude tab')
+      setActiveRightTab('claude')
+      return
+    }
 
     setAiScanStatus('scanning')
     setAiScanError(null)
@@ -1251,6 +1256,7 @@ export function ChangesPanel() {
     setAiScanResult,
     showToast,
     setActiveLeftTab,
+    setActiveRightTab,
   ])
 
   const handleSendToClaudeCode = useCallback(

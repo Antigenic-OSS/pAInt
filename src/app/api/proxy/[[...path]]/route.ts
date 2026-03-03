@@ -1330,6 +1330,11 @@ function getInspectorCode(): string {
                 }
                 var meNewSelector = generateSelectorPath(meEl);
                 var meActualIndex = Array.from(meNewParent.children).indexOf(meEl);
+                var meAttrs = {};
+                for (var mai = 0; mai < meEl.attributes.length; mai++) {
+                  var ma = meEl.attributes[mai];
+                  meAttrs[ma.name] = ma.value;
+                }
                 send({
                   type: 'ELEMENT_MOVED',
                   payload: {
@@ -1338,7 +1343,13 @@ function getInspectorCode(): string {
                     oldParentSelectorPath: meOldParentSelector,
                     newParentSelectorPath: msg.payload.newParentSelectorPath,
                     oldIndex: meOldIndex,
-                    newIndex: meActualIndex
+                    newIndex: meActualIndex,
+                    tagName: meEl.tagName.toLowerCase(),
+                    className: meEl.className && typeof meEl.className === 'string' ? meEl.className : null,
+                    elementId: meEl.id || null,
+                    innerText: (meEl.innerText || '').substring(0, 500) || null,
+                    attributes: meAttrs,
+                    computedStyles: getComputedStylesForElement(meEl)
                   }
                 });
                 if (selectedElement === meEl) {
