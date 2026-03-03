@@ -271,7 +271,9 @@ function ensureBuilt(forceRebuild) {
   console.log(
     forceRebuild ? 'Rebuilding pAInt…' : 'Building pAInt for first run…',
   )
-  const result = spawnSync(process.execPath, [NEXT_BIN, 'build'], {
+  // Use webpack for packaged/global runtime builds.
+  // Turbopack can fail when the app lives under node_modules.
+  const result = spawnSync(process.execPath, [NEXT_BIN, 'build', '--webpack'], {
     cwd: APP_ROOT,
     env: process.env,
     stdio: 'inherit',
