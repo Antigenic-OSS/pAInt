@@ -10,6 +10,21 @@ const { spawn, spawnSync } = require('node:child_process')
 const ENTRY_REAL_PATH = fs.realpathSync(__filename)
 const APP_ROOT = path.resolve(path.dirname(ENTRY_REAL_PATH), '..')
 const STATE_DIR = path.join(os.homedir(), '.paint')
+const APP_PACKAGE_JSON = path.join(APP_ROOT, 'package.json')
+const APP_VERSION = (() => {
+  try {
+    const pkg = JSON.parse(fs.readFileSync(APP_PACKAGE_JSON, 'utf8'))
+    return typeof pkg.version === 'string' ? pkg.version : 'dev'
+  } catch {
+    return 'dev'
+  }
+})()
+const RUNNING_FROM_NODE_MODULES = APP_ROOT.includes(
+  `${path.sep}node_modules${path.sep}`,
+)
+const RUNTIME_ROOT = RUNNING_FROM_NODE_MODULES
+  ? path.join(STATE_DIR, 'runtime', APP_VERSION)
+  : APP_ROOT
 
 const APP_STATE_FILE = path.join(STATE_DIR, 'server.json')
 const TERMINAL_STATE_FILE = path.join(STATE_DIR, 'terminal.json')
@@ -50,6 +65,62 @@ const DEFAULT_BRIDGE_PORT = 4002
 
 function ensureStateDir() {
   fs.mkdirSync(STATE_DIR, { recursive: true })
+}
+
+function ensureRuntimeRoot() {
+  if (!RUNNING_FROM_NODE_MODULES) return APP_ROOT
+
+  const stampFile = path.join(RUNTIME_ROOT, '.paint-runtime-stamp.json')
+  if (fs.existsSync(stampFile)) {
+    return RUNTIME_ROOT
+  }
+
+  ensureStateDir()
+  fs.mkdirSync(path.dirname(RUNTIME_ROOT), { recursive: true })
+
+  // Build outside node_modules so Next.js webpack always transpiles TS sources.
+  fs.rmSync(RUNTIME_ROOT, { recursive: true, force: true })
+  fs.mkdirSync(RUNTIME_ROOT, { recursive: true })
+
+  const runtimeEntries = [
+    'bin',
+    'public',
+    'src',
+    'next-env.d.ts',
+    'next.config.ts',
+    'postcss.config.mjs',
+    'tsconfig.json',
+    'package.json',
+    'README.md',
+    'LICENSE',
+    'NOTICE',
+  ]
+
+  for (const entry of runtimeEntries) {
+    const src = path.join(APP_ROOT, entry)
+    const dst = path.join(RUNTIME_ROOT, entry)
+    if (!fs.existsSync(src)) continue
+
+    fs.cpSync(src, dst, { recursive: true, force: true })
+  }
+
+  const runtimeNodeModules = path.join(RUNTIME_ROOT, 'node_modules')
+  fs.symlinkSync(path.join(APP_ROOT, 'node_modules'), runtimeNodeModules, 'dir')
+
+  fs.writeFileSync(
+    stampFile,
+    JSON.stringify(
+      {
+        version: APP_VERSION,
+        sourceRoot: APP_ROOT,
+        preparedAt: now(),
+      },
+      null,
+      2,
+    ),
+  )
+
+  return RUNTIME_ROOT
 }
 
 function now() {
@@ -181,12 +252,12 @@ function validatePort(port, flagName) {
 }
 
 function spawnDetached(command, args, opts) {
-  const { env, logFile } = opts
+  const { env, logFile, cwd = APP_ROOT } = opts
   const fd = fs.openSync(logFile, 'a')
   fs.writeSync(fd, `\n[${now()}] spawn: ${command} ${args.join(' ')}\n`)
 
   const child = spawn(command, args, {
-    cwd: APP_ROOT,
+    cwd,
     env,
     detached: true,
     stdio: ['ignore', fd, fd],
@@ -262,8 +333,9 @@ function ensureNextInstalled() {
 function ensureBuilt(forceRebuild) {
   ensureStateDir()
   ensureNextInstalled()
+  const runtimeRoot = ensureRuntimeRoot()
 
-  const buildIdPath = path.join(APP_ROOT, '.next', 'BUILD_ID')
+  const buildIdPath = path.join(runtimeRoot, '.next', 'BUILD_ID')
   if (!forceRebuild && fs.existsSync(buildIdPath)) {
     return
   }
@@ -274,7 +346,7 @@ function ensureBuilt(forceRebuild) {
   // Use webpack for packaged/global runtime builds.
   // Turbopack can fail when the app lives under node_modules.
   const result = spawnSync(process.execPath, [NEXT_BIN, 'build', '--webpack'], {
-    cwd: APP_ROOT,
+    cwd: runtimeRoot,
     env: process.env,
     stdio: 'inherit',
   })
@@ -302,6 +374,7 @@ async function startApp(options) {
 
   ensureBuilt(options.rebuild)
   ensureStateDir()
+  const runtimeRoot = ensureRuntimeRoot()
 
   const webChild = spawnDetached(
     process.execPath,
@@ -314,6 +387,7 @@ async function startApp(options) {
       options.host,
     ],
     {
+      cwd: runtimeRoot,
       env: process.env,
       logFile: WEB_LOG_FILE,
     },
