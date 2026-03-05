@@ -491,6 +491,8 @@ async function startApp(options) {
   console.log(`pAInt started at http://${options.host}:${options.port}`)
   console.log(`Web pid: ${webChild.pid}`)
   console.log(`Web logs: ${WEB_LOG_FILE}`)
+
+  checkForUpdate()
 }
 
 function stopApp() {
@@ -529,6 +531,8 @@ function appStatus() {
   console.log(`URL: http://${existing.host}:${existing.port}`)
   console.log(`Started: ${existing.startedAt}`)
   if (existing.logs?.web) console.log(`Web logs: ${existing.logs.web}`)
+
+  checkForUpdate()
 }
 
 function appLogs() {
@@ -745,6 +749,34 @@ function bridgeLogs() {
   }
   process.stdout.write('===== bridge.log =====\n')
   process.stdout.write(fs.readFileSync(BRIDGE_LOG_FILE, 'utf8'))
+}
+
+function checkForUpdate() {
+  const pkg = JSON.parse(fs.readFileSync(APP_PACKAGE_JSON, 'utf8'))
+  const name = pkg.name
+  const registryUrl = `https://registry.npmjs.org/${name}/latest`
+
+  const req = https.get(registryUrl, { timeout: 3000 }, (res) => {
+    if (res.statusCode !== 200) return
+    const chunks = []
+    res.on('data', (chunk) => chunks.push(chunk))
+    res.on('end', () => {
+      try {
+        const data = JSON.parse(Buffer.concat(chunks).toString('utf8'))
+        const latest = data.version
+        if (latest && latest !== APP_VERSION) {
+          console.log(
+            `\nUpdate available: ${APP_VERSION} → ${latest}\nRun: npm install -g ${name}\n`,
+          )
+        }
+      } catch {
+        // ignore parse errors
+      }
+    })
+  })
+
+  req.on('error', () => {})
+  req.on('timeout', () => req.destroy())
 }
 
 function showHelp() {
