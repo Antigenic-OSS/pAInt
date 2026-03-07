@@ -7,7 +7,6 @@
 ## Organization
 
 - Antigenic Technologies Inc.
-- Antigenic Technologies Inc.
 
 ## Support channels
 
