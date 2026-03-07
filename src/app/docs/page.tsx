@@ -1,11 +1,8 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import {
-  CodeBlock,
   FaqAccordion,
   FaqSection,
-  FrameworkAccordion,
-  FrameworkSection,
   Sidebar,
 } from './DocsClient'
 
@@ -34,9 +31,6 @@ export const metadata: Metadata = {
       'Configure pAInt quickly for localhost projects and ship cleaner AI-assisted edits.',
   },
 }
-
-const SCRIPT_TAG =
-  '<script src="https://dev-editor-flow.vercel.app/dev-editor-inspector.js"></script>'
 
 export default function DocsPage() {
   return (
@@ -92,11 +86,17 @@ export default function DocsPage() {
                 </strong>
                 , the editor loads your page through a{' '}
                 <strong style={{ color: 'var(--text-primary)' }}>
-                  built-in reverse proxy
+                  Service Worker proxy
                 </strong>
-                . The proxy fetches your HTML, strips client-side scripts (to
-                prevent routing conflicts), and injects a lightweight inspector
-                script. This inspector communicates with the editor via{' '}
+                . The proxy intercepts requests, fetches your page from
+                localhost, injects a lightweight inspector script, and strips
+                security headers that would block the iframe — all happening
+                in the browser with no server-side proxying needed. Your
+                page&apos;s scripts and client-side rendering work normally,
+                so you see the fully interactive version of your site.
+              </p>
+              <p style={{ ...bodyText, marginTop: '0.75rem' }}>
+                The inspector communicates with the editor via{' '}
                 <code style={inlineCodeStyle}>postMessage</code> — reporting
                 element metadata when you hover or click, and applying style
                 previews in real time.
@@ -109,10 +109,11 @@ export default function DocsPage() {
                 actual source files.
               </p>
               <p style={{ ...bodyText, marginTop: '0.75rem' }}>
-                If automatic injection fails (e.g., non-standard HTML
-                responses), a banner will prompt you to add the script tag
-                manually. The framework guides below show exactly where to place
-                it.
+                <strong style={{ color: 'var(--success)' }}>
+                  No script tags needed
+                </strong>{' '}
+                — the proxy handles everything automatically. Just click
+                Connect and start editing.
               </p>
             </Section>
 
@@ -207,402 +208,78 @@ export default function DocsPage() {
             </Section>
 
             {/* Framework Guides */}
-            <Section id="framework-guides" title="Framework Guides">
-              <p style={{ ...bodyText, marginBottom: '1rem' }}>
-                If the automatic connection doesn&apos;t detect the inspector
-                within 5 seconds, add the script tag manually to your project.
-                Select your framework below for the exact file and placement.
+            <Section id="framework-guides" title="Framework Compatibility">
+              <p style={bodyText}>
+                pAInt works with any framework out of the box — no script
+                tags or configuration needed. The Service Worker proxy
+                automatically handles inspector injection for all projects.
               </p>
-              <div
-                className="flex items-center gap-2 px-4 py-3 rounded-md mb-4 text-sm"
-                style={{
-                  background: 'var(--accent-bg)',
-                  border: '1px solid var(--accent)',
-                  color: 'var(--text-secondary)',
-                }}
-              >
-                <span style={{ color: 'var(--accent)' }}>Note:</span>
-                <span>
-                  The snippets below use the hosted URL. If running pAInt
-                  locally, replace{' '}
-                  <code style={{ ...inlineCodeStyle, fontSize: '0.8em' }}>
-                    https://dev-editor-flow.vercel.app
-                  </code>{' '}
-                  with{' '}
-                  <code style={{ ...inlineCodeStyle, fontSize: '0.8em' }}>
-                    http://localhost:4000
-                  </code>{' '}
-                  (or your custom port).
-                </span>
+              <p style={{ ...bodyText, marginTop: '0.75rem' }}>
+                Tested and confirmed working with:
+              </p>
+              <div className="flex flex-col gap-2 mt-4">
+                <CompatItem icon="&#9650;" name="Next.js" detail="App Router & Pages Router" />
+                <CompatItem icon="&#9889;" name="Vite + React" detail="Including React Router, TanStack, etc." />
+                <CompatItem icon="&#9883;" name="Create React App" detail="Standard and ejected setups" />
+                <CompatItem icon="&#128241;" name="React Native / Expo Web" detail="Expo Router and custom web entry" />
+                <CompatItem icon="&#9899;" name="Vue / Nuxt" detail="Vue 3 (Vite) and Nuxt 3" />
+                <CompatItem icon="&#127793;" name="Svelte / SvelteKit" detail="SvelteKit and plain Svelte + Vite" />
+                <CompatItem icon="&#128196;" name="Plain HTML" detail="Static sites and vanilla JS" />
               </div>
-              <FrameworkAccordion>
-                {/* Next.js */}
-                <FrameworkSection id="nextjs" title="Next.js" icon="&#9650;">
-                  <div>
-                    <h4
-                      className="text-base font-medium mb-1"
-                      style={{ color: 'var(--text-primary)' }}
-                    >
-                      App Router
-                    </h4>
-                    <p style={{ ...mutedText, marginBottom: '0.5rem' }}>
-                      Add to <code style={inlineCodeStyle}>app/layout.tsx</code>
-                    </p>
-                    <CodeBlock
-                      language="tsx"
-                      copyText={SCRIPT_TAG}
-                      code={`// app/layout.tsx
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="en">
-      <body>
-        {children}
-        <script src="https://dev-editor-flow.vercel.app/dev-editor-inspector.js"></script>
-      </body>
-    </html>
-  );
-}`}
-                    />
-                  </div>
-                  <div>
-                    <h4
-                      className="text-base font-medium mb-1"
-                      style={{ color: 'var(--text-primary)' }}
-                    >
-                      Pages Router
-                    </h4>
-                    <p style={{ ...mutedText, marginBottom: '0.5rem' }}>
-                      Add to{' '}
-                      <code style={inlineCodeStyle}>pages/_document.tsx</code>
-                    </p>
-                    <CodeBlock
-                      language="tsx"
-                      copyText={SCRIPT_TAG}
-                      code={`// pages/_document.tsx
-import { Html, Head, Main, NextScript } from 'next/document';
-
-export default function Document() {
-  return (
-    <Html>
-      <Head />
-      <body>
-        <Main />
-        <NextScript />
-        <script src="https://dev-editor-flow.vercel.app/dev-editor-inspector.js"></script>
-      </body>
-    </Html>
-  );
-}`}
-                    />
-                  </div>
-                </FrameworkSection>
-
-                {/* Vite + React */}
-                <FrameworkSection
-                  id="vite-react"
-                  title="Vite + React"
-                  icon="&#9889;"
-                >
-                  <p style={{ ...mutedText, marginBottom: '0.5rem' }}>
-                    Add to <code style={inlineCodeStyle}>index.html</code>{' '}
-                    (project root)
-                  </p>
-                  <CodeBlock
-                    language="html"
-                    copyText={SCRIPT_TAG}
-                    code={`<!-- index.html -->
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>My App</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-    <script src="https://dev-editor-flow.vercel.app/dev-editor-inspector.js"></script>
-  </body>
-</html>`}
-                  />
-                </FrameworkSection>
-
-                {/* Create React App */}
-                <FrameworkSection
-                  id="create-react-app"
-                  title="Create React App"
-                  icon="&#9883;"
-                >
-                  <p style={{ ...mutedText, marginBottom: '0.5rem' }}>
-                    Add to{' '}
-                    <code style={inlineCodeStyle}>public/index.html</code>
-                  </p>
-                  <CodeBlock
-                    language="html"
-                    copyText={SCRIPT_TAG}
-                    code={`<!-- public/index.html -->
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>My App</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script src="https://dev-editor-flow.vercel.app/dev-editor-inspector.js"></script>
-  </body>
-</html>`}
-                  />
-                </FrameworkSection>
-
-                {/* Plain HTML */}
-                <FrameworkSection
-                  id="plain-html"
-                  title="Plain HTML"
-                  icon="&#128196;"
-                >
-                  <p style={{ ...mutedText, marginBottom: '0.5rem' }}>
-                    Add before{' '}
-                    <code style={inlineCodeStyle}>&lt;/body&gt;</code> in any{' '}
-                    <code style={inlineCodeStyle}>.html</code> file
-                  </p>
-                  <CodeBlock
-                    language="html"
-                    copyText={SCRIPT_TAG}
-                    code={`<!DOCTYPE html>
-<html>
-  <head>
-    <title>My Page</title>
-  </head>
-  <body>
-    <h1>Hello</h1>
-    <script src="https://dev-editor-flow.vercel.app/dev-editor-inspector.js"></script>
-  </body>
-</html>`}
-                  />
-                </FrameworkSection>
-
-                {/* React Native / Expo Web */}
-                <FrameworkSection
-                  id="react-native-expo"
-                  title="React Native / Expo Web"
-                  icon="&#128241;"
-                >
-                  <div>
-                    <h4
-                      className="text-base font-medium mb-1"
-                      style={{ color: 'var(--text-primary)' }}
-                    >
-                      Expo Router
-                    </h4>
-                    <p style={{ ...mutedText, marginBottom: '0.5rem' }}>
-                      Add to{' '}
-                      <code style={inlineCodeStyle}>app/_layout.tsx</code> using{' '}
-                      a <code style={inlineCodeStyle}>&lt;Script&gt;</code>{' '}
-                      component or the web{' '}
-                      <code style={inlineCodeStyle}>index.html</code>
-                    </p>
-                    <CodeBlock
-                      language="tsx"
-                      copyText={SCRIPT_TAG}
-                      code={`// app/_layout.tsx
-import { Slot } from 'expo-router';
-import { Platform } from 'react-native';
-import { useEffect } from 'react';
-
-export default function RootLayout() {
-  useEffect(() => {
-    if (Platform.OS === 'web') {
-      const script = document.createElement('script');
-      script.src = 'https://dev-editor-flow.vercel.app/dev-editor-inspector.js';
-      document.body.appendChild(script);
-    }
-  }, []);
-
-  return <Slot />;
-}`}
-                    />
-                  </div>
-                  <div>
-                    <h4
-                      className="text-base font-medium mb-1"
-                      style={{ color: 'var(--text-primary)' }}
-                    >
-                      Custom <code style={inlineCodeStyle}>web/index.html</code>
-                    </h4>
-                    <p style={{ ...mutedText, marginBottom: '0.5rem' }}>
-                      If your Expo project has a custom web entry point
-                    </p>
-                    <CodeBlock
-                      language="html"
-                      copyText={SCRIPT_TAG}
-                      code={`<!-- web/index.html -->
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-  </head>
-  <body>
-    <div id="root"></div>
-    <script src="https://dev-editor-flow.vercel.app/dev-editor-inspector.js"></script>
-  </body>
-</html>`}
-                    />
-                  </div>
-                </FrameworkSection>
-
-                {/* Vue / Nuxt */}
-                <FrameworkSection
-                  id="vue-nuxt"
-                  title="Vue / Nuxt"
-                  icon="&#9899;"
-                >
-                  <div>
-                    <h4
-                      className="text-base font-medium mb-1"
-                      style={{ color: 'var(--text-primary)' }}
-                    >
-                      Vue (Vite)
-                    </h4>
-                    <p style={{ ...mutedText, marginBottom: '0.5rem' }}>
-                      Add to <code style={inlineCodeStyle}>index.html</code>{' '}
-                      (project root)
-                    </p>
-                    <CodeBlock
-                      language="html"
-                      copyText={SCRIPT_TAG}
-                      code={`<!-- index.html -->
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>My Vue App</title>
-  </head>
-  <body>
-    <div id="app"></div>
-    <script type="module" src="/src/main.ts"></script>
-    <script src="https://dev-editor-flow.vercel.app/dev-editor-inspector.js"></script>
-  </body>
-</html>`}
-                    />
-                  </div>
-                  <div>
-                    <h4
-                      className="text-base font-medium mb-1"
-                      style={{ color: 'var(--text-primary)' }}
-                    >
-                      Nuxt 3
-                    </h4>
-                    <p style={{ ...mutedText, marginBottom: '0.5rem' }}>
-                      Add via{' '}
-                      <code style={inlineCodeStyle}>nuxt.config.ts</code> or{' '}
-                      <code style={inlineCodeStyle}>app.html</code>
-                    </p>
-                    <CodeBlock
-                      language="ts"
-                      copyText={`app: {\n  head: {\n    script: [{ src: 'https://dev-editor-flow.vercel.app/dev-editor-inspector.js' }]\n  }\n}`}
-                      code={`// nuxt.config.ts
-export default defineNuxtConfig({
-  app: {
-    head: {
-      script: [
-        { src: 'https://dev-editor-flow.vercel.app/dev-editor-inspector.js' }
-      ]
-    }
-  }
-});`}
-                    />
-                  </div>
-                </FrameworkSection>
-
-                {/* Svelte / SvelteKit */}
-                <FrameworkSection
-                  id="svelte-sveltekit"
-                  title="Svelte / SvelteKit"
-                  icon="&#127793;"
-                >
-                  <p style={{ ...mutedText, marginBottom: '0.5rem' }}>
-                    Add to <code style={inlineCodeStyle}>src/app.html</code>
-                  </p>
-                  <CodeBlock
-                    language="html"
-                    copyText={SCRIPT_TAG}
-                    code={`<!-- src/app.html -->
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    %sveltekit.head%
-  </head>
-  <body data-sveltekit-preload-data="hover">
-    <div style="display: contents">%sveltekit.body%</div>
-    <script src="https://dev-editor-flow.vercel.app/dev-editor-inspector.js"></script>
-  </body>
-</html>`}
-                  />
-                </FrameworkSection>
-              </FrameworkAccordion>
+              <p style={{ ...bodyText, marginTop: '1rem' }}>
+                Just start your dev server, open pAInt, select the port,
+                and click{' '}
+                <strong style={{ color: 'var(--text-primary)' }}>
+                  Connect
+                </strong>
+                . The proxy preserves your page&apos;s scripts and
+                client-side rendering, so interactive features like 3D scenes
+                (Spline, Three.js), animations (GSAP, Framer Motion), and
+                client-side routing all work normally.
+              </p>
             </Section>
 
             {/* Troubleshooting */}
             <Section id="troubleshooting" title="Troubleshooting">
               <div className="flex flex-col gap-4">
-                <TroubleshootItem title="Inspector script not detected">
+                <TroubleshootItem title="Stuck on &quot;Connecting&quot;">
                   <p>
-                    If the banner appears after 5 seconds, the automatic proxy
-                    injection didn&apos;t work for your setup. Add the script
-                    tag manually using the framework guides above. Make sure
-                    pAInt is running on the port shown in the script URL.
+                    If the editor stays in &quot;Connecting&quot; state, your
+                    browser may be caching an old Service Worker. Open DevTools
+                    &rarr; Application &rarr; Service Workers, unregister any
+                    workers for <code style={inlineCodeStyle}>localhost:4000</code>,
+                    clear Cache Storage, then hard refresh (Cmd+Shift+R).
                   </p>
                 </TroubleshootItem>
 
                 <TroubleshootItem title="CORS or Cross-Origin errors">
                   <p>
-                    pAInt proxy runs on a different port than your project. If
-                    your project sets strict CORS headers, the proxy may be
-                    blocked. The automatic method handles this by serving
-                    everything from the same origin. For the manual method,
-                    ensure your dev server allows requests from{' '}
-                    <code style={inlineCodeStyle}>localhost:4000</code>.
+                    The Service Worker proxy serves everything from the same
+                    origin, which handles most CORS issues automatically. If
+                    your project makes API calls to external services during
+                    render, those requests are not proxied. This typically
+                    doesn&apos;t affect visual editing.
                   </p>
                 </TroubleshootItem>
 
-                <TroubleshootItem title="COEP / COOP headers blocking the iframe">
+                <TroubleshootItem title="Page looks different or broken">
                   <p>
-                    Some frameworks set{' '}
-                    <code style={inlineCodeStyle}>
-                      Cross-Origin-Embedder-Policy
-                    </code>{' '}
-                    or{' '}
-                    <code style={inlineCodeStyle}>
-                      Cross-Origin-Opener-Policy
-                    </code>{' '}
-                    headers that prevent loading in an iframe. Check your server
-                    config or middleware and relax these headers in development.
+                    The proxy preserves all scripts and client-side rendering.
+                    If something looks off, try a hard refresh to ensure the
+                    latest Service Worker is active. If the issue persists,
+                    check the browser console for errors — some pages with
+                    very strict CSP headers may need those headers relaxed in
+                    development.
                   </p>
                 </TroubleshootItem>
 
-                <TroubleshootItem title="Infinite iframe reload">
+                <TroubleshootItem title="Target dev server not reachable">
                   <p>
-                    This happens when the target page&apos;s client-side router
-                    detects the proxy URL and redirects. pAInt&apos;s proxy
-                    strips <code style={inlineCodeStyle}>&lt;script&gt;</code>{' '}
-                    tags to prevent this. If you still see reloads, check that
-                    no inline scripts or meta-refresh tags are causing
-                    navigation.
-                  </p>
-                </TroubleshootItem>
-
-                <TroubleshootItem title="Styles look different in the editor">
-                  <p>
-                    The proxy serves SSR HTML with CSS intact but strips
-                    JavaScript. If your styles depend on client-side JS (e.g.,
-                    CSS-in-JS runtime injection), some styles may be missing.
-                    Use the manual script method with your full dev server if
-                    CSS-in-JS is critical.
+                    Make sure your project&apos;s dev server is running on the
+                    port you selected. The proxy connects to{' '}
+                    <code style={inlineCodeStyle}>localhost:&lt;port&gt;</code>{' '}
+                    from the browser, so the server must be accessible from
+                    your machine.
                   </p>
                 </TroubleshootItem>
               </div>
@@ -612,17 +289,13 @@ export default defineNuxtConfig({
             <Section id="faq" title="FAQ">
               <FaqAccordion>
                 <FaqSection
-                  id="faq-safe"
-                  question="Is it safe to add the inspector script to my project?"
+                  id="faq-no-setup"
+                  question="Do I need to add any script tags to my project?"
                 >
                   <p>
-                    Yes. The inspector script is a lightweight, read-only
-                    observer that listens for hover/click events and reports
-                    element metadata (tag name, styles, bounding box) back to
-                    pAInt via <code style={inlineCodeStyle}>postMessage</code>.
-                    It does not modify your source code, send data to external
-                    servers, or execute arbitrary code. It only communicates
-                    with pAInt origin.
+                    No. pAInt uses a Service Worker proxy that automatically
+                    injects the inspector script into your page. Just click
+                    Connect — no modifications to your project needed.
                   </p>
                 </FaqSection>
 
@@ -662,15 +335,13 @@ export default defineNuxtConfig({
 
                 <FaqSection
                   id="faq-production"
-                  question="Should I remove the script tag before deploying to production?"
+                  question="Does pAInt affect my production build?"
                 >
                   <p>
-                    Yes. The inspector script is intended for local development
-                    only. Remove it (or wrap it in an environment check) before
-                    deploying. If you forget, the script will try to connect to
-                    pAInt origin and silently fail — it won&apos;t affect your
-                    users — but it&apos;s best practice to keep it out of
-                    production builds.
+                    No. pAInt runs entirely in the browser through a Service
+                    Worker — nothing is added to your project&apos;s source
+                    code or build output. There&apos;s nothing to remove before
+                    deploying.
                   </p>
                 </FaqSection>
 
@@ -813,6 +484,42 @@ function TroubleshootItem({
         }}
       >
         {children}
+      </div>
+    </div>
+  )
+}
+
+function CompatItem({
+  icon,
+  name,
+  detail,
+}: {
+  icon: string
+  name: string
+  detail: string
+}) {
+  return (
+    <div
+      className="flex items-center gap-3 rounded-md px-4 py-3"
+      style={{
+        background: 'var(--bg-secondary)',
+        border: '1px solid var(--border)',
+      }}
+    >
+      <span className="text-base">{icon}</span>
+      <div>
+        <span
+          className="text-sm font-medium"
+          style={{ color: 'var(--text-primary)' }}
+        >
+          {name}
+        </span>
+        <span
+          className="text-sm ml-2"
+          style={{ color: 'var(--text-muted)' }}
+        >
+          — {detail}
+        </span>
       </div>
     </div>
   )

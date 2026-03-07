@@ -6,7 +6,7 @@ const NAV_ITEMS = [
   { id: 'how-it-works', label: 'How It Works' },
   { id: 'use-cases', label: 'Use Cases' },
   { id: 'quick-start', label: 'Quick Start' },
-  { id: 'framework-guides', label: 'Framework Guides' },
+  { id: 'framework-guides', label: 'Compatibility' },
   { id: 'troubleshooting', label: 'Troubleshooting' },
   { id: 'faq', label: 'FAQ' },
 ] as const

@@ -280,7 +280,13 @@ function handleMessage(event: MessageEvent) {
       break
 
     case 'PAGE_LINKS':
-      store.setPageLinks(msg.payload.links)
+      // Strip /sw-proxy/ or /api/proxy prefix from page link paths
+      store.setPageLinks(
+        msg.payload.links.map((link: { href: string; text: string }) => ({
+          ...link,
+          href: link.href.replace(/^\/(sw-proxy|api\/proxy)/, '') || '/',
+        })),
+      )
       break
 
     case 'COMPONENTS_DETECTED':

@@ -429,6 +429,13 @@
       'position:absolute;top:-18px;left:-1px;padding:1px 6px;font-size:10px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;line-height:14px;color:#fff;background:#1D3F23;border-radius:3px 3px 0 0;white-space:nowrap;pointer-events:none;'
     hoverOverlay.appendChild(hoverLabel)
 
+    // Watch for framework hydration removing our overlays from the DOM.
+    // When detected, re-append them to the current document.body.
+    new MutationObserver(function () {
+      if (!selectionOverlay.isConnected) document.body.appendChild(selectionOverlay)
+      if (!hoverOverlay.isConnected) document.body.appendChild(hoverOverlay)
+    }).observe(document.documentElement, { childList: true, subtree: true })
+
     var hoveredElement = null
 
     function getElementLabel(el) {
@@ -447,6 +454,7 @@
     }
 
     document.addEventListener('mousemove', (e) => {
+
       if (!selectionModeEnabled) {
         hoverOverlay.style.display = 'none'
         return
@@ -524,6 +532,7 @@
     function selectElement(el) {
       // Don't select elements when selection mode is disabled (preview mode)
       if (!selectionModeEnabled) return
+
       selectedElement = el
       var rect = el.getBoundingClientRect()
       selectionOverlay.style.display = 'block'
@@ -575,6 +584,7 @@
     }
 
     function updateSelectionOverlay() {
+
       if (!selectedElement || selectionOverlay.style.display === 'none') return
       var rect = selectedElement.getBoundingClientRect()
       selectionOverlay.style.top = `${rect.top}px`
@@ -1439,6 +1449,10 @@
             }
             if (resolved.origin !== window.location.origin) continue
             var linkPath = resolved.pathname
+            // Strip /sw-proxy/ prefix added by SW proxy URL rewriting
+            if (linkPath.indexOf('/sw-proxy/') === 0) {
+              linkPath = linkPath.substring('/sw-proxy'.length) || '/'
+            }
             if (linkPath.indexOf('/api/') === 0 || linkPath === '') continue
             if (!linkPath.startsWith('/')) continue
             if (seen[linkPath]) continue

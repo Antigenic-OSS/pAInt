@@ -13,6 +13,7 @@ function _collectAllIds(node: TreeNode, ids: Set<string>) {
 export interface TreeSlice {
   rootNode: TreeNode | null
   expandedNodeIds: Set<string>
+  collapsedNodeIds: Set<string>
   searchQuery: string
   highlightedNodeId: string | null
 
@@ -29,41 +30,52 @@ export const createTreeSlice: StateCreator<TreeSlice, [], [], TreeSlice> = (
 ) => ({
   rootNode: null,
   expandedNodeIds: new Set<string>(),
+  collapsedNodeIds: new Set<string>(),
   searchQuery: '',
   highlightedNodeId: null,
 
   setRootNode: (node) => {
-    const { expandedNodeIds: prev } = get()
-    // On first load (no previous state), start collapsed.
-    // On subsequent updates (DOM_UPDATED), preserve user-expanded state.
-    if (prev.size === 0) {
-      set({ rootNode: node, expandedNodeIds: new Set<string>() })
-    } else {
-      set({ rootNode: node })
+    if (!node) {
+      set({ rootNode: null, expandedNodeIds: new Set<string>(), collapsedNodeIds: new Set<string>() })
+      return
     }
+    // Expand all nodes by default, but respect user-collapsed nodes.
+    const all = new Set<string>()
+    _collectAllIds(node, all)
+    const { collapsedNodeIds } = get()
+    for (const id of collapsedNodeIds) {
+      all.delete(id)
+    }
+    set({ rootNode: node, expandedNodeIds: all })
   },
   setSearchQuery: (query) => set({ searchQuery: query }),
   setHighlightedNodeId: (id) => set({ highlightedNodeId: id }),
 
   toggleNodeExpanded: (nodeId) => {
-    const { expandedNodeIds } = get()
-    const next = new Set(expandedNodeIds)
-    if (next.has(nodeId)) {
-      next.delete(nodeId)
+    const { expandedNodeIds, collapsedNodeIds } = get()
+    const nextExpanded = new Set(expandedNodeIds)
+    const nextCollapsed = new Set(collapsedNodeIds)
+    if (nextExpanded.has(nodeId)) {
+      nextExpanded.delete(nodeId)
+      nextCollapsed.add(nodeId)
     } else {
-      next.add(nodeId)
+      nextExpanded.add(nodeId)
+      nextCollapsed.delete(nodeId)
     }
-    set({ expandedNodeIds: next })
+    set({ expandedNodeIds: nextExpanded, collapsedNodeIds: nextCollapsed })
   },
 
   expandToNode: (nodeId) => {
-    // Merge ancestors into existing expanded state (preserve user-toggled branches)
-    const { expandedNodeIds: prev } = get()
+    // Merge ancestors into existing expanded state and clear them from collapsed
+    const { expandedNodeIds: prev, collapsedNodeIds: prevCollapsed } = get()
     const next = new Set(prev)
+    const nextCollapsed = new Set(prevCollapsed)
     const parts = nodeId.split(' > ')
     for (let i = 1; i <= parts.length; i++) {
-      next.add(parts.slice(0, i).join(' > '))
+      const ancestor = parts.slice(0, i).join(' > ')
+      next.add(ancestor)
+      nextCollapsed.delete(ancestor)
     }
-    set({ expandedNodeIds: next })
+    set({ expandedNodeIds: next, collapsedNodeIds: nextCollapsed })
   },
 })

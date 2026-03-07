@@ -48,6 +48,7 @@ export interface UISlice {
   toasts: Toast[]
   bridgeUrl: string | null
   bridgeStatus: BridgeStatus
+  swProxyReady: boolean
 
   setTargetUrl: (url: string | null) => void
   setConnectionStatus: (status: ConnectionStatus) => void
@@ -77,6 +78,7 @@ export interface UISlice {
   dismissToast: (id: string) => void
   setBridgeUrl: (url: string | null) => void
   setBridgeStatus: (status: BridgeStatus) => void
+  setSwProxyReady: (ready: boolean) => void
   loadPersistedUI: () => void
 }
 
@@ -105,6 +107,7 @@ export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (
   toasts: [],
   bridgeUrl: null,
   bridgeStatus: 'disconnected',
+  swProxyReady: false,
 
   setTargetUrl: (url) => {
     set({ targetUrl: url })
@@ -299,6 +302,8 @@ export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (
   },
 
   setBridgeStatus: (status) => set({ bridgeStatus: status }),
+
+  setSwProxyReady: (ready) => set({ swProxyReady: ready }),
 
   loadPersistedUI: () => {
     try {
