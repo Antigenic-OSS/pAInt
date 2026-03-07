@@ -8,6 +8,7 @@ import {
   PREVIEW_WIDTH_MAX,
   PROXY_HEADER,
 } from '@/lib/constants'
+import { isSwProxyReady } from '@/lib/serviceWorkerRegistration'
 import { ResponsiveToolbar } from './ResponsiveToolbar'
 
 /**
@@ -50,11 +51,26 @@ function buildDirectUrl(targetUrl: string, pagePath: string): string {
 }
 
 /**
+ * Build the SW proxy URL for the iframe. Routes through the Service Worker
+ * at /sw-proxy/ which intercepts all requests and proxies them to the target,
+ * preserving all scripts for full client-rendered content.
+ */
+function buildSwProxyUrl(targetUrl: string, pagePath: string): string {
+  const path = pagePath === '/' ? '/' : pagePath
+  const encoded = encodeURIComponent(targetUrl)
+  return `/sw-proxy${path}?__sw_target=${encoded}`
+}
+
+/**
  * Build the appropriate iframe URL based on whether the editor is local,
  * has a bridge connection, or is remote without bridge.
+ * Prefers SW proxy when available for full client-rendered content.
  */
 function buildIframeUrl(targetUrl: string, pagePath: string): string {
   if (isEditorOnLocalhost()) {
+    if (isSwProxyReady()) {
+      return buildSwProxyUrl(targetUrl, pagePath)
+    }
     return buildProxyUrl(targetUrl, pagePath)
   }
   // Check for bridge connection
@@ -86,6 +102,8 @@ export function PreviewFrame() {
     if (!iframe) return
 
     const newSrc = buildIframeUrl(targetUrl, currentPagePath)
+    const usingSw = newSrc.startsWith('/sw-proxy/')
+    console.debug('[PreviewFrame] iframe src:', newSrc, '| SW ready:', isSwProxyReady())
 
     if (lastSrcRef.current !== newSrc) {
       lastSrcRef.current = newSrc
@@ -98,8 +116,23 @@ export function PreviewFrame() {
 
     iframe.addEventListener('error', handleError)
 
+    // Fallback: if SW proxy doesn't connect within 8s, retry with old proxy.
+    // This handles stale SWs, extension interference, or other SW issues.
+    let fallbackTimer: ReturnType<typeof setTimeout> | null = null
+    if (usingSw) {
+      fallbackTimer = setTimeout(() => {
+        // Only fall back if still connecting (not yet connected)
+        if (useEditorStore.getState().connectionStatus !== 'connecting') return
+        console.debug('[PreviewFrame] SW proxy timeout — falling back to reverse proxy')
+        const fallbackSrc = buildProxyUrl(targetUrl, currentPagePath)
+        lastSrcRef.current = fallbackSrc
+        iframe.src = fallbackSrc
+      }, 8000)
+    }
+
     return () => {
       iframe.removeEventListener('error', handleError)
+      if (fallbackTimer) clearTimeout(fallbackTimer)
     }
   }, [
     targetUrl,

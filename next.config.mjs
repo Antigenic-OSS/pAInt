@@ -20,6 +20,14 @@ const nextConfig = {
           { key: 'Cross-Origin-Resource-Policy', value: 'cross-origin' },
         ],
       },
+      {
+        // Allow the SW to control /sw-proxy/ scope even though the script
+        // lives at /sw-proxy/sw.js (scope matches script directory)
+        source: '/sw-proxy/sw.js',
+        headers: [
+          { key: 'Service-Worker-Allowed', value: '/sw-proxy/' },
+        ],
+      },
     ]
   },
 }

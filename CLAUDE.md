@@ -18,19 +18,10 @@ Claude Code — all from a visual-editor-style three-column dark UI.
 
 There are **three ways** to connect pAInt to your project:
 
-#### Method 1: Automatic (Reverse Proxy) — Recommended
-When you click **Connect**, pAInt loads your target page through a built-in reverse proxy. The proxy automatically injects the inspector script into the HTML — no setup needed. This is the default behavior and works out of the box.
+#### Method 1: Automatic (Service Worker Proxy) — Recommended
+When you click **Connect**, pAInt loads your target page through a Service Worker proxy. The proxy automatically intercepts requests, injects the inspector script, and strips security headers — all in the browser. No script tags or project modifications needed. Your page's scripts and client-side rendering work normally.
 
-#### Method 2: Manual Script Tag
-If the automatic connection takes longer than 5 seconds (the inspector script hasn't been detected), you'll see a banner:
-
-> **Inspector script not detected**
-> Add this script tag to your project's HTML layout:
-> `<script src="https://dev-editor-flow.vercel.app/dev-editor-inspector.js"></script>`
-
-Click **Copy**, paste the script tag into your project's root HTML layout (e.g., `layout.tsx`, `index.html`), and the editor will connect once the page reloads.
-
-#### Method 3: Vercel Deployment (Bridge Mode)
+#### Method 2: Vercel Deployment (Bridge Mode)
 When pAInt is deployed to Vercel, run the local bridge server (`bun run bridge`) on port 4002. The bridge handles proxy requests, project scanning, and Claude CLI execution on the user's machine.
 
 ### Typical Workflow
@@ -324,3 +315,10 @@ The SSR-rendered HTML + CSS is complete for visual editing. The inspector script
 - Middleware matched page-level paths, polluting HMR route tree (reduced matcher scope)
 - Target app HMR requests (hot-update, webpack-hmr) returned 404s (short-circuit in proxy)
 - React Strict Mode double-mounted PreviewFrame, setting `iframe.src` twice (`lastSrcRef` guard)
+
+## Active Technologies
+- TypeScript (Next.js 15 App Router), vanilla JavaScript (Service Worker) + Next.js 15, Zustand 5, Browser Service Worker API (008-sw-proxy)
+- In-memory (SW runtime) for target URL mappings; localStorage (existing) for UI state (008-sw-proxy)
+
+## Recent Changes
+- 008-sw-proxy: Added TypeScript (Next.js 15 App Router), vanilla JavaScript (Service Worker) + Next.js 15, Zustand 5, Browser Service Worker API

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Editor } from '@/components/Editor'
 import { useEditorStore } from '@/store'
+import { registerSwProxy } from '@/lib/serviceWorkerRegistration'
 
 export default function Home() {
   const loadPersistedUI = useEditorStore((s) => s.loadPersistedUI)
@@ -26,6 +27,7 @@ export default function Home() {
 
     loadPersistedUI()
     loadPersistedClaude()
+    registerSwProxy()
 
     // Suppress HMR errors caused by proxied routes leaking into the
     // editor's route tree (e.g. "unrecognized HMR message").

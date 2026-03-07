@@ -49,42 +49,13 @@ export function ConnectModal() {
   const [isBrowsing, setIsBrowsing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [howToOpen, setHowToOpen] = useState(false)
-  const [showScriptFallback, setShowScriptFallback] = useState(false)
-  const [scriptCopied, setScriptCopied] = useState(false)
   const [scanResult, setScanResult] = useState<ScanResult | null>(null)
   const [scanDone, setScanDone] = useState(false)
-  const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const autoAdvanceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const isConnecting = connectionStatus === 'connecting'
   const isConfirming = connectionStatus === 'confirming'
   const isScanning = connectionStatus === 'scanning'
-
-  // Show script tag fallback after 5s of connecting (immediately when deployed)
-  useEffect(() => {
-    if (isConnecting && targetUrl) {
-      if (!isLocal) {
-        // On Vercel, show immediately — proxy won't inject the script
-        setShowScriptFallback(true)
-      } else {
-        fallbackTimerRef.current = setTimeout(() => {
-          setShowScriptFallback(true)
-        }, 5000)
-      }
-    } else {
-      setShowScriptFallback(false)
-      if (fallbackTimerRef.current) {
-        clearTimeout(fallbackTimerRef.current)
-        fallbackTimerRef.current = null
-      }
-    }
-    return () => {
-      if (fallbackTimerRef.current) {
-        clearTimeout(fallbackTimerRef.current)
-        fallbackTimerRef.current = null
-      }
-    }
-  }, [isConnecting, targetUrl, isLocal])
 
   // Cleanup auto-advance timer
   useEffect(() => {
@@ -104,28 +75,11 @@ export function ConnectModal() {
     if (isConfirming || isScanning) {
       cancelPendingConnection()
     }
-    setShowScriptFallback(false)
-    setScriptCopied(false)
     setScanResult(null)
     setScanDone(false)
-    if (fallbackTimerRef.current) {
-      clearTimeout(fallbackTimerRef.current)
-      fallbackTimerRef.current = null
-    }
     if (autoAdvanceRef.current) {
       clearTimeout(autoAdvanceRef.current)
       autoAdvanceRef.current = null
-    }
-  }
-
-  const handleCopyScript = async () => {
-    const scriptTag = `<script src="${window.location.origin}/dev-editor-inspector.js"></script>`
-    try {
-      await navigator.clipboard.writeText(scriptTag)
-      setScriptCopied(true)
-      setTimeout(() => setScriptCopied(false), 2000)
-    } catch {
-      /* fallback: user can manually copy */
     }
   }
 
@@ -237,16 +191,17 @@ export function ConnectModal() {
     }
   }
 
+  // Auto-dismiss modal once connecting starts — top bar shows status
+  if (isConnecting || connectionStatus === 'connected') return null
+
   // Header subtitle changes per step
   const headerSubtitle = isConfirming
     ? 'Confirm connection details'
     : isScanning
       ? 'Scanning project folder'
-      : isConnecting
-        ? 'Connecting to your project'
-        : isLocal
-          ? 'Connect to your localhost project'
-          : 'Connect to your project'
+      : isLocal
+        ? 'Connect to your localhost project'
+        : 'Connect to your project'
 
   return (
     <div
@@ -574,58 +529,28 @@ export function ConnectModal() {
                     color: 'var(--text-secondary)',
                   }}
                 >
-                  {/* Connection Methods */}
+                  {/* How It Works */}
                   <div>
                     <h4
                       className="text-[11px] font-semibold uppercase tracking-wide mb-2"
                       style={{ color: 'var(--text-primary)' }}
                     >
-                      Connection Methods
+                      How It Works
                     </h4>
                     <div className="flex flex-col gap-2">
                       <div>
+                        pAInt uses a{' '}
                         <span style={{ color: 'var(--success)' }}>
-                          Automatic (Reverse Proxy)
+                          Service Worker proxy
                         </span>{' '}
-                        — Default. The editor loads your page through a built-in
-                        proxy and injects the inspector script automatically.
+                        to load your page, inject the inspector script, and
+                        strip security headers — all automatically. No script
+                        tags or project modifications needed.
                       </div>
                       <div>
-                        <span style={{ color: 'var(--warning)' }}>
-                          Manual (Script Tag)
-                        </span>{' '}
-                        — If auto-connect takes longer than 5s, add the provided
-                        script tag to your project&apos;s HTML layout.
-                      </div>
-                      <div>
-                        <span style={{ color: 'var(--accent)' }}>
-                          React Native / Expo Web
-                        </span>{' '}
-                        — Add the inspector script dynamically in your root
-                        layout:
-                        <pre
-                          className="mt-1.5 px-3 py-2.5 rounded text-[11px] leading-relaxed overflow-x-auto whitespace-pre"
-                          style={{
-                            background: 'var(--bg-tertiary)',
-                            color: 'var(--text-primary)',
-                            border: '1px solid var(--border)',
-                          }}
-                        >{`useEffect(() => {
-  if (Platform.OS === 'web') {
-    const script1 = document.createElement('script');
-    script1.src = 'http://localhost:4000/dev-editor-inspector.js';
-    document.body.appendChild(script1);
-
-    const script2 = document.createElement('script');
-    script2.src = 'https://dev-editor-flow.vercel.app/dev-editor-inspector.js';
-    document.body.appendChild(script2);
-
-    return () => {
-      document.body.removeChild(script1);
-      document.body.removeChild(script2);
-    };
-  }
-}`}</pre>
+                        Your page&apos;s scripts and client-side rendering
+                        work normally, so interactive features (3D, animations,
+                        routing) are fully preserved.
                       </div>
                     </div>
                   </div>
@@ -817,74 +742,7 @@ export function ConnectModal() {
             </div>
           )}
 
-          {/* ─── STEP: CONNECTING ─── */}
-          {isConnecting && (
-            <div className="flex flex-col items-center py-8 gap-3">
-              {/* Spinner */}
-              <div
-                className="w-8 h-8 rounded-full"
-                style={{
-                  border: '2px solid var(--border)',
-                  borderTopColor: 'var(--accent)',
-                  animation: 'spin 0.8s linear infinite',
-                }}
-              />
-              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                Connecting to {targetUrl?.replace(/^https?:\/\//, '')}...
-              </p>
-            </div>
-          )}
         </div>
-
-        {/* Script fallback banner — shown after 5s of connecting */}
-        {showScriptFallback && (
-          <div
-            className="px-6 py-3 flex-shrink-0"
-            style={{
-              borderTop: '1px solid var(--border)',
-              background: 'var(--bg-secondary)',
-            }}
-          >
-            <div
-              className="text-xs font-medium mb-1"
-              style={{ color: 'var(--warning)' }}
-            >
-              {isLocal
-                ? 'Inspector script not detected'
-                : 'Script tag required'}
-            </div>
-            <div
-              className="text-[11px] mb-2"
-              style={{ color: 'var(--text-secondary)' }}
-            >
-              {isLocal
-                ? "Add this script tag to your project's HTML layout:"
-                : "Since the editor is running remotely, add this script tag to your project's HTML layout to enable inspection:"}
-            </div>
-            <div className="flex items-center gap-2">
-              <code
-                className="flex-1 text-[11px] px-2 py-1.5 rounded overflow-x-auto whitespace-nowrap"
-                style={{
-                  background: 'var(--bg-primary)',
-                  color: 'var(--text-primary)',
-                  border: '1px solid var(--border)',
-                }}
-              >
-                {`<script src="${typeof window !== 'undefined' ? window.location.origin : ''}/dev-editor-inspector.js"></script>`}
-              </code>
-              <button
-                onClick={handleCopyScript}
-                className="px-3 py-1.5 text-[11px] font-medium rounded whitespace-nowrap transition-colors flex-shrink-0"
-                style={{
-                  background: scriptCopied ? 'var(--success)' : 'var(--accent)',
-                  color: '#fff',
-                }}
-              >
-                {scriptCopied ? 'Copied!' : 'Copy'}
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Footer */}
         <div
@@ -910,7 +768,44 @@ export function ConnectModal() {
               >
                 Connect
               </button>
-              <div className="mt-3 text-center">
+              {/* Incognito tip banner */}
+              <div
+                className="mt-3 rounded-lg px-4 py-3 flex items-start gap-3"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(251, 146, 0, 0.08) 100%)',
+                  border: '1px solid rgba(251, 191, 36, 0.4)',
+                }}
+              >
+                {/* Incognito icon */}
+                <div
+                  className="flex-shrink-0 mt-0.5"
+                  style={{ color: 'var(--warning)', opacity: 0.9 }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 12c2.5 0 4.5-1 6-3H6c1.5 2 3.5 3 6 3z" />
+                    <path d="M3 9h18" />
+                    <circle cx="7.5" cy="15.5" r="2.5" />
+                    <circle cx="16.5" cy="15.5" r="2.5" />
+                    <path d="M10 15.5h4" />
+                  </svg>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span
+                    className="text-xs font-medium leading-tight"
+                    style={{ color: 'var(--warning)' }}
+                  >
+                    Use Incognito for the best experience
+                  </span>
+                  <span
+                    className="text-[11px] leading-relaxed"
+                    style={{ color: 'var(--text-primary)' }}
+                  >
+                    Browser extensions and cached data can interfere with the
+                    connection. If it gets stuck, try an Incognito window.
+                  </span>
+                </div>
+              </div>
+              <div className="mt-2.5 text-center">
                 <a
                   href="/docs"
                   target="_blank"
@@ -972,20 +867,6 @@ export function ConnectModal() {
             </button>
           )}
 
-          {/* CONNECTING footer: Cancel */}
-          {isConnecting && (
-            <button
-              onClick={cancelConnection}
-              className="w-full py-2 text-xs rounded font-medium transition-colors"
-              style={{
-                background: 'var(--bg-tertiary)',
-                color: 'var(--text-secondary)',
-                border: '1px solid var(--border)',
-              }}
-            >
-              Cancel
-            </button>
-          )}
         </div>
       </div>
     </div>

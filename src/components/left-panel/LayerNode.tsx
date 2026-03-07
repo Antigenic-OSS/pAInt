@@ -455,10 +455,13 @@ export function LayerNode({
   const IconComponent = ICON_MAP[category]
   const label = getDisplayLabel(node)
 
-  // Scroll selected layer into view (expansion is handled by usePostMessage)
+  // Scroll selected layer into view after tree expansion renders it.
+  // Use requestAnimationFrame to wait for layout after mount/expansion.
   useEffect(() => {
     if (isSelected && rowRef.current) {
-      rowRef.current.scrollIntoView({ block: 'center', behavior: 'instant' })
+      requestAnimationFrame(() => {
+        rowRef.current?.scrollIntoView({ block: 'center', behavior: 'instant' })
+      })
     }
   }, [isSelected])
 

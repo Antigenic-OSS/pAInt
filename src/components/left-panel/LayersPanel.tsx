@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useEditorStore } from '@/store'
 import { LayerNode } from './LayerNode'
 import { LayerSearch } from './LayerSearch'
@@ -9,6 +9,15 @@ export function LayersPanel() {
   const rootNode = useEditorStore((s) => s.rootNode)
   const searchQuery = useEditorStore((s) => s.searchQuery)
   const styleChanges = useEditorStore((s) => s.styleChanges)
+  const selectorPath = useEditorStore((s) => s.selectorPath)
+
+  // Auto-expand tree to the selected element whenever selection changes.
+  // This also re-expands after DOM_UPDATED replaces the tree.
+  useEffect(() => {
+    if (selectorPath) {
+      useEditorStore.getState().expandToNode(selectorPath)
+    }
+  }, [selectorPath, rootNode])
 
   const { changedSelectors, deletedSelectors } = useMemo(() => {
     const changed = new Set<string>()
