@@ -4,7 +4,7 @@
 
 // SW version — bump this when making breaking changes so the registration
 // code can detect stale SWs and force a clean re-registration.
-const SW_VERSION = 2;
+const SW_VERSION = 3;
 
 // Inspector code cached at install time
 let inspectorCode = '';
@@ -497,6 +497,11 @@ self.addEventListener('fetch', (event) => {
   // that escape the /sw-proxy/ scope after history.replaceState changes
   // the page URL from /sw-proxy/... to /...
   if (!hasSwPrefix) {
+    // Never intercept navigations outside /sw-proxy/ scope — let the browser
+    // handle them normally. This ensures the fallback to /api/proxy works
+    // when the SW proxy times out.
+    if (event.request.mode === 'navigate') return;
+
     const clientId = event.clientId;
     if (!clientId || !clientTargets.has(clientId)) return;
 
@@ -551,6 +556,19 @@ async function handleNavigation(event, url) {
   const target = getTargetForClient(clientId);
   if (!target) {
     return new Response('No target URL configured', { status: 502 });
+  }
+
+  // Re-fetch inspector code if lost (happens when browser terminates and
+  // restarts the SW — global variables reset but install doesn't re-fire)
+  if (!inspectorCode) {
+    try {
+      const inspRes = await fetch('/dev-editor-inspector.js');
+      if (inspRes.ok) {
+        inspectorCode = await inspRes.text();
+      }
+    } catch (err) {
+      console.warn('[sw-proxy] Failed to re-fetch inspector code:', err);
+    }
   }
 
   // Build the server-side fetch URL: route through /api/sw-fetch/ to avoid
