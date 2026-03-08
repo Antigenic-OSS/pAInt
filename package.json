@@ -1,6 +1,6 @@
 {
   "name": "@antigenic-oss/paint",
-  "version": "0.2.9",
+  "version": "0.3.0",
   "description": "Visual editor for localhost web projects with a global paint CLI",
   "license": "Apache-2.0",
   "homepage": "https://github.com/Antigenic-OSS/pAInt",
