@@ -18,6 +18,7 @@ export type ConnectionStatus =
   | 'disconnected'
   | 'confirming'
   | 'scanning'
+  | 'authenticating'
   | 'connecting'
   | 'connected'
 export type BridgeStatus =
