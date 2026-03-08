@@ -27,6 +27,7 @@ export function TargetSelector() {
   const [error, setError] = useState<string | null>(null)
 
   const isConnected = connectionStatus === 'connected'
+  const isAuthenticating = connectionStatus === 'authenticating'
 
   const handleConnect = () => {
     setError(null)
@@ -38,6 +39,19 @@ export function TargetSelector() {
     const normalized = normalizeTargetUrl(raw)
     setTargetUrl(normalized)
     setConnectionStatus('connecting')
+    addRecentUrl(normalized)
+  }
+
+  const handleLoginFirst = () => {
+    setError(null)
+    const raw = urlMode ? customUrl.trim() : `http://localhost:${selectedPort}`
+    if (urlMode && !raw) {
+      setError('Enter a URL')
+      return
+    }
+    const normalized = normalizeTargetUrl(raw)
+    setTargetUrl(normalized)
+    setConnectionStatus('authenticating')
     addRecentUrl(normalized)
   }
 
@@ -70,11 +84,13 @@ export function TargetSelector() {
   const statusColor =
     connectionStatus === 'connected'
       ? 'var(--success)'
-      : connectionStatus === 'connecting' ||
-          connectionStatus === 'confirming' ||
-          connectionStatus === 'scanning'
-        ? 'var(--warning)'
-        : 'var(--error)'
+      : connectionStatus === 'authenticating'
+        ? 'var(--accent)'
+        : connectionStatus === 'connecting' ||
+            connectionStatus === 'confirming' ||
+            connectionStatus === 'scanning'
+          ? 'var(--warning)'
+          : 'var(--error)'
 
   return (
     <div className="flex items-center gap-2 relative">
@@ -88,7 +104,7 @@ export function TargetSelector() {
       {/* Toggle between dropdown and URL input */}
       <button
         onClick={() => {
-          if (!isConnected) {
+          if (!isConnected && !isAuthenticating) {
             setUrlMode(!urlMode)
             setError(null)
           }
@@ -96,8 +112,8 @@ export function TargetSelector() {
         className="p-1 rounded hover:bg-[var(--bg-hover)] transition-colors flex-shrink-0"
         style={{
           color: urlMode ? 'var(--accent)' : 'var(--text-muted)',
-          cursor: isConnected ? 'default' : 'pointer',
-          opacity: isConnected ? 0.5 : 1,
+          cursor: isConnected || isAuthenticating ? 'default' : 'pointer',
+          opacity: isConnected || isAuthenticating ? 0.5 : 1,
         }}
         title={urlMode ? 'Switch to port selector' : 'Switch to URL input'}
       >
@@ -133,7 +149,7 @@ export function TargetSelector() {
         )}
       </button>
 
-      {isConnected ? (
+      {isConnected || isAuthenticating ? (
         <div
           className="w-56 text-sm rounded px-2 py-1 truncate"
           style={{
@@ -172,20 +188,38 @@ export function TargetSelector() {
         </select>
       )}
 
+      {/* Login first button — only shown when disconnected */}
+      {!isConnected && !isAuthenticating && connectionStatus !== 'connecting' && (
+        <button
+          onClick={handleLoginFirst}
+          className="px-2 py-1 text-xs rounded transition-colors font-medium"
+          style={{
+            background: 'var(--bg-hover)',
+            color: 'var(--text-secondary)',
+            border: '1px solid var(--border)',
+          }}
+          title="Log in to your project first, then connect the editor"
+        >
+          Login first
+        </button>
+      )}
+
       {/* Connect / Disconnect button */}
       <button
-        onClick={isConnected ? handleDisconnect : handleConnect}
+        onClick={isConnected || isAuthenticating ? handleDisconnect : handleConnect}
         className="px-3 py-1 text-xs rounded transition-colors font-medium"
         style={{
-          background: isConnected ? 'var(--bg-hover)' : 'var(--accent)',
-          color: isConnected ? 'var(--text-secondary)' : '#fff',
+          background: isConnected || isAuthenticating ? 'var(--bg-hover)' : 'var(--accent)',
+          color: isConnected || isAuthenticating ? 'var(--text-secondary)' : '#fff',
         }}
       >
         {isConnected
           ? 'Disconnect'
-          : connectionStatus === 'connecting'
-            ? 'Connecting...'
-            : 'Connect'}
+          : isAuthenticating
+            ? 'Cancel'
+            : connectionStatus === 'connecting'
+              ? 'Connecting...'
+              : 'Connect'}
       </button>
 
       {/* Bridge status indicator (shown when running on Vercel) */}

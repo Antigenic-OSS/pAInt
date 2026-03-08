@@ -62,6 +62,17 @@ function buildSwProxyUrl(targetUrl: string, pagePath: string): string {
 }
 
 /**
+ * Build a SW proxy URL for auth mode. Same as regular SW proxy but adds
+ * __sw_auth=1 so the SW skips inspector/nav-blocker injection, letting
+ * the user interact with login forms normally.
+ */
+function buildSwProxyAuthUrl(targetUrl: string, pagePath: string): string {
+  const path = pagePath === '/' ? '/' : pagePath
+  const encoded = encodeURIComponent(targetUrl)
+  return `/sw-proxy${path}?__sw_target=${encoded}&__sw_auth=1`
+}
+
+/**
  * Build the appropriate iframe URL based on whether the editor is local,
  * has a bridge connection, or is remote without bridge.
  * Prefers SW proxy when available for full client-rendered content.
@@ -93,6 +104,24 @@ export function PreviewFrame() {
   const containerRef = useRef<HTMLDivElement>(null)
   const lastSrcRef = useRef<string | null>(null)
   const [isDragging, setIsDragging] = useState(false)
+
+  // Handle auth mode — load target without inspector so user can log in
+  useEffect(() => {
+    if (!targetUrl || connectionStatus !== 'authenticating') return
+
+    const iframe = iframeRef.current
+    if (!iframe) return
+
+    const newSrc = isSwProxyReady()
+      ? buildSwProxyAuthUrl(targetUrl, currentPagePath)
+      : buildProxyUrl(targetUrl, currentPagePath)
+    console.debug('[PreviewFrame] auth mode iframe src:', newSrc)
+
+    if (lastSrcRef.current !== newSrc) {
+      lastSrcRef.current = newSrc
+      iframe.src = newSrc
+    }
+  }, [targetUrl, connectionStatus, currentPagePath, iframeRef])
 
   // Handle initial connection — load through proxy
   useEffect(() => {
@@ -252,12 +281,41 @@ export function PreviewFrame() {
 
   const showHandles = !isFullWidth && connectionStatus === 'connected'
 
+  const handleFinishAuth = () => {
+    // Force a fresh load by clearing lastSrcRef so the connecting effect
+    // picks up the new (non-auth) URL even if the path hasn't changed.
+    lastSrcRef.current = null
+    setConnectionStatus('connecting')
+  }
+
   return (
     <div
       className="flex flex-col h-full"
       style={{ background: 'var(--bg-primary)' }}
     >
       {connectionStatus === 'connected' && <ResponsiveToolbar />}
+
+      {/* Auth mode banner */}
+      {connectionStatus === 'authenticating' && (
+        <div
+          className="flex items-center justify-between px-4 py-2 flex-shrink-0"
+          style={{
+            background: 'var(--bg-secondary)',
+            borderBottom: '1px solid var(--border)',
+          }}
+        >
+          <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+            Log in to your project below, then click <strong>Connect Editor</strong> when ready.
+          </span>
+          <button
+            onClick={handleFinishAuth}
+            className="px-3 py-1 text-xs rounded font-medium ml-3 flex-shrink-0"
+            style={{ background: 'var(--accent)', color: '#fff' }}
+          >
+            Connect Editor
+          </button>
+        </div>
+      )}
 
       <div
         ref={containerRef}

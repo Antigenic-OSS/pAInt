@@ -19,7 +19,7 @@ const STRIP_HEADERS = new Set([
   'x-frame-options',
 ])
 
-export async function GET(
+async function handler(
   request: NextRequest,
   { params }: { params: Promise<{ path?: string[] }> },
 ) {
@@ -48,13 +48,63 @@ export async function GET(
   const fetchUrl = targetOrigin + targetPath + search
 
   try {
-    const response = await fetch(fetchUrl, {
-      headers: {
-        accept: request.headers.get('accept') || '*/*',
-        'accept-language': request.headers.get('accept-language') || '',
-      },
-      redirect: 'follow',
+    // Forward all request headers to the target server. This ensures RSC
+    // headers (RSC, Next-Router-State-Tree, Next-Router-Prefetch), auth
+    // headers, Supabase headers, and any custom API headers reach the target.
+    // Only skip headers that must reflect the actual target or are internal.
+    const SKIP_REQUEST_HEADERS = new Set([
+      'host',
+      'origin',
+      'referer',
+      'connection',
+      'x-sw-target',
+      'x-forwarded-for',
+      'x-forwarded-host',
+      'x-forwarded-proto',
+      'x-forwarded-port',
+      'x-invoke-path',
+      'x-invoke-query',
+      'x-middleware-invoke',
+      'x-middleware-prefetch',
+    ])
+    const forwardHeaders: Record<string, string> = {}
+    request.headers.forEach((value, key) => {
+      if (!SKIP_REQUEST_HEADERS.has(key.toLowerCase())) {
+        forwardHeaders[key] = value
+      }
     })
+
+    const init: RequestInit = {
+      method: request.method,
+      headers: forwardHeaders,
+      redirect: 'manual',
+    }
+    // Forward body for non-GET/HEAD requests
+    if (request.method !== 'GET' && request.method !== 'HEAD') {
+      init.body = request.body
+      // @ts-expect-error -- Node fetch supports duplex for streaming body
+      init.duplex = 'half'
+    }
+
+    // Follow redirects manually so we can track the final URL
+    let response = await fetch(fetchUrl, init)
+    let finalUrl: string | null = null
+    let redirectCount = 0
+    while (
+      redirectCount < 10 &&
+      response.status >= 300 &&
+      response.status < 400 &&
+      response.headers.get('location')
+    ) {
+      const location = response.headers.get('location')!
+      const redirectTo = new URL(location, fetchUrl).href
+      finalUrl = redirectTo
+      response = await fetch(redirectTo, {
+        headers: forwardHeaders,
+        redirect: 'manual',
+      })
+      redirectCount++
+    }
 
     // Copy headers, stripping security headers
     const responseHeaders = new Headers()
@@ -64,6 +114,20 @@ export async function GET(
       }
     }
     responseHeaders.delete('content-length')
+
+    // Forward set-cookie headers from the target (auth tokens, sessions)
+    const setCookies = response.headers.getSetCookie?.()
+    if (setCookies?.length) {
+      for (const sc of setCookies) {
+        responseHeaders.append('set-cookie', sc)
+      }
+    }
+
+    // If the target redirected, tell the SW the final URL so the navigation
+    // blocker can set the correct path (prevents hydration mismatch).
+    if (finalUrl) {
+      responseHeaders.set('x-sw-final-url', finalUrl)
+    }
 
     return new NextResponse(response.body, {
       status: response.status,
@@ -76,3 +140,10 @@ export async function GET(
     )
   }
 }
+
+export const GET = handler
+export const POST = handler
+export const PUT = handler
+export const PATCH = handler
+export const DELETE = handler
+export const OPTIONS = handler

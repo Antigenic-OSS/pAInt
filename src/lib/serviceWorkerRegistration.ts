@@ -3,7 +3,7 @@ import { useEditorStore } from '@/store'
 let swReady = false
 
 // Must match SW_VERSION in /public/sw-proxy/sw.js
-const EXPECTED_SW_VERSION = 3
+const EXPECTED_SW_VERSION = 10
 
 const log = (...args: unknown[]) =>
   console.debug('[sw-proxy]', ...args)

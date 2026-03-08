@@ -145,6 +145,19 @@ export function ConnectModal() {
     }
   }
 
+  const handleLoginFirst = () => {
+    setError(null)
+    const raw = urlMode ? customUrl.trim() : `http://localhost:${selectedPort}`
+    if (urlMode && !raw) {
+      setError('Enter a URL')
+      return
+    }
+    const normalized = normalizeTargetUrl(raw)
+    setTargetUrl(normalized)
+    setConnectionStatus('authenticating')
+    addRecentUrl(normalized)
+  }
+
   const handleConfirm = async () => {
     if (!pendingTargetUrl || !pendingFolderPath) return
     setConnectionStatus('scanning')
@@ -191,8 +204,8 @@ export function ConnectModal() {
     }
   }
 
-  // Auto-dismiss modal once connecting starts — top bar shows status
-  if (isConnecting || connectionStatus === 'connected') return null
+  // Auto-dismiss modal once connecting/authenticating starts — top bar shows status
+  if (isConnecting || connectionStatus === 'connected' || connectionStatus === 'authenticating') return null
 
   // Header subtitle changes per step
   const headerSubtitle = isConfirming
@@ -755,19 +768,42 @@ export function ConnectModal() {
             </p>
           )}
 
-          {/* SETUP footer: Connect button */}
+          {/* SETUP footer: Connect + Login first buttons */}
           {connectionStatus === 'disconnected' && (
             <>
-              <button
-                onClick={handleConnect}
-                className="w-full py-2 text-xs rounded font-medium transition-colors"
-                style={{
-                  background: 'var(--accent)',
-                  color: '#fff',
-                }}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleConnect}
+                  className="flex-1 py-2 text-xs rounded font-medium transition-colors"
+                  style={{
+                    background: 'var(--accent)',
+                    color: '#fff',
+                  }}
+                >
+                  Connect
+                </button>
+                <button
+                  onClick={handleLoginFirst}
+                  className="py-2 px-4 text-xs rounded font-medium transition-colors flex-shrink-0"
+                  style={{
+                    background: 'var(--bg-tertiary)',
+                    color: 'var(--text-secondary)',
+                    border: '1px solid var(--border)',
+                  }}
+                  title="Log in to your project first, then connect the editor"
+                >
+                  Login first
+                </button>
+              </div>
+              {/* Auth hint */}
+              <p
+                className="text-[11px] mt-2 text-center"
+                style={{ color: 'var(--text-muted)' }}
               >
-                Connect
-              </button>
+                Project requires authentication? Use{' '}
+                <span style={{ color: 'var(--text-secondary)' }}>Login first</span>{' '}
+                to sign in before the editor connects.
+              </p>
               {/* Incognito tip banner */}
               <div
                 className="mt-3 rounded-lg px-4 py-3 flex items-start gap-3"
