@@ -253,6 +253,40 @@ function parseArgs(argv) {
   return parsed
 }
 
+function printBanner(host, port) {
+  const reset = '\x1b[0m'
+  const dim = '\x1b[2m'
+  const bold = '\x1b[1m'
+  const cyan = '\x1b[36m'
+  const yellow = '\x1b[33m'
+  const magenta = '\x1b[35m'
+  const white = '\x1b[97m'
+
+  const logo = [
+    `${yellow}   ██████${reset}`,
+    `${yellow} ██${white}░░${yellow}██${white}░░${yellow}██${reset}`,
+    `${yellow} ██${white}░░${yellow}██${white}░░${yellow}██${reset}`,
+    `${yellow} ████████${reset}`,
+    `${yellow} ██${magenta}▓▓${yellow}████${reset}`,
+    `${yellow} ████████${reset}`,
+  ]
+
+  const info = [
+    '',
+    `${bold}${white}pAInt${reset} ${dim}v${APP_VERSION}${reset}`,
+    `${dim}http://${host}:${port}${reset}`,
+    `${dim}${process.cwd()}${reset}`,
+    '',
+    '',
+  ]
+
+  console.log()
+  for (let i = 0; i < logo.length; i++) {
+    console.log(`  ${logo[i]}  ${info[i]}`)
+  }
+  console.log()
+}
+
 function readState(filePath) {
   try {
     return JSON.parse(fs.readFileSync(filePath, 'utf8'))
@@ -488,9 +522,7 @@ async function startApp(options) {
     },
   })
 
-  console.log(`pAInt started at http://${options.host}:${options.port}`)
-  console.log(`Web pid: ${webChild.pid}`)
-  console.log(`Web logs: ${WEB_LOG_FILE}`)
+  printBanner(options.host, options.port)
 
   checkForUpdate()
 }
