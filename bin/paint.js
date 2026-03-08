@@ -338,6 +338,55 @@ function stopProcess(pid) {
   }
 }
 
+function killAndWait(pid, timeoutMs = 5000) {
+  if (!Number.isInteger(pid) || pid <= 0) return true
+
+  if (process.platform === 'win32') {
+    const result = spawnSync('taskkill', ['/PID', String(pid), '/T', '/F'], {
+      stdio: 'ignore',
+    })
+    return result.status === 0
+  }
+
+  // Send SIGTERM first
+  try {
+    process.kill(-pid, 'SIGTERM')
+  } catch {
+    try {
+      process.kill(pid, 'SIGTERM')
+    } catch {
+      return true // already dead
+    }
+  }
+
+  // Wait for the process to die
+  const start = Date.now()
+  while (Date.now() - start < timeoutMs) {
+    if (!isProcessAlive(pid)) return true
+    spawnSync('sleep', ['0.1'])
+  }
+
+  // Still alive — escalate to SIGKILL
+  try {
+    process.kill(-pid, 'SIGKILL')
+  } catch {
+    try {
+      process.kill(pid, 'SIGKILL')
+    } catch {
+      return !isProcessAlive(pid)
+    }
+  }
+
+  // Brief wait after SIGKILL
+  const killStart = Date.now()
+  while (Date.now() - killStart < 2000) {
+    if (!isProcessAlive(pid)) return true
+    spawnSync('sleep', ['0.1'])
+  }
+
+  return !isProcessAlive(pid)
+}
+
 function validatePort(port, flagName) {
   if (!Number.isInteger(port) || port <= 0 || port > 65535) {
     console.error(`Invalid ${flagName} value: ${port}`)
@@ -527,7 +576,7 @@ async function startApp(options) {
   checkForUpdate()
 }
 
-function stopApp() {
+function stopApp({ force = false } = {}) {
   const existing = readState(APP_STATE_FILE)
   if (!existing) {
     console.log('pAInt is not running.')
@@ -535,7 +584,7 @@ function stopApp() {
   }
 
   const alive = isProcessAlive(existing.webPid)
-  const ok = alive ? stopProcess(existing.webPid) : true
+  const ok = alive ? (force ? killAndWait(existing.webPid) : stopProcess(existing.webPid)) : true
   removeState(APP_STATE_FILE)
 
   if (!alive) {
@@ -633,7 +682,7 @@ async function startTerminal(options) {
   console.log(`Terminal logs: ${TERMINAL_LOG_FILE}`)
 }
 
-function stopTerminal() {
+function stopTerminal({ force = false } = {}) {
   const existing = readState(TERMINAL_STATE_FILE)
   if (!existing) {
     console.log('Terminal is not running.')
@@ -641,7 +690,7 @@ function stopTerminal() {
   }
 
   const alive = isProcessAlive(existing.terminalPid)
-  const ok = alive ? stopProcess(existing.terminalPid) : true
+  const ok = alive ? (force ? killAndWait(existing.terminalPid) : stopProcess(existing.terminalPid)) : true
   removeState(TERMINAL_STATE_FILE)
 
   if (!alive) {
@@ -736,7 +785,7 @@ async function startBridge(options) {
   console.log(`Bridge logs: ${BRIDGE_LOG_FILE}`)
 }
 
-function stopBridge() {
+function stopBridge({ force = false } = {}) {
   const existing = readState(BRIDGE_STATE_FILE)
   if (!existing) {
     console.log('Bridge is not running.')
@@ -744,7 +793,7 @@ function stopBridge() {
   }
 
   const alive = isProcessAlive(existing.bridgePid)
-  const ok = alive ? stopProcess(existing.bridgePid) : true
+  const ok = alive ? (force ? killAndWait(existing.bridgePid) : stopProcess(existing.bridgePid)) : true
   removeState(BRIDGE_STATE_FILE)
 
   if (!alive) {
@@ -852,7 +901,7 @@ async function main() {
         stopBridge()
         return
       case 'restart':
-        stopBridge()
+        stopBridge({ force: true })
         await startBridge(options)
         return
       case 'status':
@@ -876,7 +925,7 @@ async function main() {
         stopTerminal()
         return
       case 'restart':
-        stopTerminal()
+        stopTerminal({ force: true })
         await startTerminal(options)
         return
       case 'status':
@@ -899,7 +948,7 @@ async function main() {
       stopApp()
       break
     case 'restart':
-      stopApp()
+      stopApp({ force: true })
       await startApp(options)
       break
     case 'status':
