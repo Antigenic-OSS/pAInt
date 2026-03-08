@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: release
     permissions:
-      contents: read
+      contents: write
       id-token: write
     steps:
       - name: Checkout
@@ -120,3 +120,32 @@ jobs:
       - name: Publish to npm
         if: steps.version_check.outputs.should_publish == 'true'
         run: npm publish --provenance --access public
+
+      - name: Create GitHub Release
+        if: steps.version_check.outputs.should_publish == 'true'
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          VERSION="v${{ steps.version_check.outputs.current_version }}"
+
+          # Skip if release already exists
+          if gh release view "${VERSION}" > /dev/null 2>&1; then
+            echo "GitHub release ${VERSION} already exists, skipping."
+            exit 0
+          fi
+
+          # Extract release notes from RELEASE_NOTES.md if it exists, otherwise use CHANGELOG.md
+          if [ -f RELEASE_NOTES.md ]; then
+            NOTES=$(cat RELEASE_NOTES.md)
+          elif [ -f CHANGELOG.md ]; then
+            NOTES=$(cat CHANGELOG.md)
+          else
+            NOTES="Release ${VERSION}"
+          fi
+
+          gh release create "${VERSION}" \
+            --title "${VERSION}" \
+            --notes "${NOTES}" \
+            --target "${{ github.sha }}"
