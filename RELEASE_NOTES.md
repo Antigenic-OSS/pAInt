@@ -1,6 +1,6 @@
-# Release Notes — Service Worker Proxy
+# Release Notes — v0.3.1
 
-**Branch**: `008-sw-proxy`
+**Version**: `0.3.1`
 **Date**: 2026-03-08
 
 ---
